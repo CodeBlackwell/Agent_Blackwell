@@ -1,0 +1,33 @@
+[project]
+name = "agent-orchestration"
+version = "0.1.0"
+description = "Agent-based orchestration system with ML pipeline integration"
+authors = [
+    {name = "Christopher Blackwell"}
+]
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+dependencies = [
+    "fastapi (>=0.115.13,<0.116.0)",
+    "uvicorn (>=0.34.3,<0.35.0)",
+    "redis (>=6.2.0,<7.0.0)",
+    "pydantic (>=2.11.7,<3.0.0)",
+    "langchain (>=0.3.26,<0.4.0)",
+    "langchain-community (>=0.3.26,<0.4.0)",
+    "pinecone (>=7.2.0,<8.0.0)",
+    "openai (>=1.90.0,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+black = "^25.1.0"
+isort = "^6.0.1"
+flake8 = "^7.3.0"
+pre-commit = "^4.2.0"
+pytest-asyncio = "^1.0.0"
+

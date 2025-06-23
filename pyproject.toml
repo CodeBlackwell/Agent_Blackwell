@@ -30,4 +30,3 @@ isort = "^6.0.1"
 flake8 = "^7.3.0"
 pre-commit = "^4.2.0"
 pytest-asyncio = "^1.0.0"
-

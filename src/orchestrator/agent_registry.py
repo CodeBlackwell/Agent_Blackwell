@@ -9,6 +9,7 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
+from src.agents.design_agent import DesignAgent
 from src.agents.spec_agent import SpecAgent
 
 # Configure logging
@@ -44,7 +45,12 @@ class AgentRegistry:
     def _initialize_agents(self) -> None:
         """Initialize all agents in the system."""
         # Initialize the Spec Agent
-        self._initialize_spec_agent()
+        spec_agent = SpecAgent(openai_api_key=self.openai_api_key)
+        self.register_agent("spec", spec_agent)
+
+        # Initialize the Design Agent
+        design_agent = DesignAgent(openai_api_key=self.openai_api_key)
+        self.register_agent("design", design_agent)
 
         # Add more agent initializations here as they are implemented
         # self._initialize_design_agent()
@@ -52,17 +58,24 @@ class AgentRegistry:
         # self._initialize_review_agent()
         # self._initialize_test_agent()
 
-    def _initialize_spec_agent(self) -> None:
-        """Initialize the Spec Agent."""
-        try:
-            # Create the Spec Agent
-            spec_agent = SpecAgent(openai_api_key=self.openai_api_key)
+    def register_agent(self, agent_name: str, agent: Any) -> None:
+        """
+        Register an agent with the registry.
 
-            # Create a simple wrapper to adapt the SpecAgent to the AgentExecutor interface
+        Args:
+            agent_name: Name of the agent to register
+            agent: Agent instance to register
+        """
+        # Create the appropriate wrapper based on agent type
+        if agent_name == "spec":
+            # Create a wrapper for the Spec Agent
             class SpecAgentWrapper:
+                def __init__(self, agent):
+                    self.agent = agent
+
                 async def ainvoke(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
                     user_request = inputs.get("input", "")
-                    tasks = await spec_agent.generate_tasks(user_request)
+                    tasks = await self.agent.generate_tasks(user_request)
 
                     # Handle different return types from generate_tasks
                     if isinstance(tasks, list) and tasks and hasattr(tasks[0], "dict"):
@@ -99,12 +112,32 @@ class AgentRegistry:
 
                         return {"output": formatted_tasks, "tasks": formatted_tasks}
 
-            # Register the agent
-            self.agents["spec_agent"] = SpecAgentWrapper()
-            logger.info("Spec Agent initialized and registered")
+            self.agents[agent_name] = SpecAgentWrapper(agent)
+            logger.info(f"{agent_name.capitalize()} Agent registered")
 
-        except Exception as e:
-            logger.error(f"Error initializing Spec Agent: {e}")
+        elif agent_name == "design":
+            # Create a wrapper for the Design Agent
+            class DesignAgentWrapper:
+                def __init__(self, agent):
+                    self.agent = agent
+
+                async def ainvoke(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+                    task_description = inputs.get("input", "")
+                    additional_context = inputs.get("context", "")
+
+                    design_output = await self.agent.generate_design(
+                        task_description, additional_context
+                    )
+
+                    return {"output": design_output, "design": design_output}
+
+            self.agents[agent_name] = DesignAgentWrapper(agent)
+            logger.info(f"{agent_name.capitalize()} Agent registered")
+
+        else:
+            # Generic registration for other agent types
+            self.agents[agent_name] = agent
+            logger.info(f"{agent_name.capitalize()} Agent registered")
 
     def get_agent(self, agent_name: str) -> Optional[Any]:
         """

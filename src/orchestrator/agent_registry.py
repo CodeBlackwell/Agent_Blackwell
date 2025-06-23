@@ -13,6 +13,7 @@ from src.agents.coding_agent import CodingAgent
 from src.agents.design_agent import DesignAgent
 from src.agents.review_agent import ReviewAgent
 from src.agents.spec_agent import SpecAgent
+from src.agents.test_agent import TestAgent
 
 # Configure logging
 logging.basicConfig(
@@ -59,8 +60,10 @@ class AgentRegistry:
         # Initialize the Review Agent
         self.register_review_agent()
 
+        # Initialize the Test Agent
+        self.register_test_agent()
+
         # Add more agent initializations here as they are implemented
-        # self._initialize_test_agent()
 
     def register_design_agent(self) -> None:
         """Register the Design Agent with the registry."""
@@ -90,6 +93,16 @@ class AgentRegistry:
             logger.info("Review Agent registered successfully")
         except Exception as e:
             logger.error(f"Failed to register Review Agent: {e}")
+            raise
+
+    def register_test_agent(self) -> None:
+        """Register the Test Agent with the registry."""
+        try:
+            test_agent = TestAgent(openai_api_key=self.openai_api_key)
+            self.register_agent("test", test_agent)
+            logger.info("Test Agent registered successfully")
+        except Exception as e:
+            logger.error(f"Failed to register Test Agent: {e}")
             raise
 
     def register_agent(self, agent_name: str, agent: Any) -> None:

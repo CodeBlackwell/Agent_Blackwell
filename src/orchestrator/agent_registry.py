@@ -9,6 +9,7 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
+from src.agents.coding_agent import CodingAgent
 from src.agents.design_agent import DesignAgent
 from src.agents.spec_agent import SpecAgent
 
@@ -49,14 +50,34 @@ class AgentRegistry:
         self.register_agent("spec", spec_agent)
 
         # Initialize the Design Agent
-        design_agent = DesignAgent(openai_api_key=self.openai_api_key)
-        self.register_agent("design", design_agent)
+        self.register_design_agent()
+
+        # Initialize the Coding Agent
+        self.register_coding_agent()
 
         # Add more agent initializations here as they are implemented
-        # self._initialize_design_agent()
-        # self._initialize_coding_agent()
         # self._initialize_review_agent()
         # self._initialize_test_agent()
+
+    def register_design_agent(self) -> None:
+        """Register the Design Agent with the registry."""
+        try:
+            design_agent = DesignAgent(openai_api_key=self.openai_api_key)
+            self.register_agent("design", design_agent)
+            logger.info("Design Agent registered successfully")
+        except Exception as e:
+            logger.error(f"Failed to register Design Agent: {e}")
+            raise
+
+    def register_coding_agent(self) -> None:
+        """Register the Coding Agent with the registry."""
+        try:
+            coding_agent = CodingAgent(openai_api_key=self.openai_api_key)
+            self.register_agent("coding", coding_agent)
+            logger.info("Coding Agent registered successfully")
+        except Exception as e:
+            logger.error(f"Failed to register Coding Agent: {e}")
+            raise
 
     def register_agent(self, agent_name: str, agent: Any) -> None:
         """
@@ -118,20 +139,55 @@ class AgentRegistry:
         elif agent_name == "design":
             # Create a wrapper for the Design Agent
             class DesignAgentWrapper:
-                def __init__(self, agent):
-                    self.agent = agent
+                """Wrapper for the Design Agent to adapt it to the orchestrator interface."""
 
-                async def ainvoke(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-                    task_description = inputs.get("input", "")
-                    additional_context = inputs.get("context", "")
+                def __init__(self, design_agent: DesignAgent):
+                    """Initialize the wrapper with a Design Agent instance."""
+                    self.design_agent = design_agent
 
-                    design_output = await self.agent.generate_design(
-                        task_description, additional_context
+                async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
+                    """Invoke the Design Agent with the task and return the result."""
+                    task_description = task.get("description", "")
+                    design_specs = await self.design_agent.generate_design(
+                        task_description
                     )
-
-                    return {"output": design_output, "design": design_output}
+                    return {
+                        "task_id": task.get("task_id"),
+                        "result": design_specs,
+                        "status": "completed",
+                    }
 
             self.agents[agent_name] = DesignAgentWrapper(agent)
+            logger.info(f"{agent_name.capitalize()} Agent registered")
+
+        elif agent_name == "coding":
+            # Create a wrapper for the Coding Agent
+            class CodingAgentWrapper:
+                """Wrapper for the Coding Agent to adapt it to the orchestrator interface."""
+
+                def __init__(self, coding_agent: CodingAgent):
+                    """Initialize the wrapper with a Coding Agent instance."""
+                    self.coding_agent = coding_agent
+
+                async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
+                    """Invoke the Coding Agent with the task and return the result."""
+                    task_description = task.get("description", "")
+                    design_specs = task.get("design_specs", "")
+                    architecture_diagram = task.get("architecture_diagram", "")
+
+                    code_result = await self.coding_agent.generate_code(
+                        task_description=task_description,
+                        design_specs=design_specs,
+                        architecture_diagram=architecture_diagram,
+                    )
+
+                    return {
+                        "task_id": task.get("task_id"),
+                        "result": code_result,
+                        "status": "completed",
+                    }
+
+            self.agents[agent_name] = CodingAgentWrapper(agent)
             logger.info(f"{agent_name.capitalize()} Agent registered")
 
         else:

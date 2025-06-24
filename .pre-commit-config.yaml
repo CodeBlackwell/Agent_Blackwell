@@ -29,6 +29,8 @@ repos:
   hooks:
     - id: pytest
       name: Run Pytest
-      entry: PYTHONPATH=src pytest
+      entry: pytest
       language: system
       types: [python]
+      env:
+        - PYTHONPATH=src

@@ -11,10 +11,10 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from langchain.chains import LLMChain
-from langchain_community.chat_models import ChatOpenAI
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableSequence
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 # Configure logging
@@ -112,12 +112,9 @@ class SpecAgent:
             api_key=openai_api_key,
         )
 
-        # Create the chain
-        self.chain = LLMChain(
-            llm=self.llm,
-            prompt=self.prompt_template,
-            output_parser=TaskListOutputParser(),
-        )
+        # Create the chain using RunnableSequence with pipe operator instead of from_components
+        output_parser = TaskListOutputParser()
+        self.chain = self.prompt_template | self.llm | output_parser
 
         logger.info("SpecAgent initialized")
 

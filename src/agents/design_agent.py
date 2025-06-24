@@ -96,8 +96,8 @@ class DesignAgent:
             model="gpt-4",  # Using GPT-4 for better diagram generation
         )
 
-        # Create the LLM chain
-        self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
+        # Create the chain using the pipe operator pattern (replacing deprecated LLMChain)
+        self.chain = self.prompt_template | self.llm
 
         logger.info("DesignAgent initialized")
 

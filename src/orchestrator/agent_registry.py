@@ -13,7 +13,7 @@ from src.agents.coding_agent import CodingAgent
 from src.agents.design_agent import DesignAgent
 from src.agents.review_agent import ReviewAgent
 from src.agents.spec_agent import SpecAgent
-from src.agents.test_agent import TestAgent
+from src.agents.test_agent import TestGeneratorAgent
 
 # Configure logging
 logging.basicConfig(
@@ -98,7 +98,7 @@ class AgentRegistry:
     def register_test_agent(self) -> None:
         """Register the Test Agent with the registry."""
         try:
-            test_agent = TestAgent(openai_api_key=self.openai_api_key)
+            test_agent = TestGeneratorAgent(openai_api_key=self.openai_api_key)
             self.register_agent("test", test_agent)
             logger.info("Test Agent registered successfully")
         except Exception as e:

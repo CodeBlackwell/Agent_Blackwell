@@ -10,20 +10,22 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
 logger = logging.getLogger(__name__)
 
 
-class TestAgent:
+class TestGeneratorAgent:
     """
     Agent responsible for generating comprehensive test suites for code modules.
 
     This agent analyzes code files and generates appropriate unit and integration tests
     following best practices and achieving high test coverage.
     """
+
+    # Prevent pytest from collecting this class as a test class
+    __test__ = False
 
     def __init__(self, openai_api_key: str):
         """
@@ -55,8 +57,8 @@ class TestAgent:
                 template=prompt_template, input_variables=["code_files"]
             )
 
-            # Create the chain
-            self.chain = LLMChain(llm=llm, prompt=prompt)
+            # Create the chain using pipe operator pattern (replacing deprecated LLMChain)
+            self.chain = prompt | llm
             logger.info("Test Agent LLM initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Test Agent LLM: {e}")

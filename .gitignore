@@ -3,7 +3,7 @@ venv/
 env/
 ENV/
 .windsurf/**
-
+.snapshots/
 # Python bytecode
 __pycache__/
 *.py[cod]

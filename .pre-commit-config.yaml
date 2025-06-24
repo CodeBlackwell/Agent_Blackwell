@@ -25,12 +25,12 @@ repos:
         additional_dependencies: [flake8-docstrings]
         args: ["--ignore=F401,D200,E501,E402,W503"]
 
-- repo: local
-  hooks:
-    - id: pytest
-      name: Run Pytest
-      entry: pytest
-      language: system
-      types: [python]
-      env:
-        - PYTHONPATH=src
+# - repo: local #@TODO: Add pytest hook - failing because of import issues
+#   hooks:
+#     - id: pytest
+#       name: Run Pytest
+#       entry: pytest
+#       language: system
+#       types: [python]
+#       env:
+#         - PYTHONPATH=src

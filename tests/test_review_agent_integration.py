@@ -13,6 +13,8 @@ from src.orchestrator.main import Orchestrator
 class TestOrchestrator(Orchestrator):
     """Test version of Orchestrator that bypasses Pinecone initialization."""
 
+    __test__ = False  # Prevent pytest from collecting this as a test class
+
     def __init__(self, *args, **kwargs):
         """Initialize without setting up Pinecone."""
         # Initialize Redis client
@@ -56,7 +58,6 @@ class TestReviewAgentIntegration:
             mock_file.return_value.__enter__.return_value.read = mock_read
             yield mock_file
 
-    @pytest.mark.skip(reason="JSON serialization issues with AsyncMock objects")
     @pytest.mark.asyncio
     @patch("src.agents.review_agent.ChatOpenAI")
     @patch("redis.Redis")
@@ -98,9 +99,9 @@ class TestReviewAgentIntegration:
             openai_api_key="fake-openai-key",
         )
 
-        # Create a proper async mock for the review agent
+        # Create a proper async mock for the review agent that directly mocks ainvoke
         review_agent_mock = AsyncMock()
-        review_agent_mock.review_code = AsyncMock(
+        review_agent_mock.ainvoke = AsyncMock(
             return_value={
                 "summary": {
                     "linting_score": 7,
@@ -135,12 +136,16 @@ class TestReviewAgentIntegration:
 
         # Assert
         assert result is not None
-        assert "success" in result
-        assert result["success"] is True
+        assert "status" in result
+        assert result["status"] == "completed"
         assert "result" in result
+        assert "summary" in result["result"]
+        assert "linting_issues" in result["result"]
+        assert "security_issues" in result["result"]
+        assert "quality_issues" in result["result"]
+        review_agent_mock.ainvoke.assert_called_once_with(task)
         mock_redis_client.xadd.assert_called()
 
-    @pytest.mark.skip(reason="JSON serialization issues with AsyncMock objects")
     @pytest.mark.asyncio
     @patch("redis.Redis")
     async def test_review_agent_error_handling(
@@ -161,7 +166,7 @@ class TestReviewAgentIntegration:
 
         # Create a proper async mock for the review agent that raises an exception
         review_agent_mock = AsyncMock()
-        review_agent_mock.review_code = AsyncMock(side_effect=Exception("Review error"))
+        review_agent_mock.ainvoke = AsyncMock(side_effect=Exception("Review error"))
         orchestrator.agents["review"] = review_agent_mock
 
         # Create a task with proper format
@@ -183,8 +188,9 @@ class TestReviewAgentIntegration:
 
         # Assert
         assert result is not None
-        assert "success" in result
-        assert result["success"] is False
+        assert "status" in result
+        assert result["status"] == "error"
         assert "error" in result
         assert "Review error" in result["error"]
+        review_agent_mock.ainvoke.assert_called_once_with(task)
         mock_redis_client.xadd.assert_called()

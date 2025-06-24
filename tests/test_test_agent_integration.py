@@ -13,6 +13,8 @@ from src.orchestrator.main import Orchestrator
 class TestOrchestrator(Orchestrator):
     """Test version of Orchestrator that bypasses Pinecone initialization."""
 
+    __test__ = False  # Prevent pytest from collecting this as a test class
+
     def __init__(self, *args, **kwargs):
         """Initialize without setting up Pinecone."""
         # Initialize Redis client
@@ -56,14 +58,11 @@ class TestTestAgentIntegration:
             mock_file.return_value.__enter__.return_value.read = mock_read
             yield mock_file
 
-    @pytest.mark.skip(reason="JSON serialization issues with AsyncMock objects")
     @pytest.mark.asyncio
-    @patch("src.agents.test_agent.ChatOpenAI")
     @patch("redis.Redis")
     async def test_process_task_with_test_agent(
         self,
         mock_redis,
-        mock_chat_openai,
         mock_file_read,
         mock_redis_client,
     ):
@@ -71,73 +70,52 @@ class TestTestAgentIntegration:
         # Arrange
         mock_redis.return_value = mock_redis_client
 
-        # Mock ChatOpenAI
-        mock_llm = MagicMock()
-        mock_llm_chain = MagicMock()
-        mock_llm_chain.arun = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "test_files": [
-                        {
-                            "path": "test_example.py",
-                            "content": "def test_something(): assert True",
-                        }
-                    ],
-                    "coverage_report": {
-                        "overall_coverage": "90%",
-                        "notes": "Good coverage",
-                    },
-                }
-            )
+        # Create the test orchestrator that bypasses Pinecone initialization
+        orchestrator = TestOrchestrator(
+            redis_client=mock_redis_client,
+            openai_api_key="fake-openai-key",
         )
-        mock_chat_openai.return_value = mock_llm
 
-        with patch("src.agents.test_agent.LLMChain", return_value=mock_llm_chain):
-            # Create the test orchestrator that bypasses Pinecone initialization
-            orchestrator = TestOrchestrator(
-                redis_client=mock_redis_client,
-                openai_api_key="fake-openai-key",
-            )
-
-            # Create a mock for the test agent's generate_tests method
-            test_agent_mock = AsyncMock()
-            test_agent_mock.generate_tests = AsyncMock(
-                return_value={
-                    "test_files": [
-                        {
-                            "path": "test_example.py",
-                            "content": "def test_something(): assert True",
-                        }
-                    ],
-                    "coverage_report": {
-                        "overall_coverage": "90%",
-                        "notes": "Good coverage",
-                    },
-                }
-            )
-            orchestrator.agents["test"] = test_agent_mock
-
-            # Create a test task with proper format
-            task = {
-                "task_id": "task123",
-                "task_type": "test",
-                "payload": {
-                    "code_files": [
-                        {"path": "example.py", "content": "def hello(): return 'world'"}
-                    ]
+        # Create a mock for the test agent that directly mocks ainvoke
+        test_agent_mock = AsyncMock()
+        test_agent_mock.ainvoke = AsyncMock(
+            return_value={
+                "test_files": [
+                    {
+                        "path": "test_example.py",
+                        "content": "def test_something(): assert True",
+                    }
+                ],
+                "coverage_report": {
+                    "overall_coverage": "90%",
+                    "notes": "Good coverage",
                 },
             }
+        )
+        orchestrator.agents["test"] = test_agent_mock
 
-            # Act
-            result = await orchestrator.process_task(task)
+        # Create a test task with proper format
+        task = {
+            "task_id": "task123",
+            "task_type": "test",
+            "payload": {
+                "code_files": [
+                    {"path": "example.py", "content": "def hello(): return 'world'"}
+                ]
+            },
+        }
 
-            # Assert
-            assert result is not None
-            assert "result" in result
-            mock_redis_client.xadd.assert_called()
-            test_agent_mock.generate_tests.assert_called_once()
+        # Act
+        result = await orchestrator.process_task(task)
 
-    @pytest.mark.skip(reason="JSON serialization issues with AsyncMock objects")
+        # Assert
+        assert result is not None
+        assert "status" in result
+        assert result["status"] == "completed"
+        assert "result" in result
+        test_agent_mock.ainvoke.assert_called_once_with(task)
+        mock_redis_client.xadd.assert_called()
+
     @pytest.mark.asyncio
     @patch("redis.Redis")
     async def test_test_agent_error_handling(
@@ -158,7 +136,7 @@ class TestTestAgentIntegration:
 
         # Create a mock for the test agent that raises an exception
         test_agent_mock = AsyncMock()
-        test_agent_mock.generate_tests = AsyncMock(side_effect=Exception("Test error"))
+        test_agent_mock.ainvoke = AsyncMock(side_effect=Exception("Test error"))
         orchestrator.agents["test"] = test_agent_mock
 
         # Create a task with proper format
@@ -177,6 +155,9 @@ class TestTestAgentIntegration:
 
         # Assert
         assert result is not None
+        assert "status" in result
         assert result["status"] == "error"
+        assert "error" in result
         assert "Test error" in result["error"]
+        test_agent_mock.ainvoke.assert_called_once_with(task)
         mock_redis_client.xadd.assert_called()

@@ -3,15 +3,17 @@ Unit tests for the Test Agent.
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, mock_open, patch
 
 import pytest
 
-from src.agents.test_agent import TestAgent
+from src.agents.test_agent import TestGeneratorAgent
 
 
 class TestTestAgent:
-    """Test suite for the Test Agent."""
+    """Tests for the Test Generator Agent."""
+
+    __test__ = True  # Mark this class as containing tests
 
     @pytest.fixture
     def mock_file_read(self):
@@ -25,7 +27,7 @@ class TestTestAgent:
     def test_init(self, mock_file_read):
         """Test initialization of the Test Agent."""
         # Act
-        agent = TestAgent(openai_api_key="test_key")
+        agent = TestGeneratorAgent(openai_api_key="test_key")
 
         # Assert
         assert agent is not None
@@ -33,142 +35,117 @@ class TestTestAgent:
         mock_file_read.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("src.agents.test_agent.ChatOpenAI")
-    async def test_generate_tests_valid_json_response(
-        self, mock_chat_openai, mock_file_read
-    ):
+    async def test_generate_tests_valid_json_response(self, mock_file_read):
         """Test generating tests with a valid JSON response."""
-        # Arrange
-        mock_llm = AsyncMock()
-        mock_llm_chain = MagicMock()
-        mock_llm_chain.arun = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "test_files": [
-                        {
-                            "path": "test_example.py",
-                            "content": "def test_something(): assert True",
-                        }
-                    ],
-                    "coverage_report": {
-                        "overall_coverage": "90%",
-                        "notes": "Good coverage",
-                    },
-                }
-            )
-        )
-        mock_chat_openai.return_value = mock_llm
-
-        with patch("src.agents.test_agent.LLMChain", return_value=mock_llm_chain):
-            agent = TestAgent(openai_api_key="test_key")
-
-            # Act
-            code_files = [
-                {"path": "example.py", "content": "def hello(): return 'world'"}
-            ]
-            result = await agent.generate_tests(code_files)
-
-            # Assert
-            mock_llm_chain.arun.assert_called_once()
-            assert "test_files" in result
-            assert len(result["test_files"]) == 1
-            assert result["test_files"][0]["path"] == "test_example.py"
-            assert "coverage_report" in result
-            assert result["coverage_report"]["overall_coverage"] == "90%"
-
-    @pytest.mark.asyncio
-    @patch("src.agents.test_agent.ChatOpenAI")
-    async def test_generate_tests_invalid_json_response(
-        self, mock_chat_openai, mock_file_read
-    ):
-        """Test generating tests with an invalid JSON response."""
-        # Arrange
-        mock_llm = AsyncMock()
-        mock_llm_chain = MagicMock()
-        mock_llm_chain.arun = AsyncMock(
-            return_value="""
-            Here are the tests:
-
+        # Expected response from the chain
+        expected_response = json.dumps(
             {
                 "test_files": [
                     {
                         "path": "test_example.py",
-                        "content": "def test_something(): assert True"
+                        "content": "def test_something(): assert True",
                     }
                 ],
                 "coverage_report": {
-                    "overall_coverage": "85%",
-                    "notes": "Good coverage"
-                }
+                    "overall_coverage": "90%",
+                    "notes": "Good coverage",
+                },
             }
-            """
         )
-        mock_chat_openai.return_value = mock_llm
 
-        with patch("src.agents.test_agent.LLMChain", return_value=mock_llm_chain):
-            agent = TestAgent(openai_api_key="test_key")
+        # Initialize the agent
+        agent = TestGeneratorAgent(openai_api_key="test_key")
 
-            # Act
-            code_files = [
-                {"path": "example.py", "content": "def hello(): return 'world'"}
-            ]
-            result = await agent.generate_tests(code_files)
+        # Replace the chain with a mock
+        agent.chain = AsyncMock()
+        agent.chain.arun = AsyncMock(return_value=expected_response)
 
-            # Assert
-            mock_llm_chain.arun.assert_called_once()
-            assert "test_files" in result
-            assert len(result["test_files"]) == 1
-            assert "coverage_report" in result
-            assert result["coverage_report"]["overall_coverage"] == "85%"
+        # Act
+        code_files = [{"path": "example.py", "content": "def hello(): return 'world'"}]
+        result = await agent.generate_tests(code_files)
+
+        # Assert
+        agent.chain.arun.assert_called_once()
+        assert "test_files" in result
+        assert len(result["test_files"]) == 1
+        assert result["test_files"][0]["path"] == "test_example.py"
+        assert "coverage_report" in result
+        assert result["coverage_report"]["overall_coverage"] == "90%"
 
     @pytest.mark.asyncio
-    @patch("src.agents.test_agent.ChatOpenAI")
-    async def test_generate_tests_completely_invalid_response(
-        self, mock_chat_openai, mock_file_read
-    ):
+    async def test_generate_tests_invalid_json_response(self, mock_file_read):
+        """Test generating tests with an invalid JSON response."""
+        # Prepare a response with JSON embedded in text
+        invalid_json_response = """
+        Here are the tests:
+
+        {
+            "test_files": [
+                {
+                    "path": "test_example.py",
+                    "content": "def test_something(): assert True"
+                }
+            ],
+            "coverage_report": {
+                "overall_coverage": "85%",
+                "notes": "Good coverage"
+            }
+        }
+        """
+
+        # Initialize the agent
+        agent = TestGeneratorAgent(openai_api_key="test_key")
+
+        # Replace the chain with a mock
+        agent.chain = AsyncMock()
+        agent.chain.arun = AsyncMock(return_value=invalid_json_response)
+
+        # Act
+        code_files = [{"path": "example.py", "content": "def hello(): return 'world'"}]
+        result = await agent.generate_tests(code_files)
+
+        # Assert
+        agent.chain.arun.assert_called_once()
+        assert "test_files" in result
+        assert len(result["test_files"]) == 1
+        assert "coverage_report" in result
+        assert result["coverage_report"]["overall_coverage"] == "85%"
+
+    @pytest.mark.asyncio
+    async def test_generate_tests_completely_invalid_response(self, mock_file_read):
         """Test generating tests with a completely invalid response."""
-        # Arrange
-        mock_llm = AsyncMock()
-        mock_llm_chain = MagicMock()
-        mock_llm_chain.arun = AsyncMock(
-            return_value="Here are some tests that don't include any JSON"
-        )
-        mock_chat_openai.return_value = mock_llm
+        # Prepare a completely invalid response
+        invalid_response = "Here are some tests that don't include any JSON"
 
-        with patch("src.agents.test_agent.LLMChain", return_value=mock_llm_chain):
-            agent = TestAgent(openai_api_key="test_key")
+        # Initialize the agent
+        agent = TestGeneratorAgent(openai_api_key="test_key")
 
-            # Act
-            code_files = [
-                {"path": "example.py", "content": "def hello(): return 'world'"}
-            ]
-            result = await agent.generate_tests(code_files)
+        # Replace the chain with a mock
+        agent.chain = AsyncMock()
+        agent.chain.arun = AsyncMock(return_value=invalid_response)
 
-            # Assert
-            mock_llm_chain.arun.assert_called_once()
-            assert "test_files" in result
-            assert len(result["test_files"]) == 1
-            assert "coverage_report" in result
-            assert result["coverage_report"]["overall_coverage"] == "Unknown"
+        # Act
+        code_files = [{"path": "example.py", "content": "def hello(): return 'world'"}]
+        result = await agent.generate_tests(code_files)
+
+        # Assert
+        agent.chain.arun.assert_called_once()
+        assert "test_files" in result
+        assert len(result["test_files"]) == 1
+        assert "coverage_report" in result
+        assert result["coverage_report"]["overall_coverage"] == "Unknown"
 
     @pytest.mark.asyncio
-    @patch("src.agents.test_agent.ChatOpenAI")
-    async def test_generate_tests_exception_handling(
-        self, mock_chat_openai, mock_file_read
-    ):
+    async def test_generate_tests_exception_handling(self, mock_file_read):
         """Test exception handling in generate_tests."""
-        # Arrange
-        mock_llm = AsyncMock()
-        mock_llm_chain = MagicMock()
-        mock_llm_chain.arun = AsyncMock(side_effect=Exception("Test error"))
-        mock_chat_openai.return_value = mock_llm
+        # Initialize the agent
+        agent = TestGeneratorAgent(openai_api_key="test_key")
 
-        with patch("src.agents.test_agent.LLMChain", return_value=mock_llm_chain):
-            agent = TestAgent(openai_api_key="test_key")
+        # Replace the chain with a mock that raises an exception
+        agent.chain = AsyncMock()
+        agent.chain.arun = AsyncMock(side_effect=Exception("Test error"))
 
-            # Act & Assert
-            code_files = [
-                {"path": "example.py", "content": "def hello(): return 'world'"}
-            ]
-            with pytest.raises(Exception):
-                await agent.generate_tests(code_files)
+        # Act & Assert
+        code_files = [{"path": "example.py", "content": "def hello(): return 'world'"}]
+        with pytest.raises(Exception):
+            await agent.generate_tests(code_files)

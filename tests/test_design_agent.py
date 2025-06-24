@@ -104,18 +104,16 @@ API Contract:
     @pytest.fixture
     def design_agent(self, mock_llm_chain):
         """Create a Design Agent with mocked components."""
-        # Create a mock file content
         mock_prompt_content = "You are a Design Agent responsible for creating architecture diagrams and API contracts based on task descriptions.\n\nTask Description: {task_description}\n\nAdditional Context: {additional_context}"
-
-        # Setup the mocks
         mock_file = MagicMock()
         mock_file.__enter__.return_value.read.return_value = mock_prompt_content
-
         with patch("src.agents.design_agent.LLMChain", return_value=mock_llm_chain):
             with patch("src.agents.design_agent.ChatOpenAI"):
                 with patch("src.agents.design_agent.Path"):
                     with patch("builtins.open", return_value=mock_file):
                         agent = DesignAgent(openai_api_key="fake-key")
+                        # Always patch chain to the mock for all tests
+                        agent.chain = mock_llm_chain
                         return agent
 
     @pytest.mark.asyncio
@@ -169,12 +167,12 @@ API Contract:
     @pytest.mark.asyncio
     async def test_design_agent_error_handling(self, design_agent):
         """Test error handling in the Design Agent."""
-        # Mock the chain to raise an exception
-        design_agent.chain.ainvoke = AsyncMock(side_effect=Exception("Test error"))
-
+        # Patch the chain to a new mock that raises
+        error_chain = AsyncMock()
+        error_chain.ainvoke = AsyncMock(side_effect=Exception("Test error"))
+        design_agent.chain = error_chain
         # Call the generate_design method
         result = await design_agent.generate_design("This will cause an error")
-
         # Verify the result is an error message
         assert "Error generating design" in result
         assert "Test error" in result

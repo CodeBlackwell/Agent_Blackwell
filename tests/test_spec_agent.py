@@ -5,7 +5,7 @@ These tests verify that the SpecAgent correctly extracts tasks from user request
 by mocking the LLM responses.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, mock_open, patch
 
 import pytest
 
@@ -51,9 +51,8 @@ def mock_llm_response():
 @pytest.mark.asyncio
 async def test_generate_tasks(mock_llm_response):
     """Test that the SpecAgent correctly generates from a user request."""
-    # Create a mock LLMChain
-    mock_chain = AsyncMock()
-    mock_chain.ainvoke.return_value = [
+    # Prepare expected results
+    expected_tasks = [
         Task(
             task_id="T-001",
             title="Define CSV upload functionality",
@@ -83,17 +82,22 @@ async def test_generate_tasks(mock_llm_response):
         ),
     ]
 
-    # Create the agent with the mocked chain
-    with patch("src.agents.spec_agent.LLMChain", return_value=mock_chain):
-        with patch("src.agents.spec_agent.ChatOpenAI"):
+    # Test with a sample user request
+    user_request = """
+    I need a simple web application that allows users to upload CSV files,
+    visualize the data as charts, and download the charts as images.
+    """
+
+    # Create the agent with a mocked chain
+    with patch("builtins.open", mock_open(read_data="prompt content")):
+        with patch("src.agents.spec_agent.Path"):
             agent = SpecAgent(openai_api_key="fake-key")
 
-            # Test with a sample user request
-            user_request = """
-            I need a simple web application that allows users to upload CSV files,
-            visualize the data as charts, and download the charts as images.
-            """
+            # Replace the chain with a mock that returns our expected tasks
+            agent.chain = AsyncMock()
+            agent.chain.ainvoke = AsyncMock(return_value=expected_tasks)
 
+            # Execute the test
             tasks = await agent.generate_tasks(user_request)
 
             # Verify the results
@@ -111,8 +115,8 @@ async def test_generate_tasks(mock_llm_response):
             assert tasks[2].assignee == "coding_agent"
 
             # Verify the chain was called with the correct input
-            mock_chain.ainvoke.assert_called_once()
-            call_args = mock_chain.ainvoke.call_args[0][0]
+            agent.chain.ainvoke.assert_called_once()
+            call_args = agent.chain.ainvoke.call_args[0][0]
             assert "user_request" in call_args
             assert user_request.strip() in call_args["user_request"]
 
@@ -174,18 +178,19 @@ async def test_task_list_output_parser():
 @pytest.mark.asyncio
 async def test_error_handling():
     """Test that the SpecAgent handles errors gracefully."""
-    # Create a mock LLMChain that raises an exception
-    mock_chain = AsyncMock()
-    mock_chain.ainvoke.side_effect = Exception("LLM error")
+    # Test with a sample user request
+    user_request = "Build me a website"
 
-    # Create the agent with the mocked chain
-    with patch("src.agents.spec_agent.LLMChain", return_value=mock_chain):
-        with patch("src.agents.spec_agent.ChatOpenAI"):
+    # Create the agent with file reading mocked
+    with patch("builtins.open", mock_open(read_data="prompt content")):
+        with patch("src.agents.spec_agent.Path"):
             agent = SpecAgent(openai_api_key="fake-key")
 
-            # Test with a sample user request
-            user_request = "Build me a website"
+            # Replace the chain with a mock that raises an exception
+            agent.chain = AsyncMock()
+            agent.chain.ainvoke = AsyncMock(side_effect=Exception("LLM error"))
 
+            # Execute the test
             tasks = await agent.generate_tasks(user_request)
 
             # Verify the results

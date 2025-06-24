@@ -6,6 +6,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-brightgreen.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-latest-teal.svg)
 ![LangChain](https://img.shields.io/badge/LangChain-latest-orange.svg)
+![CircleCI](https://img.shields.io/circleci/build/github/CodeBlackwell/Agent_Blackwell/main?logo=circleci)
 
 **A modular LLM-powered agent orchestration system featuring autonomous agents working together via Redis streams and Pinecone vector DB**
 
@@ -145,7 +146,8 @@ pytest
 
 ## 📈 Roadmap
 
-- [ ] CircleCI integration for CI/CD pipeline
+- [x] CircleCI integration for CI/CD pipeline
+  - *Note: Current CI/CD setup handles basic unit tests and builds. Future plans include advanced features like Kubernetes deployment, security scanning, and performance testing.*
 - [ ] Kubernetes Helm charts for deployment
 - [ ] Slack ChatOps integration
 - [ ] Prometheus & Grafana dashboards

@@ -44,6 +44,7 @@ class Orchestrator:
         openai_api_key: Optional[str] = None,
         task_stream: str = "agent_tasks",
         result_stream: str = "agent_results",
+        skip_pinecone_init: bool = False,
     ):
         """
         Initialize the orchestrator with Redis and Pinecone connections.
@@ -54,16 +55,17 @@ class Orchestrator:
             openai_api_key: API key for OpenAI (optional, will use env var if not provided)
             task_stream: Name of the Redis stream for tasks
             result_stream: Name of the Redis stream for results
+            skip_pinecone_init: If True, skip Pinecone initialization (useful for tests)
         """
         # Initialize Redis client
         self.redis_client = Redis.from_url(redis_url)
         self.task_stream = task_stream
         self.result_stream = result_stream
 
-        # Initialize Pinecone client (if API key provided)
+        # Initialize Pinecone client (if API key provided and not skipping initialization)
         self.pinecone_client = None
         self.vector_index = None
-        if pinecone_api_key:
+        if pinecone_api_key and not skip_pinecone_init:
             self.pinecone_client = Pinecone(api_key=pinecone_api_key)
             # Create or get index
             if "agent-memory" not in self.pinecone_client.list_indexes().names():
@@ -133,6 +135,33 @@ class Orchestrator:
         logger.info(f"Enqueued task {task_id} of type {task_type}")
         return task_id
 
+    async def submit_feature_request(self, description: str) -> str:
+        """
+        Submit a feature request to the system.
+
+        Args:
+            description: Description of the requested feature
+
+        Returns:
+            task_id: ID of the created task
+        """
+        logger.info(f"Submitting feature request: {description[:50]}...")
+
+        # First, initialize agents if they haven't been initialized yet
+        if not self.agents or "spec_agent" not in self.agents:
+            self.initialize_agents()
+
+        # Check if spec_agent is registered, if not, register a dummy one for testing
+        if "spec_agent" not in self.agents:
+            logger.warning("Spec agent not registered, using dummy agent for testing")
+            self.register_agent("spec_agent", None)
+
+        # Submit the feature request as a task to the spec agent
+        task_id = await self.enqueue_task("spec_agent", {"input": description})
+        logger.info(f"Feature request submitted as task: {task_id}")
+
+        return task_id
+
     async def get_task_status(self, task_id: str) -> Dict[str, Any]:
         """
         Get the status of a task.
@@ -143,27 +172,42 @@ class Orchestrator:
         Returns:
             Dictionary with task status information
         """
-        # Check result stream first
-        results = self.redis_client.xrevrange(
-            self.result_stream, count=100  # Limit to recent results
+        # Check for result first to see if task completed
+        result = None
+        results = self.redis_client.xrange(
+            self.result_stream,
+            min="-",
+            max="+",
+            count=None,
         )
 
-        for _, result in results:
-            result_data = json.loads(result[b"result"].decode("utf-8"))
-            if result_data.get("task_id") == task_id:
-                return result_data
+        for _, msg in results:
+            msg_data = json.loads(msg[b"result"].decode("utf-8"))
+            if msg_data.get("original_task_id") == task_id:
+                result = msg_data
+                break
 
-        # Check task stream if not found in results
-        tasks = self.redis_client.xrevrange(
-            self.task_stream, count=100  # Limit to recent tasks
+        # Check for pending task
+        task = None
+        tasks = self.redis_client.xrange(
+            self.task_stream,
+            min="-",
+            max="+",
+            count=None,
         )
 
-        for _, task in tasks:
-            task_data = json.loads(task[b"task"].decode("utf-8"))
-            if task_data.get("task_id") == task_id:
-                return task_data
+        for _, msg in tasks:
+            task_data = json.loads(msg[b"task"].decode("utf-8"))
+            if task_data["task_id"] == task_id:
+                task = task_data
+                break
 
-        return {"task_id": task_id, "status": "not_found"}
+        if result:
+            return {"status": "completed", "result": result}
+        elif task:
+            return {"status": "pending", "task": task}
+        else:
+            return {"status": "not_found"}
 
     async def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """

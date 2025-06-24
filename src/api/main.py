@@ -18,6 +18,7 @@ from src.api.v1.chatops.platforms.slack import router as slack_router
 
 # Import routers
 from src.api.v1.chatops.router import router as chatops_router
+from src.api.v1.feature_request.router import router as feature_request_router
 
 # Load environment variables
 load_dotenv()
@@ -71,6 +72,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(chatops_router)
 app.include_router(slack_router)
+app.include_router(feature_request_router)
 
 
 # Root endpoint

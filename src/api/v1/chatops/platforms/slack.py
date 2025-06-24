@@ -5,16 +5,28 @@ This module provides functionality to integrate with Slack for ChatOps,
 including sending messages to Slack and handling Slack slash commands.
 """
 
+import asyncio
 import json
 import logging
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, Form, Header, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+)
 from pydantic import BaseModel
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 from src.api.v1.chatops.models import ChatCommandRequest, ChatPlatform
+from src.api.v1.chatops.router import process_command
 
 # Configure logging
 logging.basicConfig(
@@ -91,11 +103,13 @@ async def slack_events(
     # Get the request body
     body = await request.body()
 
-    # Verify the request signature
-    # In a production environment, you should verify the signature
-    # to ensure the request is coming from Slack
-    # Here's a placeholder for that verification
-    # verify_slack_signature(body, x_slack_signature, x_slack_request_timestamp, signing_secret)
+    # Verify the request signature to ensure the request is coming from Slack
+    is_valid = verify_slack_signature(
+        body, x_slack_signature, x_slack_request_timestamp, signing_secret
+    )
+    if not is_valid:
+        logger.warning("Invalid Slack signature")
+        return {"ok": False, "error": "Invalid signature"}
 
     # Parse the request body
     try:
@@ -143,27 +157,44 @@ async def slack_commands(
         # Process the command
         if command == "/agent":
             # Convert to our standard ChatCommandRequest format
+            # Format the command with the expected syntax for our router
+            formatted_command = f"!{text}"
+
             command_request = ChatCommandRequest(
                 platform=ChatPlatform.SLACK,
                 user_id=user_id,
                 channel_id=channel_id,
-                command=f"!{text}",  # Prefix with ! to match our command format
-                timestamp="",  # We don't have a timestamp from Slack
+                command=formatted_command,
+                timestamp=str(time.time()),
             )
 
-            # Process the command using our existing router logic
-            from src.api.v1.chatops.router import process_command
+            # Process the command using our router
+            # For slash commands, we need to return immediately and then
+            # send the response to the response_url
+            response = await process_command(command_request, BackgroundTasks())
 
-            response = await process_command(command_request)
-
-            # Convert our response to Slack format
-            return {
-                "response_type": "in_channel"
-                if not response.ephemeral
-                else "ephemeral",
-                "text": response.message,
-                # Could convert attachments here if needed
+            # Send an initial acknowledgment
+            initial_response = {
+                "response_type": "in_channel",
+                "text": f"Processing command: `/agent {text}`...",
             }
+
+            # Send the actual response to the response_url asynchronously
+            async def send_delayed_response():
+                await asyncio.sleep(0.5)  # Small delay before sending response
+                async with httpx.AsyncClient() as client:
+                    await client.post(
+                        response_url,
+                        json={
+                            "response_type": "in_channel",
+                            "text": response.message,
+                        },
+                    )
+
+            # Kick off the async task to send the delayed response
+            asyncio.create_task(send_delayed_response())
+
+            return initial_response
 
         # Unknown command
         return {"response_type": "ephemeral", "text": f"Unknown command: {command}"}

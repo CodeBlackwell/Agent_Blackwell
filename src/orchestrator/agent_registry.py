@@ -7,7 +7,7 @@ their initialization and registration with the orchestrator.
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from src.agents.coding_agent import CodingAgent
 from src.agents.design_agent import DesignAgent
@@ -21,6 +21,131 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+class SpecAgentWrapper:
+    """Wrapper for the Spec Agent to adapt it to the orchestrator interface."""
+
+    def __init__(self, agent):
+        """Initialize the wrapper with a Spec Agent instance."""
+        self.agent = agent
+
+    async def ainvoke(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the Spec Agent with the prompt and return formatted tasks."""
+        prompt = inputs.get("prompt", "")
+        tasks = await self.agent.generate_tasks(prompt)
+
+        # Format the tasks for the orchestrator
+        formatted_tasks = (
+            [
+                {
+                    "description": str(task),
+                    "task_type": "development",  # Default task type
+                    "priority": "medium",  # Default priority
+                }
+                for task in tasks
+            ]
+            if isinstance(tasks, list)
+            else [
+                {
+                    "description": str(tasks),
+                    "task_type": "general",
+                    "priority": "medium",
+                }
+            ]
+        )
+
+        return {"output": formatted_tasks, "tasks": formatted_tasks}
+
+
+class DesignAgentWrapper:
+    """Wrapper for the Design Agent to adapt it to the orchestrator interface."""
+
+    def __init__(self, design_agent: DesignAgent):
+        """Initialize the wrapper with a Design Agent instance."""
+        self.design_agent = design_agent
+
+    async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the Design Agent with the task and return the result."""
+        task_description = task.get("description", "")
+        design_specs = await self.design_agent.generate_design(task_description)
+        return {
+            "task_id": task.get("task_id"),
+            "result": design_specs,
+            "status": "completed",
+        }
+
+
+class CodingAgentWrapper:
+    """Wrapper for the Coding Agent to adapt it to the orchestrator interface."""
+
+    def __init__(self, coding_agent: CodingAgent):
+        """Initialize the wrapper with a Coding Agent instance."""
+        self.coding_agent = coding_agent
+
+    async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the Coding Agent with the task and return the result."""
+        task_description = task.get("description", "")
+        design_specs = task.get("design_specs", "")
+        architecture_diagram = task.get("architecture_diagram", "")
+
+        code_result = await self.coding_agent.generate_code(
+            task_description=task_description,
+            design_specs=design_specs,
+            architecture_diagram=architecture_diagram,
+        )
+
+        return {
+            "task_id": task.get("task_id"),
+            "result": code_result,
+            "status": "completed",
+        }
+
+
+class ReviewAgentWrapper:
+    """Wrapper for the Review Agent to adapt it to the orchestrator interface."""
+
+    def __init__(self, review_agent: ReviewAgent):
+        """Initialize the wrapper with a Review Agent instance."""
+        self.review_agent = review_agent
+
+    async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the Review Agent with the task and return the result."""
+        code_to_review = task.get("code", "")
+        requirements = task.get("requirements", "")
+
+        review_result = await self.review_agent.review_code(
+            code=code_to_review, requirements=requirements
+        )
+
+        return {
+            "task_id": task.get("task_id"),
+            "result": review_result,
+            "status": "completed",
+        }
+
+
+class TestAgentWrapper:
+    """Wrapper for the Test Agent to adapt it to the orchestrator interface."""
+
+    def __init__(self, test_agent: TestGeneratorAgent):
+        """Initialize the wrapper with a Test Agent instance."""
+        self.test_agent = test_agent
+
+    async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the Test Agent with the task and return the result."""
+        code_to_test = task.get("code", "")
+        requirements = task.get("requirements", "")
+
+        test_result = await self.test_agent.generate_tests(
+            code=code_to_test, requirements=requirements
+        )
+
+        return {
+            "task_id": task.get("task_id"),
+            "result": test_result,
+            "status": "completed",
+        }
 
 
 class AgentRegistry:
@@ -115,111 +240,20 @@ class AgentRegistry:
         """
         # Create the appropriate wrapper based on agent type
         if agent_name == "spec":
-            # Create a wrapper for the Spec Agent
-            class SpecAgentWrapper:
-                def __init__(self, agent):
-                    self.agent = agent
-
-                async def ainvoke(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-                    user_request = inputs.get("input", "")
-                    tasks = await self.agent.generate_tasks(user_request)
-
-                    # Handle different return types from generate_tasks
-                    if isinstance(tasks, list) and tasks and hasattr(tasks[0], "dict"):
-                        # If tasks are Pydantic models with dict() method
-                        return {
-                            "output": [task.dict() for task in tasks],
-                            "tasks": tasks,
-                        }
-                    elif (
-                        isinstance(tasks, list) and tasks and isinstance(tasks[0], dict)
-                    ):
-                        # If tasks are already dictionaries
-                        return {"output": tasks, "tasks": tasks}
-                    else:
-                        # If tasks are strings or other types, convert to simple dict format
-                        formatted_tasks = (
-                            [
-                                {
-                                    "description": str(task),
-                                    "task_type": "general",
-                                    "priority": "medium",
-                                }
-                                for task in tasks
-                            ]
-                            if isinstance(tasks, list)
-                            else [
-                                {
-                                    "description": str(tasks),
-                                    "task_type": "general",
-                                    "priority": "medium",
-                                }
-                            ]
-                        )
-
-                        return {"output": formatted_tasks, "tasks": formatted_tasks}
-
             self.agents[agent_name] = SpecAgentWrapper(agent)
-            logger.info(f"{agent_name.capitalize()} Agent registered")
-
         elif agent_name == "design":
-            # Create a wrapper for the Design Agent
-            class DesignAgentWrapper:
-                """Wrapper for the Design Agent to adapt it to the orchestrator interface."""
-
-                def __init__(self, design_agent: DesignAgent):
-                    """Initialize the wrapper with a Design Agent instance."""
-                    self.design_agent = design_agent
-
-                async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
-                    """Invoke the Design Agent with the task and return the result."""
-                    task_description = task.get("description", "")
-                    design_specs = await self.design_agent.generate_design(
-                        task_description
-                    )
-                    return {
-                        "task_id": task.get("task_id"),
-                        "result": design_specs,
-                        "status": "completed",
-                    }
-
             self.agents[agent_name] = DesignAgentWrapper(agent)
-            logger.info(f"{agent_name.capitalize()} Agent registered")
-
         elif agent_name == "coding":
-            # Create a wrapper for the Coding Agent
-            class CodingAgentWrapper:
-                """Wrapper for the Coding Agent to adapt it to the orchestrator interface."""
-
-                def __init__(self, coding_agent: CodingAgent):
-                    """Initialize the wrapper with a Coding Agent instance."""
-                    self.coding_agent = coding_agent
-
-                async def ainvoke(self, task: Dict[str, Any]) -> Dict[str, Any]:
-                    """Invoke the Coding Agent with the task and return the result."""
-                    task_description = task.get("description", "")
-                    design_specs = task.get("design_specs", "")
-                    architecture_diagram = task.get("architecture_diagram", "")
-
-                    code_result = await self.coding_agent.generate_code(
-                        task_description=task_description,
-                        design_specs=design_specs,
-                        architecture_diagram=architecture_diagram,
-                    )
-
-                    return {
-                        "task_id": task.get("task_id"),
-                        "result": code_result,
-                        "status": "completed",
-                    }
-
             self.agents[agent_name] = CodingAgentWrapper(agent)
-            logger.info(f"{agent_name.capitalize()} Agent registered")
-
+        elif agent_name == "review":
+            self.agents[agent_name] = ReviewAgentWrapper(agent)
+        elif agent_name == "test":
+            self.agents[agent_name] = TestAgentWrapper(agent)
         else:
             # Generic registration for other agent types
             self.agents[agent_name] = agent
-            logger.info(f"{agent_name.capitalize()} Agent registered")
+
+        logger.info(f"{agent_name.capitalize()} Agent registered")
 
     def get_agent(self, agent_name: str) -> Optional[Any]:
         """

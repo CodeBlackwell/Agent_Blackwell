@@ -44,7 +44,7 @@ Each agent specializes in what it does best, and together they create high-quali
 
 - **Redis Streams**: A flowing river of tasks and results that agents tap into
 - **Pinecone Vector DB**: The collective memory that helps agents learn from past work
-- **Agent Registry**: The talent manager ensuring the right agent handles the right job
+- **Agent Registry**: The talent manager ensuring the right agent handles the right job through module-level agent wrappers
 
 ## 🏗️ Architecture
 
@@ -79,10 +79,11 @@ graph TD
 - **Agent Technology**: LangChain with GPT-4
 - **Message Broker**: Redis Streams
 - **Vector Database**: Pinecone
-- **Containerization**: Docker
-- **Orchestration**: Kubernetes with Helm
+- **Containerization**: Docker with Docker Compose
+- **Orchestration**: Kubernetes with Helm Charts
 - **Monitoring**: Prometheus & Grafana
 - **ChatOps**: Slack API Integration
+- **Dependency Management**: Poetry
 
 ## 🧠 Specialized Agents: The Dream Team
 
@@ -106,10 +107,12 @@ Creates comprehensive test suites that verify functionality, catch edge cases, a
 ### Prerequisites
 
 - Python 3.11+
-- Redis server
+- Redis server (standalone or Docker)
 - OpenAI API key
 - Pinecone API key
 - Slack API key
+- Docker and Docker Compose (for containerized deployment)
+- Kubernetes and Helm (for orchestrated deployment)
 
 ### Installation
 
@@ -133,12 +136,48 @@ export SLACK_API_KEY="your-slack-key"
 
 ### Running the System
 
+#### Local Development
+
 ```bash
 # Start Redis server (if not already running)
 redis-server
 
 # Start the orchestrator
 python -m src.orchestrator.main
+```
+
+#### Using Docker Compose
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Run in detached mode
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
+
+#### Kubernetes Deployment with Helm
+
+```bash
+# Add required Helm repositories
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+# Update dependencies
+cd infra/helm/agent-blackwell
+helm dependency update
+
+# Install the chart
+helm install agent-blackwell ./infra/helm/agent-blackwell \
+  --values ./infra/helm/agent-blackwell/values.yaml \
+  --namespace agent-blackwell \
+  --create-namespace
+
+# Check deployment status
+kubectl get pods -n agent-blackwell
 ```
 
 ## 📝 Real-World Example
@@ -224,10 +263,62 @@ pytest
 ## 📈 Roadmap
 
 - [x] CircleCI integration for CI/CD pipeline
-- [ ] Kubernetes Helm charts for deployment
-- [ ] Slack ChatOps integration
-- [ ] Prometheus & Grafana dashboards
+- [x] Kubernetes Helm charts for deployment
+- [x] Slack ChatOps integration
+- [x] Docker Compose for local multi-service development
+- [x] Prometheus & Grafana monitoring setup
+- [x] Refactored agent_registry.py for improved testability
 - [ ] ML pipeline for agent evaluation and retraining
+- [ ] Grafana dashboards for agent performance metrics
+- [ ] Blue/Green deployment strategy
+- [ ] Autoscaling configuration optimization
+
+## 📁 File Structure
+
+```
+Agent_Blackwell/
+├── .circleci/            # CircleCI configuration
+├── .github/              # GitHub workflows and templates
+├── .windsurf/            # Workflow definitions
+├── infra/                # Infrastructure configuration
+│   ├── docker/           # Dockerfiles and Docker Compose
+│   └── helm/             # Kubernetes Helm charts
+│       └── agent-blackwell/
+│           ├── templates/  # Kubernetes manifests
+│           ├── Chart.yaml  # Chart definition
+│           ├── values.yaml # Default configuration
+│           └── test-values.yaml # Values for local testing
+├── src/                  # Source code
+│   ├── agents/           # Agent implementations
+│   │   ├── coding_agent.py
+│   │   ├── design_agent.py
+│   │   ├── review_agent.py
+│   │   ├── spec_agent.py
+│   │   └── test_agent.py
+│   ├── api/              # API endpoints
+│   │   └── v1/           # API version 1
+│   │       ├── chatops/  # Slack integration
+│   │       ├── feature_request.py
+│   │       └── task_status.py
+│   ├── orchestrator/     # Task orchestration
+│   │   ├── agent_registry.py  # Agent registration & wrappers
+│   │   └── main.py      # Orchestrator core
+│   └── prompts/         # Agent prompts
+├── tests/               # Test suites
+│   ├── api/             # API tests
+│   └── ...              # Agent-specific tests
+├── blog_notes.md        # Development journal
+├── docker-compose.yml   # Multi-service deployment
+├── pyproject.toml      # Project dependencies (Poetry)
+└── README.md           # Project documentation
+```
+
+### Key Components
+
+- **Agent Wrappers**: Located in `src/orchestrator/agent_registry.py`, these module-level classes provide a consistent interface (`ainvoke` method) for different agent types to interact with the orchestrator.
+- **Helm Charts**: Located in `infra/helm/agent-blackwell/`, these templates enable deployment to Kubernetes with integrated Redis, Prometheus, and Grafana services.
+- **ChatOps Integration**: Located in `src/api/v1/chatops/`, this code enables Slack commands and message processing for interacting with agents.
+- **Docker Compose**: Provides local multi-service development with app, Redis, Prometheus, and Grafana services.
 
 ## 🤝 Contributing
 

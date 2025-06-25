@@ -274,11 +274,11 @@ Agent_Blackwell/
 │           └── test-values.yaml # Values for local testing
 ├── src/                  # Source code
 │   ├── agents/           # Agent implementations
-│   │   ├── coding_agent.py
-│   │   ├── design_agent.py
-│   │   ├── review_agent.py
-│   │   ├── spec_agent.py
-│   │   └── test_agent.py
+│   │   ├── coding_agent.py   # Generates code based on task description and design
+│   │   ├── design_agent.py   # Creates design specifications and architecture diagrams
+│   │   ├── review_agent.py   # Analyzes code quality, security, and linting issues
+│   │   ├── spec_agent.py     # Generates task lists from high-level descriptions
+│   │   └── test_agent.py     # Creates unit tests and integration tests for code
 │   ├── api/              # API endpoints
 │   │   └── v1/           # API version 1
 │   │       ├── chatops/  # Slack integration
@@ -303,6 +303,25 @@ Agent_Blackwell/
 - **Helm Charts**: Located in `infra/helm/agent-blackwell/`, these templates enable deployment to Kubernetes with integrated Redis, Prometheus, and Grafana services.
 - **ChatOps Integration**: Located in `src/api/v1/chatops/`, this code enables Slack commands and message processing for interacting with agents.
 - **Docker Compose**: Provides local multi-service development with app, Redis, Prometheus, and Grafana services.
+
+## 🗺️ Roadmap
+
+The following features are planned for upcoming releases:
+
+### Near-term (Q3 2025)
+
+- **Per-Agent Model Configuration**: A flexible configuration system to customize LLM models and parameters for each agent through a central YAML file, enabling:
+  - Different models for different agents (e.g., GPT-4o for Review, Claude for Coding)
+  - Custom temperature and token settings per agent type
+  - Environment variable overrides for flexible deployment
+  - Support for multiple LLM providers
+
+### Future Features
+
+- **Multi-modal Agent Support**: Enabling agents to process and generate images and diagrams
+- **Fine-tuning Pipeline**: Automated evaluation and fine-tuning of agent models
+- **Agent Memory Persistence**: Long-term knowledge retention across sessions
+- **Advanced Monitoring Dashboard**: Real-time insights into agent performance and resource usage
 
 ## 🤝 Contributing
 

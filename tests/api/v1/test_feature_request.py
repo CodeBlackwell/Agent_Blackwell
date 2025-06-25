@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.main import app
-from src.api.v1.feature_request.router import get_orchestrator
+from src.api.dependencies import get_orchestrator
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def mock_orchestrator():
     """Create a mock orchestrator for testing."""
     mock = AsyncMock()
     # Set the return value for submit_feature_request
-    mock.submit_feature_request.return_value = "task-123"
+    mock.submit_feature_request.return_value = "workflow-123"
     return mock
 
 
@@ -77,10 +77,11 @@ def test_feature_request_success(client, mock_orchestrator):
 
     # Verify response
     assert response.status_code == 202, "Should return 202 Accepted"
-    assert "task_id" in response.json(), "Response should contain task_id"
+    response_data = response.json()
+    assert "workflow_id" in response_data, "Response should contain workflow_id"
     assert (
-        response.json()["task_id"] == "task-123"
-    ), "Should return the task ID from the orchestrator"
+        response_data["workflow_id"] == "workflow-123"
+    ), "Should return the workflow ID from the orchestrator"
 
     # Verify orchestrator was called correctly
     mock_orchestrator.submit_feature_request.assert_called_once_with(

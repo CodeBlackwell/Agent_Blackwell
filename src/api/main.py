@@ -23,6 +23,7 @@ from src.api.v1.chatops.platforms.slack import router as slack_router
 # Import routers
 from src.api.v1.chatops.router import router as chatops_router
 from src.api.v1.feature_request.router import router as feature_request_router
+from src.api.v1.messages import router as messages_router
 
 # Load environment variables
 load_dotenv()
@@ -98,6 +99,7 @@ app.include_router(chatops_router)
 app.include_router(slack_router)
 app.include_router(feature_request_router)
 app.include_router(metrics_router)
+app.include_router(messages_router, prefix="/api/v1")
 
 
 # Root endpoint

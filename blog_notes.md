@@ -410,3 +410,31 @@ I considered postponing the endpoint until after the refactor to avoid duplicati
 
 ### Color Commentary
 Sometimes sequencing is everything! By implementing the messages endpoint first, we gain a valuable observability tool that will actually help us monitor and debug during the more complex LangGraph migration. It's like building a diagnostic panel before undertaking major engine work—now we'll be able to see what's happening as we make the transition.
+
+## 2025-06-25T19:33:54-04:00 - LangGraph Refactoring Complete: From LangChain to LangGraph
+
+### Task Objective
+Refactor and fix the test suite by replacing LangChain-specific logic with LangGraph-compatible code, ensuring all API v1 and orchestrator tests pass successfully.
+
+### Technical Summary
+- Completely replaced LangChain-based orchestrator with LangGraph's StateGraph implementation
+- Refactored API endpoints to use the new LangGraph orchestrator
+- Updated API response models to match LangGraph's state format
+- Fixed all tests (API v1 and orchestrator) to work with the new architecture
+- All 110 test cases now pass successfully
+
+### Bugs & Obstacles
+1. **Schema/Parameter Mismatches**: Fixed feature request endpoint tests by correcting parameter name (`description` instead of `request_text`)
+2. **Endpoint URL Changes**: Updated task status tests to use the correct endpoints (`/api/v1/workflow-status/{workflow_id}` and `/api/v1/task-status/{task_id}`)
+3. **Missing Required Fields**: Added required fields to test mocks including `user_request`, `failed_agents`, and `completed_agents`
+4. **Async Method Patching**: Changed all patches of `workflow_graph.invoke` to `workflow_graph.ainvoke` for async compatibility
+5. **Improper Lifecycle Test Mocking**: Refactored lifecycle test to separately mock `submit_feature_request` and `execute_workflow` methods
+
+### Key Deliberations
+- Chose to implement a full StateGraph-based architecture rather than a hybrid approach
+- Decided to maintain backward compatibility with legacy API endpoints while exposing new workflow-status endpoints
+- Created a structured approach to mock state transitions in tests that aligns with LangGraph's internal model
+- Used conventional commits to organize changes logically: refactor for implementation changes, feat for new tests, fix for test fixes
+
+### Color Commentary
+The migration from LangChain to LangGraph felt like performing open-heart surgery while the patient remained awake! Every test failure provided a new clue to the complex interdependencies between components. The breakthrough moment came when we realized that LangGraph's state expectations were fundamentally different - not just in structure but in philosophy. Once we embraced the StateGraph model fully rather than trying to force it into our old patterns, the pieces fell into place and our test suite returned to vibrant health!

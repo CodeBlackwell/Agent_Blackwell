@@ -15,6 +15,7 @@ The `/api/v1/messages` endpoint provides direct access to inter-agent communicat
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `number_of_messages` | Integer | No | Limits the number of messages returned. If not provided, all messages will be returned. Must be greater than 0. |
+| `task_id` | String | No | Filters messages to only include those related to the specified task ID. This searches both task and result fields for matching task_id values. |
 
 ### Response Format
 
@@ -46,18 +47,20 @@ The `/api/v1/messages` endpoint provides direct access to inter-agent communicat
 - **200 OK**: Successfully retrieved messages
 - **500 Internal Server Error**: Error occurred while fetching messages, details provided in response
 
-## Examples
-
-### Fetch All Messages
+## Example Requests
 
 ```bash
+# Get all messages
 curl -X GET "http://localhost:8000/api/v1/messages"
-```
 
-### Fetch Last 5 Messages
-
-```bash
+# Get only the 5 most recent messages
 curl -X GET "http://localhost:8000/api/v1/messages?number_of_messages=5"
+
+# Get all messages for a specific task
+curl -X GET "http://localhost:8000/api/v1/messages?task_id=3a7c2e8f-1d92-4c08-9f2a-b3e7d301b86a"
+
+# Get the 3 most recent messages for a specific task
+curl -X GET "http://localhost:8000/api/v1/messages?task_id=3a7c2e8f-1d92-4c08-9f2a-b3e7d301b86a&number_of_messages=3"
 ```
 
 ## Usage Tips

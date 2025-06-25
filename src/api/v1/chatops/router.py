@@ -5,15 +5,15 @@ This module implements the FastAPI router for ChatOps functionality, allowing ch
 interaction with the Agent Blackwell system through various chat platforms.
 """
 
+import inspect
 import logging
-import os
 import re
-import sys
 from typing import Any, Dict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from starlette.status import HTTP_404_NOT_FOUND
 
+from src.api.dependencies import get_orchestrator
 from src.api.v1.chatops.models import (
     ChatCommandRequest,
     ChatCommandResponse,
@@ -40,38 +40,7 @@ COMMAND_PATTERN = re.compile(r"^!(\w+)\s*(.*)?$")
 PARAM_PATTERN = re.compile(r"--(\w+)=([^\s]+)")
 
 
-# Create a dependency for getting the orchestrator
-async def get_orchestrator() -> Orchestrator:
-    """
-    Dependency to get the Orchestrator instance.
-
-    This ensures we have a single Orchestrator instance for handling tasks.
-    """
-    # In a real-world scenario, you might want to use a more robust
-    # dependency injection system or a global state manager
-
-    # Check if running in test environment
-    is_test = "pytest" in sys.modules or "unittest" in sys.modules
-
-    # If testing, create Orchestrator without initializing Pinecone
-    if is_test:
-        # For tests, we create an Orchestrator without connecting to external services
-        orchestrator = Orchestrator(
-            redis_url="redis://localhost:6379",  # Can be mocked later
-            openai_api_key="test-key",  # Can be mocked later
-            skip_pinecone_init=True,  # Skip Pinecone initialization
-        )
-    else:
-        # For production, initialize all services
-        orchestrator = Orchestrator(
-            redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"),
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-            pinecone_api_key=os.getenv("PINECONE_API_KEY"),
-        )
-        # Initialize agents for production only
-        orchestrator.initialize_agents()
-
-    return orchestrator
+# We now use the centralized dependency from src.api.dependencies
 
 
 @router.post("/command", response_model=ChatCommandResponse)
@@ -115,17 +84,26 @@ async def process_command(
     try:
         # Handle different command types
         if command_type == CommandType.HELP:
-            return await handle_help_command()
+            response = handle_help_command()
+            if inspect.isawaitable(response):
+                return await response
+            return response
         elif command_type == CommandType.STATUS:
             task_id = params.get("id") or command_args
             if not task_id:
                 return ChatCommandResponse(
                     message="Error: Missing task ID. Usage: !status <task_id> or !status --id=<task_id>"
                 )
-            return await handle_status_command(orchestrator, task_id)
+            response = handle_status_command(orchestrator, task_id)
+            if inspect.isawaitable(response):
+                return await response
+            return response
         elif command_type == CommandType.DEPLOY:
             # Handle deploy command
-            return await handle_deploy_command(orchestrator, command_args, params)
+            response = handle_deploy_command(orchestrator, command_args, params)
+            if inspect.isawaitable(response):
+                return await response
+            return response
         elif command_type in [
             CommandType.SPEC,
             CommandType.DESIGN,

@@ -173,7 +173,6 @@ class Orchestrator:
             Dictionary with task status information
         """
         # Check for result first to see if task completed
-        result = None
         results = self.redis_client.xrange(
             self.result_stream,
             min="-",
@@ -183,12 +182,11 @@ class Orchestrator:
 
         for _, msg in results:
             msg_data = json.loads(msg[b"result"].decode("utf-8"))
-            if msg_data.get("original_task_id") == task_id:
-                result = msg_data
-                break
+            if msg_data.get("task_id") == task_id:
+                # Return the result directly with its status
+                return msg_data
 
         # Check for pending task
-        task = None
         tasks = self.redis_client.xrange(
             self.task_stream,
             min="-",
@@ -199,15 +197,11 @@ class Orchestrator:
         for _, msg in tasks:
             task_data = json.loads(msg[b"task"].decode("utf-8"))
             if task_data["task_id"] == task_id:
-                task = task_data
-                break
+                # Return a pending status with the task data
+                return {"task_id": task_id, "status": "pending", "task": task_data}
 
-        if result:
-            return {"status": "completed", "result": result}
-        elif task:
-            return {"status": "pending", "task": task}
-        else:
-            return {"status": "not_found"}
+        # If not found in either stream
+        return {"task_id": task_id, "status": "not_found"}
 
     async def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """

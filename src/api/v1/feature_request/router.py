@@ -5,12 +5,13 @@ This module provides endpoints for submitting and managing feature requests.
 """
 
 import logging
-import sys
+import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from src.api.dependencies import get_orchestrator
 from src.orchestrator.main import Orchestrator
 
 # Configure logging
@@ -52,50 +53,7 @@ class TaskStatusResponse(BaseModel):
     )
 
 
-async def get_orchestrator() -> Orchestrator:
-    """
-    Get a configured orchestrator instance.
-
-    Returns:
-        Orchestrator: A configured orchestrator instance
-    """
-    # In a real implementation, we might want to use dependency injection
-    # or a factory pattern to create and configure the orchestrator.
-    # For simplicity, we're creating a new instance here.
-    import os
-
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    # Check if we're in a test environment
-    is_test = "pytest" in sys.modules
-
-    openai_api_key = os.getenv("OPENAI_API_KEY", "test-key" if is_test else None)
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-
-    # Only pass pinecone_api_key if not in test mode
-    pinecone_api_key = None if is_test else os.getenv("PINECONE_API_KEY")
-
-    if not openai_api_key and not is_test:
-        logger.error("OpenAI API key not found")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Configuration error: OpenAI API key missing",
-        )
-
-    # Initialize orchestrator
-    from src.orchestrator.main import Orchestrator
-
-    orchestrator = Orchestrator(
-        redis_url=redis_url,
-        pinecone_api_key=pinecone_api_key,
-        openai_api_key=openai_api_key,
-    )
-
-    logger.debug(f"Created orchestrator instance: {id(orchestrator)}")
-
-    return orchestrator
+# We now use the centralized dependency instead of creating a new instance
 
 
 @router.post(

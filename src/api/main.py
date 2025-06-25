@@ -8,12 +8,16 @@ including all API routers and middleware.
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+# Import dependencies
+from src.api.dependencies import initialize_orchestrator, shutdown_orchestrator
+from src.api.metrics import PrometheusMiddleware, metrics_router
 from src.api.v1.chatops.platforms.slack import router as slack_router
 
 # Import routers
@@ -30,11 +34,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# Define lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for initialization and cleanup."""
+    # Initialize shared resources
+    logger.info("Initializing application resources")
+    try:
+        await initialize_orchestrator()
+        yield
+    finally:
+        # Clean up resources
+        logger.info("Shutting down application resources")
+        await shutdown_orchestrator()
+
+
 # Create app
 app = FastAPI(
     title="Agent Blackwell API",
     description="API for the Agent Blackwell orchestration system",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -45,6 +66,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add Prometheus middleware
+app.add_middleware(PrometheusMiddleware)
 
 
 # Add request timing middleware
@@ -73,6 +97,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(chatops_router)
 app.include_router(slack_router)
 app.include_router(feature_request_router)
+app.include_router(metrics_router)
 
 
 # Root endpoint

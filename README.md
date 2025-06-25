@@ -277,9 +277,6 @@ pytest
 
 ```
 Agent_Blackwell/
-├── .circleci/            # CircleCI configuration
-├── .github/              # GitHub workflows and templates
-├── .windsurf/            # Workflow definitions
 ├── infra/                # Infrastructure configuration
 │   ├── docker/           # Dockerfiles and Docker Compose
 │   └── helm/             # Kubernetes Helm charts

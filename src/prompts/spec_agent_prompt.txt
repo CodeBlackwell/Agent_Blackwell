@@ -21,7 +21,7 @@ Extract a list of tasks from this request. For each task, provide:
 
 Format your response as a JSON array of task objects. Example:
 [
-    {
+    {{
         "task_id": "T-001",
         "title": "Extract user requirements",
         "description": "Analyze the user request and identify requirements",
@@ -29,8 +29,8 @@ Format your response as a JSON array of task objects. Example:
         "estimated_hours": 0.5,
         "dependencies": [],
         "assignee": "spec_agent"
-    },
-    {
+    }},
+    {{
         "task_id": "T-002",
         "title": "Design database schema",
         "description": "Create an ER diagram for the data model",
@@ -38,7 +38,7 @@ Format your response as a JSON array of task objects. Example:
         "estimated_hours": 1.0,
         "dependencies": ["T-001"],
         "assignee": "design_agent"
-    }
+    }}
 ]
 
 Be thorough and make sure all tasks are properly connected through dependencies.

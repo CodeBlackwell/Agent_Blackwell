@@ -68,22 +68,32 @@ def mock_orchestrator():
 class TestChatOpsEndpoints:
     """Test suite for ChatOps API endpoints."""
 
-    @patch("src.api.v1.chatops.router.get_orchestrator")
-    async def test_process_help_command(self, mock_get_orchestrator, mock_orchestrator):
+    async def test_process_help_command(self, mock_orchestrator):
         """Test processing a help command."""
-        mock_get_orchestrator.return_value = mock_orchestrator
 
-        # Create a test request
-        request = {
-            "platform": "slack",
-            "user_id": "test-user",
-            "channel_id": "test-channel",
-            "command": "!help",
-            "timestamp": "2025-06-24T10:00:00Z",
-        }
+        # Set up dependency override
+        async def override_get_orchestrator():
+            return mock_orchestrator
 
-        # Send the request
-        response = client.post("/api/v1/chatops/command", json=request)
+        # Save original dependencies
+        original = app.dependency_overrides.copy()
+        app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+
+        try:
+            # Create a test request
+            request = {
+                "platform": "slack",
+                "user_id": "test-user",
+                "channel_id": "test-channel",
+                "command": "!help",
+                "timestamp": "2025-06-24T10:00:00Z",
+            }
+
+            # Send the request
+            response = client.post("/api/v1/chatops/command", json=request)
+        finally:
+            # Restore original dependencies
+            app.dependency_overrides = original
 
         # Check response
         assert response.status_code == 200
@@ -94,31 +104,39 @@ class TestChatOpsEndpoints:
         assert not data["ephemeral"]  # Default is False
 
     @patch("src.api.v1.chatops.router.handle_status_command")
-    @patch("src.api.v1.chatops.router.get_orchestrator")
-    async def test_process_status_command(
-        self, mock_get_orchestrator, mock_handle_status
-    ):
+    async def test_process_status_command(self, mock_handle_status):
         """Test processing a status command."""
         # Create a mock orchestrator instance
         mock_orchestrator_instance = AsyncMock()
-        mock_get_orchestrator.return_value = mock_orchestrator_instance
 
         # Create a mock return value for handle_status_command
         mock_handle_status.return_value = ChatCommandResponse(
             message="**Status for Task test-task-id:**\n\n• **Status:** completed\n• **Progress:** 100%\n• **Created:** 2025-06-24T10:00:00Z\n• **Updated:** 2025-06-24T10:05:00Z\n\n**Result Summary:**\nTask completed successfully"
         )
 
-        # Create a test request
-        request = {
-            "platform": "slack",
-            "user_id": "test-user",
-            "channel_id": "test-channel",
-            "command": "!status test-task-id",
-            "timestamp": "2025-06-24T10:00:00Z",
-        }
+        # Set up dependency override
+        async def override_get_orchestrator():
+            return mock_orchestrator_instance
 
-        # Send the request
-        response = client.post("/api/v1/chatops/command", json=request)
+        # Save original dependencies
+        original = app.dependency_overrides.copy()
+        app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+
+        try:
+            # Create a test request
+            request = {
+                "platform": "slack",
+                "user_id": "test-user",
+                "channel_id": "test-channel",
+                "command": "!status test-task-id",
+                "timestamp": "2025-06-24T10:00:00Z",
+            }
+
+            # Send the request
+            response = client.post("/api/v1/chatops/command", json=request)
+        finally:
+            # Restore original dependencies
+            app.dependency_overrides = original
 
         # Check response
         assert response.status_code == 200
@@ -135,22 +153,32 @@ class TestChatOpsEndpoints:
         assert args[1] == "test-task-id"
         assert "100%" in data["message"]
 
-    @patch("src.api.v1.chatops.router.get_orchestrator")
-    async def test_process_spec_command(self, mock_get_orchestrator, mock_orchestrator):
+    async def test_process_spec_command(self, mock_orchestrator):
         """Test processing a spec command."""
-        mock_get_orchestrator.return_value = mock_orchestrator
 
-        # Create a test request
-        request = {
-            "platform": "slack",
-            "user_id": "test-user",
-            "channel_id": "test-channel",
-            "command": "!spec Create a user authentication API",
-            "timestamp": "2025-06-24T10:00:00Z",
-        }
+        # Set up dependency override
+        async def override_get_orchestrator():
+            return mock_orchestrator
 
-        # Send the request
-        response = client.post("/api/v1/chatops/command", json=request)
+        # Save original dependencies
+        original = app.dependency_overrides.copy()
+        app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+
+        try:
+            # Create a test request
+            request = {
+                "platform": "slack",
+                "user_id": "test-user",
+                "channel_id": "test-channel",
+                "command": "!spec Create a user authentication API",
+                "timestamp": "2025-06-24T10:00:00Z",
+            }
+
+            # Send the request
+            response = client.post("/api/v1/chatops/command", json=request)
+        finally:
+            # Restore original dependencies
+            app.dependency_overrides = original
 
         # Check response
         assert response.status_code == 200
@@ -160,24 +188,32 @@ class TestChatOpsEndpoints:
         assert "has been queued" in data["message"]
         assert "spec" in data["message"]
 
-    @patch("src.api.v1.chatops.router.get_orchestrator")
-    async def test_process_invalid_command(
-        self, mock_get_orchestrator, mock_orchestrator
-    ):
+    async def test_process_invalid_command(self, mock_orchestrator):
         """Test processing an invalid command."""
-        mock_get_orchestrator.return_value = mock_orchestrator
 
-        # Create a test request with an invalid command
-        request = {
-            "platform": "slack",
-            "user_id": "test-user",
-            "channel_id": "test-channel",
-            "command": "!unknown command",
-            "timestamp": "2025-06-24T10:00:00Z",
-        }
+        # Set up dependency override
+        async def override_get_orchestrator():
+            return mock_orchestrator
 
-        # Send the request
-        response = client.post("/api/v1/chatops/command", json=request)
+        # Save original dependencies
+        original = app.dependency_overrides.copy()
+        app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+
+        try:
+            # Create a test request with an invalid command
+            request = {
+                "platform": "slack",
+                "user_id": "test-user",
+                "channel_id": "test-channel",
+                "command": "!unknown command",
+                "timestamp": "2025-06-24T10:00:00Z",
+            }
+
+            # Send the request
+            response = client.post("/api/v1/chatops/command", json=request)
+        finally:
+            # Restore original dependencies
+            app.dependency_overrides = original
 
         # Check response
         assert response.status_code == 200

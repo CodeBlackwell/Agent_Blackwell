@@ -141,7 +141,7 @@ async def websocket_endpoint(websocket: WebSocket):
 class SpecAgentWrapper:
     def __init__(self, agent):
         self.agent = agent
-        
+
     async def ainvoke(self, task):
         # Pre-process task for spec agent
         result = await self.agent.run(task["prompt"])

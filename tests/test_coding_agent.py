@@ -5,7 +5,6 @@ Unit tests for the Coding Agent.
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
-from langchain.chains import LLMChain
 
 from src.agents.coding_agent import CodingAgent
 
@@ -17,13 +16,7 @@ class TestCodingAgent:
     def mock_llm(self):
         """Create a mock LLM."""
         mock = MagicMock()
-        return mock
-
-    @pytest.fixture
-    def mock_chain(self):
-        """Create a mock LLMChain."""
-        mock = MagicMock(spec=LLMChain)
-        mock.arun = AsyncMock()
+        mock.ainvoke = AsyncMock()
         return mock
 
     @pytest.fixture
@@ -33,11 +26,8 @@ class TestCodingAgent:
 
     @patch("src.agents.coding_agent.ChatOpenAI")
     @patch("src.agents.coding_agent.PromptTemplate")
-    @patch("src.agents.coding_agent.LLMChain")
     @patch("builtins.open", new_callable=mock_open, read_data="You are a Coding Agent")
-    def test_initialization(
-        self, mock_file, mock_llm_chain, mock_prompt, mock_chat_openai
-    ):
+    def test_initialization(self, mock_file, mock_prompt, mock_chat_openai):
         """Test that the Coding Agent initializes correctly."""
         # Arrange
         mock_chat_instance = MagicMock()
@@ -46,8 +36,8 @@ class TestCodingAgent:
         mock_prompt_instance = MagicMock()
         mock_prompt.return_value = mock_prompt_instance
 
-        mock_chain_instance = MagicMock()
-        mock_llm_chain.return_value = mock_chain_instance
+        # Mock the pipe operation
+        mock_prompt_instance.__or__ = MagicMock(return_value=MagicMock())
 
         # Act
         agent = CodingAgent(openai_api_key="fake-api-key")
@@ -55,13 +45,10 @@ class TestCodingAgent:
         # Assert
         mock_chat_openai.assert_called_once()
         mock_prompt.assert_called_once()
-        mock_llm_chain.assert_called_once_with(
-            llm=mock_chat_instance, prompt=mock_prompt_instance
-        )
+        mock_prompt_instance.__or__.assert_called_once_with(mock_chat_instance)
         assert agent.openai_api_key == "fake-api-key"
         assert agent.model_name == "gpt-4"
         assert agent.llm == mock_chat_instance
-        assert agent.chain == mock_chain_instance
 
     @patch("builtins.open", new_callable=mock_open, read_data="You are a Coding Agent")
     def test_load_prompt_template_file_not_found(self, mock_file):
@@ -91,10 +78,13 @@ class TestCodingAgent:
         }
         """
 
-        with patch.object(LLMChain, "arun", new_callable=AsyncMock) as mock_arun:
-            mock_arun.return_value = mock_result
-
+        with patch.object(CodingAgent, "_load_prompt_template") as mock_load_prompt:
             agent = CodingAgent(openai_api_key="fake-api-key")
+
+            # Mock the chain's ainvoke method
+            mock_chain = MagicMock()
+            mock_chain.ainvoke = AsyncMock(return_value=mock_result)
+            agent.chain = mock_chain
 
             # Act
             result = await agent.generate_code(
@@ -104,7 +94,7 @@ class TestCodingAgent:
             )
 
             # Assert
-            mock_arun.assert_called_once()
+            mock_chain.ainvoke.assert_called_once()
             assert "files" in result
             assert "explanation" in result
             assert len(result["files"]) == 1
@@ -118,10 +108,13 @@ class TestCodingAgent:
         # Arrange
         mock_result = "This is not valid JSON"
 
-        with patch.object(LLMChain, "arun", new_callable=AsyncMock) as mock_arun:
-            mock_arun.return_value = mock_result
-
+        with patch.object(CodingAgent, "_load_prompt_template") as mock_load_prompt:
             agent = CodingAgent(openai_api_key="fake-api-key")
+
+            # Mock the chain's ainvoke method
+            mock_chain = MagicMock()
+            mock_chain.ainvoke = AsyncMock(return_value=mock_result)
+            agent.chain = mock_chain
 
             # Act
             result = await agent.generate_code(task_description="Create something")
@@ -137,10 +130,13 @@ class TestCodingAgent:
     async def test_generate_code_exception(self, mock_file):
         """Test handling of exceptions during code generation."""
         # Arrange
-        with patch.object(LLMChain, "arun", new_callable=AsyncMock) as mock_arun:
-            mock_arun.side_effect = Exception("Test exception")
-
+        with patch.object(CodingAgent, "_load_prompt_template") as mock_load_prompt:
             agent = CodingAgent(openai_api_key="fake-api-key")
+
+            # Mock the chain's ainvoke method
+            mock_chain = MagicMock()
+            mock_chain.ainvoke = AsyncMock(side_effect=Exception("Test exception"))
+            agent.chain = mock_chain
 
             # Act
             result = await agent.generate_code(task_description="Create something")

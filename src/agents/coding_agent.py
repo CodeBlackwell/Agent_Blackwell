@@ -10,8 +10,8 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+from langchain.schema.runnable import RunnableSequence
 from langchain_openai import ChatOpenAI
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,9 @@ class CodingAgent:
                 template=prompt_content,
             )
 
-            self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
+            # Create chain using the RunnableSequence pattern (prompt | llm)
+            self.chain = self.prompt_template | self.llm
+
         except FileNotFoundError:
             logger.error(f"Prompt file not found at {prompt_path}")
             raise
@@ -95,7 +97,7 @@ class CodingAgent:
             }
 
             # Run the chain to generate code
-            result = await self.chain.arun(**inputs)
+            result = await self.chain.ainvoke(inputs)
 
             # Parse the result - it should be in JSON format
             # In a production system, we'd add more robust parsing and validation here

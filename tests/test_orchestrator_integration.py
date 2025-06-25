@@ -171,8 +171,31 @@ class TestOrchestrator:
                             # Parse task
                             task_data = json.loads(message[b"task"].decode("utf-8"))
 
-                            # Process task
-                            await orchestrator.process_task(task_data)
+                            # Process task and get result
+                            result = await orchestrator.process_task(task_data)
+
+                            # Ensure the result is stored in the result stream
+                            if result:
+                                task_id = task_data.get("task_id")
+                                # Double check that a record with this task_id isn't already in the result stream
+                                results = orchestrator.redis_client.xrange(
+                                    orchestrator.result_stream, min="-", max="+"
+                                )
+
+                                existing = False
+                                for _, msg in results:
+                                    msg_data = json.loads(
+                                        msg[b"result"].decode("utf-8")
+                                    )
+                                    if msg_data.get("task_id") == task_id:
+                                        existing = True
+                                        break
+
+                                if not existing:
+                                    orchestrator.redis_client.xadd(
+                                        orchestrator.result_stream,
+                                        {"result": json.dumps(result)},
+                                    )
 
                 except Exception as e:
                     print(f"Error in processing loop: {e}")

@@ -61,11 +61,8 @@ class ReviewAgent:
                 template=prompt_content,
             )
 
-            self.chain = LLMChain(
-                llm=self.llm,
-                prompt=self.prompt_template,
-                verbose=False,
-            )
+            self.chain = self.prompt_template | self.llm
+
         except Exception as e:
             logger.error(f"Failed to load prompt template: {e}")
             raise

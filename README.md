@@ -303,6 +303,7 @@ Agent_Blackwell/
 - **Helm Charts**: Located in `infra/helm/agent-blackwell/`, these templates enable deployment to Kubernetes with integrated Redis, Prometheus, and Grafana services.
 - **ChatOps Integration**: Located in `src/api/v1/chatops/`, this code enables Slack commands and message processing for interacting with agents.
 - **Docker Compose**: Provides local multi-service development with app, Redis, Prometheus, and Grafana services.
+- **Messages Endpoint**: Located at `/api/v1/messages`, this endpoint provides access to inter-agent communication messages stored in Redis Streams for observability and debugging.
 
 ## 🗺️ Roadmap
 

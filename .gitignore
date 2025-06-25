@@ -50,3 +50,4 @@ logs/
 # OS specific files
 .DS_Store
 Thumbs.db
+token_counter.py

@@ -260,19 +260,6 @@ Run the test suite with pytest:
 pytest
 ```
 
-## 📈 Roadmap
-
-- [x] CircleCI integration for CI/CD pipeline
-- [x] Kubernetes Helm charts for deployment
-- [x] Slack ChatOps integration
-- [x] Docker Compose for local multi-service development
-- [x] Prometheus & Grafana monitoring setup
-- [x] Refactored agent_registry.py for improved testability
-- [ ] ML pipeline for agent evaluation and retraining
-- [ ] Grafana dashboards for agent performance metrics
-- [ ] Blue/Green deployment strategy
-- [ ] Autoscaling configuration optimization
-
 ## 📁 File Structure
 
 ```

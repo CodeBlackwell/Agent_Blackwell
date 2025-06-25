@@ -1,0 +1,84 @@
+# Default values for agent-blackwell.
+
+replicaCount: 1
+
+image:
+  repository: agent-blackwell
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+# Environment configuration
+env:
+  OPENAI_API_KEY: ""
+  PINECONE_API_KEY: ""
+  SLACK_API_KEY: ""
+  SLACK_SIGNING_SECRET: ""
+  SLACK_CLIENT_ID: ""
+  SLACK_CLIENT_SECRET: ""
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 8Gi
+
+# Grafana configuration
+grafana:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 2Gi
+  adminPassword: "admin"  # Should be changed in production

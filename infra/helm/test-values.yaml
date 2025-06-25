@@ -1,0 +1,38 @@
+# Test values for local development - DO NOT USE IN PRODUCTION
+env:
+  OPENAI_API_KEY: "dummy-openai-key"
+  PINECONE_API_KEY: "dummy-pinecone-key"
+  SLACK_API_KEY: "dummy-slack-key"
+  SLACK_SIGNING_SECRET: "dummy-slack-signing"
+  SLACK_CLIENT_ID: "dummy-slack-client-id"
+  SLACK_CLIENT_SECRET: "dummy-slack-client-secret"
+
+# Use local Docker image
+image:
+  repository: agent-blackwell
+  tag: latest
+  pullPolicy: Never
+
+# Request smaller resources for local testing
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Disable persistence for local testing
+redis:
+  master:
+    persistence:
+      size: 1Gi
+
+prometheus:
+  server:
+    persistentVolume:
+      size: 1Gi
+
+grafana:
+  persistence:
+    size: 1Gi

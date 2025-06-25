@@ -344,6 +344,32 @@ No technical obstacles encountered during planning phase.
 ### Color Commentary
 Architecting the bridge between our agent orchestra and the user interface feels like designing a NASA mission control center—every dial, display, and button must provide intuitive access to the complex machinery beneath. As we mapped out the user journeys through this digital command center, the vision of seamless human-AI collaboration came into vibrant focus.
 
+## 2025-06-25T17:01:00-04:00 - Enhanced Messages Endpoint: Added Task ID Filtering
+
+### Task Objective
+Implement task ID filtering capability for the recently created messages endpoint.
+
+### Technical Summary
+Extended the `/api/v1/messages` endpoint to support filtering messages by task ID:
+1. Added optional `task_id` query parameter to the endpoint definition
+2. Implemented JSON parsing of message contents to extract and match task_id values
+3. Added support for finding task IDs in both task submission and task result messages
+4. Created comprehensive test case to verify filtering logic
+5. Updated documentation with new parameter and usage examples
+
+### Bugs & Obstacles
+No major obstacles, but needed careful research to understand where and how task IDs are stored in the Redis stream messages. Found that they're embedded as JSON inside either "task" or "result" fields, requiring parsing and defensive coding with try/except blocks.
+
+### Key Deliberations
+Considered two approaches for implementing the filtering:
+1. Client-side filtering: Fetch all messages and filter in memory (simpler but less efficient)
+2. Redis-based filtering: Use Redis commands to filter at the database level (more efficient but more complex)
+
+Chose the client-side approach for this implementation as it provides maximum flexibility in handling the nested JSON structure of messages without requiring complex Redis query patterns.
+
+### Color Commentary
+A surgical enhancement to our freshly-minted messages endpoint! With task ID filtering, we've transformed a general-purpose message viewer into a precision debugging tool—exactly what we'll need when tracing execution paths through our upcoming LangGraph implementation. The perfect cherry on top of our observability sundae!
+
 ## 2025-06-25T16:45:00-04:00 - Messages Endpoint Complete: Redis Client Upgrade and Test Fixes
 
 ### Task Objective

@@ -476,3 +476,21 @@ Added comprehensive interactive mode to the Agent Blackwell E2E test gauntlet, a
 
 ### Color Commentary
 What started as a simple "add some interactivity" request turned into a full-blown command center for the test gauntlet! The interactive mode transforms what was once a rigid test sequence into a Swiss Army knife of testing options. Users can now slice and dice their test runs with surgical precision, whether they need a quick health check or want to dive deep into workflow orchestration. It's like giving developers a mission control dashboard for their API testing – complete with warning lights for the slow tests and express lanes for the speed demons!
+
+## 2025-06-25T23:11:22-04:00 - Output Tracking & Failure Handling Enhancements
+
+### Task Objective
+Implemented output-dir support with timestamped logs/results and enforced test failures on missing agent messages.
+
+### Technical Summary
+- Added `--output-dir` flag and generated `gauntlet_<timestamp>.log` for full run logs
+- Updated summary methods to write results to `e2e_test_results_<timestamp>.json` and partial JSON
+- Configured file logging in the output directory alongside console logging
+- Modified `display_agent_messages` to raise on empty responses, marking tests as failed
+
+### Bugs & Obstacles
+- Pre-commit hooks auto-fixed whitespace, requiring additional staging & commit steps
+- Balancing aggressive failure on missing messages with graceful operation when streams are unreliable
+
+### Color Commentary
+When the messages stopped whispering, we made them scream! Now the gauntlet won’t pass off silence as success—it stamps out missing messages with a bright red ❌ and a timestamped log to prove it. Enjoy the audit trail!

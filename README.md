@@ -212,30 +212,30 @@ result = await orchestrator.process_task(task)
 
 ### What Happens Behind the Scenes:
 
-1. The **Spec Agent** breaks this down into detailed tasks:
+1. **The Spec Agent** breaks this down into detailed tasks:
    - User registration endpoint
    - JWT token generation and validation
    - Password reset flow with email verification
    - OAuth integration for social logins
 
-2. The **Design Agent** creates:
+2. **The Design Agent** creates:
    - An authentication flow diagram
    - API endpoint specifications
    - Database schema for user accounts
 
-3. The **Coding Agent** generates:
+3. **The Coding Agent** generates:
    - User model classes
    - API route handlers
    - JWT middleware for authentication
    - Password hashing utilities
 
-4. The **Review Agent** verifies:
+4. **The Review Agent** verifies:
    - Security best practices
    - Input validation
    - Error handling completeness
    - Code style and documentation
 
-5. The **Test Agent** creates:
+5. **The Test Agent** creates:
    - Unit tests for each component
    - Integration tests for the authentication flow
    - Performance tests for token validation
@@ -436,18 +436,86 @@ pytest tests/agents/test_spec_agent.py
 python -m pytest --cov=src tests/
 ```
 
-### 📋 API Reference
+### Running Integration Tests
 
-| Endpoint | Method | Purpose |
-|----------|--------|--------|
-| `/` | GET | Health check |
-| `/health` | GET | Detailed health with service status |
-| `/api/v1/feature-request` | POST | Submit new feature request |
-| `/api/v1/workflow-status/{id}` | GET | Check workflow status |
-| `/api/v1/execute-workflow` | POST | Execute workflow synchronously |
-| `/api/v1/stream-workflow/{id}` | GET | Stream workflow execution |
-| `/api/v1/task-status/{id}` | GET | Legacy status endpoint |
-| `/api/v1/messages` | GET | Access inter-agent communications |
+### Prerequisites
+- Docker and Docker Compose installed
+- Poetry for dependency management
+- Python 3.11+ with virtual environment
+
+### Test Environment Setup
+
+1. **Start the test environment:**
+   ```bash
+   # Start all test services (Redis, mock APIs, test runner)
+   docker-compose -f docker-compose-test.yml up -d
+
+   # Verify services are running
+   docker-compose -f docker-compose-test.yml ps
+   ```
+
+2. **Run tests inside the test container:**
+   ```bash
+   # Run all integration tests
+   docker-compose -f docker-compose-test.yml exec test-runner pytest tests/integration/ -v
+
+   # Run specific test categories
+   docker-compose -f docker-compose-test.yml exec test-runner pytest tests/integration/redis/ -v
+   ```
+
+3. **Run tests locally (alternative):**
+   ```bash
+   # Ensure test environment is running
+   docker-compose -f docker-compose-test.yml up -d redis-test mockapi mock-vector-db
+
+   # Activate virtual environment and run tests
+   poetry shell
+   pytest tests/integration/redis/ -v --tb=short
+
+   # Run specific test files
+   pytest tests/integration/redis/test_basic_redis.py -v
+   pytest tests/integration/redis/test_concurrency_load.py -v
+   pytest tests/integration/redis/test_fault_tolerance.py -v
+   ```
+
+### Test Categories and Markers
+
+The integration tests are organized into phases:
+
+- **Phase 2: Redis Stream Integration Tests**
+  - `test_basic_redis.py` - Message production, consumption, acknowledgment, retry
+  - `test_concurrency_load.py` - Multiple producers/consumers, high throughput, load testing
+  - `test_fault_tolerance.py` - Connection drops, restarts, rebalancing, duplicate handling
+
+**Run tests by markers:**
+```bash
+# Run only Redis tests (when we add markers)
+pytest tests/integration/ -m "redis" -v
+
+# Run load tests specifically
+pytest tests/integration/redis/test_concurrency_load.py::TestRedisLoadTesting -v
+
+# Run fault tolerance tests
+pytest tests/integration/redis/test_fault_tolerance.py -v
+```
+
+### Test Environment Cleanup
+
+```bash
+# Stop and remove test containers
+docker-compose -f docker-compose-test.yml down
+
+# Remove test volumes (optional - removes all test data)
+docker-compose -f docker-compose-test.yml down -v
+```
+
+### Monitoring Test Results
+
+- Test logs are available in the container output
+- Redis test data can be inspected using Redis CLI:
+  ```bash
+  docker-compose -f docker-compose-test.yml exec redis-test redis-cli
+  ```
 
 ### 🔍 Monitoring and Observability
 

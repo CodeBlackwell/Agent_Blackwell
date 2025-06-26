@@ -3,18 +3,18 @@
     {
       "test": "Health Check",
       "passed": true,
-      "timestamp": 1750899901.5775511,
+      "timestamp": 1750905792.270182,
       "details": {}
     },
     {
       "test": "Feature Request Creation",
       "passed": true,
-      "timestamp": 1750899903.587172,
+      "timestamp": 1750905794.276783,
       "details": {
-        "description": "Create a data visualization dashboard using pandas and matplotlib",
-        "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+        "description": "Build a simple web scraper and data processor:\n\nDIFFICULTY LEVEL: \u2b50\u2b50\u2b50\u2b50 MODERATE\n\nDATA COLLECTION:\n- Web scraping using requests and BeautifulSoup\n- Extract data from multiple pages with pagination\n- Handle different data formats (HTML tables, lists, text)\n- Implement rate limiting and respectful scraping\n\nDATA PROCESSING:\n- Clean and validate scraped data\n- Store data in CSV and JSON formats\n- Basic data analysis and summary statistics\n- Simple data visualization with matplotlib\n\nPROJECT STRUCTURE:\n- Separate modules for scraping, processing, and analysis\n- Configuration file for target websites and settings\n- Comprehensive error handling and logging\n- Clear documentation and usage examples\n\nFEATURES:\n- Command-line interface with multiple options\n- Progress tracking for long-running scrapes\n- Data export in multiple formats\n- Basic duplicate detection and handling\n\nTESTING:\n- Unit tests for data processing functions\n- Mock tests for web requests\n- Test data validation and cleaning\n- Integration tests with sample data\n\nQUALITY ASSURANCE:\n- Type hints throughout codebase\n- Comprehensive error handling\n- Logging for debugging and monitoring\n- User-friendly error messages",
+        "workflow_id": "9ff9a92f-95f6-499f-9ebd-c0ff85930657",
         "response": {
-          "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+          "workflow_id": "9ff9a92f-95f6-499f-9ebd-c0ff85930657",
           "status": "processing"
         }
       }
@@ -22,11 +22,11 @@
     {
       "test": "Workflow Status Check",
       "passed": true,
-      "timestamp": 1750899908.592243,
+      "timestamp": 1750905801.309076,
       "details": {
-        "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+        "workflow_id": "9ff9a92f-95f6-499f-9ebd-c0ff85930657",
         "response": {
-          "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+          "workflow_id": "9ff9a92f-95f6-499f-9ebd-c0ff85930657",
           "status": "unknown",
           "results": null,
           "execution_summary": null,
@@ -37,11 +37,11 @@
     {
       "test": "Legacy Task Status",
       "passed": true,
-      "timestamp": 1750899910.600389,
+      "timestamp": 1750905803.3205152,
       "details": {
-        "task_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+        "task_id": "9ff9a92f-95f6-499f-9ebd-c0ff85930657",
         "response": {
-          "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+          "workflow_id": "9ff9a92f-95f6-499f-9ebd-c0ff85930657",
           "status": "unknown",
           "results": null,
           "execution_summary": null,
@@ -52,69 +52,220 @@
     {
       "test": "Synchronous Workflow Execution",
       "passed": true,
-      "timestamp": 1750899931.124716,
+      "timestamp": 1750905860.920077,
       "details": {
-        "description": "Write a simple 'Hello World' function in Python",
+        "description": "Create a complete Snake game implementation with the following requirements:\n\nPROJECT STRUCTURE:\n- Create a proper Python package structure with __init__.py files\n- Organize code into logical modules (game logic, UI, utilities)\n- Include a requirements.txt file with all dependencies\n- Add a comprehensive README.md with setup and play instructions\n\nGAME FEATURES:\n- Classic Snake gameplay with arrow key controls\n- Score tracking and display\n- Game over detection when snake hits walls or itself\n- Increasing difficulty (speed) as score increases\n- Food spawning with collision detection\n- Snake growth mechanics\n\nTECHNICAL REQUIREMENTS:\n- Use pygame for graphics and input handling\n- Implement proper game loop with FPS control\n- Clean separation of concerns (Model-View-Controller pattern)\n- Configuration file for game settings (screen size, colors, speeds)\n- Error handling and input validation\n\nTESTING REQUIREMENTS:\n- Unit tests for core game logic (snake movement, collision detection, scoring)\n- Integration tests for game state management\n- Mock tests for pygame components\n- Test coverage report\n- Organize tests in a separate tests/ directory\n\nDOCUMENTATION:\n- Docstrings for all classes and functions\n- Type hints throughout the codebase\n- Code comments for complex logic\n- Installation and usage instructions\n- Architecture overview diagram\n\nPlease ensure the code is production-ready with proper error handling, logging, and follows Python best practices.",
         "response": {
-          "workflow_id": "6a9a3160-1895-4f20-a7c0-55b22b616a62",
+          "workflow_id": "7ab124c5-2ff8-4c2c-811c-cc10d057bf1a",
           "status": "failed",
           "results": {
             "spec_tasks": [
               {
                 "task_id": "T-001",
-                "title": "Analyze user request",
-                "description": "Analyze the user's request for a 'Hello World' function in Python and identify the requirements",
+                "title": "Create Python package structure",
+                "description": "Set up a proper Python package structure with __init__.py files",
                 "priority": "high",
-                "estimated_hours": 0.5,
+                "estimated_hours": 1.0,
                 "dependencies": [],
-                "assignee": "spec_agent"
+                "assignee": "coding_agent"
               },
               {
                 "task_id": "T-002",
-                "title": "Design function structure",
-                "description": "Design the structure of the 'Hello World' function, including the function name, parameters (if any), and return type",
-                "priority": "medium",
-                "estimated_hours": 0.5,
+                "title": "Organize code into modules",
+                "description": "Divide the code into logical modules such as game logic, UI, and utilities",
+                "priority": "high",
+                "estimated_hours": 2.0,
                 "dependencies": [
                   "T-001"
                 ],
-                "assignee": "design_agent"
+                "assignee": "coding_agent"
               },
               {
                 "task_id": "T-003",
-                "title": "Write 'Hello World' function",
-                "description": "Write the 'Hello World' function in Python based on the designed structure",
-                "priority": "high",
+                "title": "Create requirements.txt file",
+                "description": "Include a requirements.txt file with all dependencies",
+                "priority": "medium",
                 "estimated_hours": 0.5,
+                "dependencies": [],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-004",
+                "title": "Write README.md",
+                "description": "Add a comprehensive README.md with setup and play instructions",
+                "priority": "medium",
+                "estimated_hours": 1.0,
+                "dependencies": [],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-005",
+                "title": "Implement Snake game logic",
+                "description": "Develop the classic Snake gameplay with arrow key controls, score tracking and display, game over detection, increasing difficulty, food spawning, and snake growth mechanics",
+                "priority": "high",
+                "estimated_hours": 10.0,
                 "dependencies": [
+                  "T-001",
                   "T-002"
                 ],
                 "assignee": "coding_agent"
               },
               {
-                "task_id": "T-004",
-                "title": "Review 'Hello World' function",
-                "description": "Review the written 'Hello World' function to ensure it meets the user's request and follows Python coding standards",
+                "task_id": "T-006",
+                "title": "Implement game loop with FPS control",
+                "description": "Use pygame for graphics and input handling, and implement a proper game loop with FPS control",
                 "priority": "high",
-                "estimated_hours": 0.5,
+                "estimated_hours": 3.0,
                 "dependencies": [
-                  "T-003"
+                  "T-001",
+                  "T-002"
                 ],
-                "assignee": "review_agent"
+                "assignee": "coding_agent"
               },
               {
-                "task_id": "T-005",
-                "title": "Test 'Hello World' function",
-                "description": "Test the 'Hello World' function to ensure it works as expected and doesn't have any bugs",
-                "priority": "high",
-                "estimated_hours": 0.5,
+                "task_id": "T-007",
+                "title": "Create configuration file",
+                "description": "Create a configuration file for game settings such as screen size, colors, and speeds",
+                "priority": "medium",
+                "estimated_hours": 1.0,
                 "dependencies": [
-                  "T-004"
+                  "T-001",
+                  "T-002"
+                ],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-008",
+                "title": "Implement error handling and input validation",
+                "description": "Ensure the code is production-ready with proper error handling and input validation",
+                "priority": "high",
+                "estimated_hours": 2.0,
+                "dependencies": [
+                  "T-001",
+                  "T-002"
+                ],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-009",
+                "title": "Write unit tests",
+                "description": "Create unit tests for core game logic such as snake movement, collision detection, and scoring",
+                "priority": "high",
+                "estimated_hours": 3.0,
+                "dependencies": [
+                  "T-005"
                 ],
                 "assignee": "test_agent"
+              },
+              {
+                "task_id": "T-010",
+                "title": "Write integration tests",
+                "description": "Create integration tests for game state management",
+                "priority": "high",
+                "estimated_hours": 2.0,
+                "dependencies": [
+                  "T-005"
+                ],
+                "assignee": "test_agent"
+              },
+              {
+                "task_id": "T-011",
+                "title": "Write mock tests",
+                "description": "Create mock tests for pygame components",
+                "priority": "medium",
+                "estimated_hours": 2.0,
+                "dependencies": [
+                  "T-005"
+                ],
+                "assignee": "test_agent"
+              },
+              {
+                "task_id": "T-012",
+                "title": "Generate test coverage report",
+                "description": "Generate a test coverage report",
+                "priority": "medium",
+                "estimated_hours": 1.0,
+                "dependencies": [
+                  "T-009",
+                  "T-010",
+                  "T-011"
+                ],
+                "assignee": "test_agent"
+              },
+              {
+                "task_id": "T-013",
+                "title": "Organize tests in a separate directory",
+                "description": "Organize all tests in a separate tests/ directory",
+                "priority": "low",
+                "estimated_hours": 0.5,
+                "dependencies": [
+                  "T-009",
+                  "T-010",
+                  "T-011"
+                ],
+                "assignee": "test_agent"
+              },
+              {
+                "task_id": "T-014",
+                "title": "Write docstrings",
+                "description": "Add docstrings for all classes and functions",
+                "priority": "medium",
+                "estimated_hours": 2.0,
+                "dependencies": [
+                  "T-005"
+                ],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-015",
+                "title": "Add type hints",
+                "description": "Include type hints throughout the codebase",
+                "priority": "medium",
+                "estimated_hours": 2.0,
+                "dependencies": [
+                  "T-005"
+                ],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-016",
+                "title": "Write code comments",
+                "description": "Add code comments for complex logic",
+                "priority": "medium",
+                "estimated_hours": 1.0,
+                "dependencies": [
+                  "T-005"
+                ],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-017",
+                "title": "Create architecture overview diagram",
+                "description": "Design an architecture overview diagram",
+                "priority": "low",
+                "estimated_hours": 1.0,
+                "dependencies": [],
+                "assignee": "design_agent"
+              },
+              {
+                "task_id": "T-018",
+                "title": "Code review",
+                "description": "Review the code to ensure it follows Python best practices",
+                "priority": "high",
+                "estimated_hours": 2.0,
+                "dependencies": [
+                  "T-005",
+                  "T-006",
+                  "T-007",
+                  "T-008",
+                  "T-014",
+                  "T-015",
+                  "T-016"
+                ],
+                "assignee": "review_agent"
               }
             ],
-            "design_specs": "As an AI, I need specific task description and additional context to generate a Mermaid diagram and an API contract. Please provide the details about the system or process that you want to visualize or the API that you need to define. For example, you can provide information about a user registration system, an e-commerce platform, a blog management system, etc.",
+            "design_specs": "As an AI model, I need more specific details to generate the required architecture diagrams and API contracts. The placeholders \"{task_description}\" and \"{additional_context}\" should be replaced with actual task details and any additional context or requirements for the system. \n\nFor example, if you're designing a system for a book store, the task description might be \"Design a system that allows users to browse books, add them to a shopping cart, and make purchases.\" Additional context might include requirements like \"The system should support user accounts and wishlists\" or \"The system needs to integrate with a third-party payment processor.\"\n\nOnce I have these details, I can generate a Mermaid diagram that visualizes the architecture of the system and an OpenAPI/Swagger contract for the API.",
             "code_result": {
               "files": [],
               "explanation": "Error generating code: 'Input to PromptTemplate is missing variables {\\'\\\\n  \"files\"\\'}.  Expected: [\\'\\\\n  \"files\"\\', \\'architecture_diagram\\', \\'design_specs\\', \\'task_description\\'] Received: [\\'task_description\\', \\'design_specs\\', \\'architecture_diagram\\']\\nNote: if you intended {\\n  \"files\"} to be part of the string and not a variable, please escape it with double curly braces like: \\'{{\\n  \"files\"}}\\'.\\nFor troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/INVALID_PROMPT_INPUT '"
@@ -137,15 +288,16 @@
             "total_agents": 4
           },
           "error": null
-        }
+        },
+        "execution_time": 55.592812061309814
       }
     },
     {
       "test": "Streaming Workflow",
       "passed": true,
-      "timestamp": 1750899963.747819,
+      "timestamp": 1750905890.1758342,
       "details": {
-        "workflow_id": "3710e6a2-cd29-4b38-b418-1b02968a0beb",
+        "workflow_id": "5a8372f2-e989-4923-a4ed-f06717207c61",
         "updates_received": 3
       }
     }

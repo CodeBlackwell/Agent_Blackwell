@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.main import app
 from src.api.dependencies import get_orchestrator
+from src.api.main import app
 
 
 @pytest.fixture

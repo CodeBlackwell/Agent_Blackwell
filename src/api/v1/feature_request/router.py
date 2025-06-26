@@ -65,8 +65,8 @@ class WorkflowStatusResponse(BaseModel):
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def create_feature_request(
-    request: FeatureRequestInput, 
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
+    request: FeatureRequestInput,
+    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
 ) -> Dict[str, Any]:
     """
     Submit a new feature request to the LangGraph workflow system.
@@ -104,8 +104,7 @@ async def create_feature_request(
     status_code=status.HTTP_200_OK,
 )
 async def get_workflow_status(
-    workflow_id: str, 
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
+    workflow_id: str, orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
 ) -> Dict[str, Any]:
     """
     Get the status of a workflow by its ID.
@@ -132,7 +131,7 @@ async def get_workflow_status(
             else:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=status_info["error"]
+                    detail=status_info["error"],
                 )
 
         return status_info
@@ -154,7 +153,7 @@ async def get_workflow_status(
 )
 async def execute_workflow(
     request: FeatureRequestInput,
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
+    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
 ) -> Dict[str, Any]:
     """
     Execute a complete workflow synchronously and return the final results.
@@ -174,8 +173,7 @@ async def execute_workflow(
 
         # Execute the complete workflow
         result = await orchestrator.execute_workflow(
-            workflow_id=workflow_id,
-            user_request=request.description
+            workflow_id=workflow_id, user_request=request.description
         )
 
         logger.info(f"Workflow {workflow_id} completed with status: {result['status']}")
@@ -196,7 +194,7 @@ async def execute_workflow(
 async def stream_workflow_execution(
     workflow_id: str,
     description: str,
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
+    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
 ):
     """
     Stream workflow execution progress in real-time.
@@ -214,18 +212,19 @@ async def stream_workflow_execution(
     async def generate():
         try:
             async for update in orchestrator.stream_workflow_execution(
-                workflow_id=workflow_id,
-                user_request=description
+                workflow_id=workflow_id, user_request=description
             ):
                 import json
+
                 yield f"data: {json.dumps(update)}\n\n"
         except Exception as e:
             logger.error(f"Error in streaming workflow: {str(e)}")
             import json
+
             error_update = {
                 "workflow_id": workflow_id,
                 "error": str(e),
-                "status": "failed"
+                "status": "failed",
             }
             yield f"data: {json.dumps(error_update)}\n\n"
 
@@ -235,7 +234,7 @@ async def stream_workflow_execution(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-        }
+        },
     )
 
 
@@ -247,8 +246,7 @@ async def stream_workflow_execution(
     deprecated=True,
 )
 async def get_task_status(
-    task_id: str, 
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
+    task_id: str, orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
 ) -> Dict[str, Any]:
     """
     Get the status of a task by its ID (legacy endpoint - redirects to workflow status).
@@ -261,6 +259,6 @@ async def get_task_status(
         Dict with workflow status information
     """
     logger.warning(f"Using deprecated task-status endpoint for ID: {task_id}")
-    
+
     # Redirect to the new workflow status endpoint
     return await get_workflow_status(task_id, orchestrator)

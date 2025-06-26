@@ -2,10 +2,10 @@
 
 import json
 import os
-from typing import Any, List, Optional, Dict
+from typing import Any, Dict, List, Optional
 
 import redis.asyncio as redis
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.dependencies import get_orchestrator
 from src.orchestrator.langgraph_orchestrator import LangGraphOrchestrator
@@ -25,7 +25,7 @@ async def get_redis():
 async def log_workflow_event(workflow_id: str, event_type: str, data: Dict[str, Any]):
     """
     Log workflow events to Redis for external monitoring and metrics.
-    
+
     Args:
         workflow_id: ID of the workflow
         event_type: Type of event (started, completed, failed, etc.)
@@ -33,22 +33,23 @@ async def log_workflow_event(workflow_id: str, event_type: str, data: Dict[str, 
     """
     try:
         redis_client = await get_redis()
-        
+
         # Create event record
         event_record = {
             "workflow_id": workflow_id,
             "event_type": event_type,
             "timestamp": data.get("timestamp", ""),
-            "data": json.dumps(data)
+            "data": json.dumps(data),
         }
-        
+
         # Add to workflow metrics stream
         await redis_client.xadd(WORKFLOW_METRICS_STREAM, event_record)
-        
+
         await redis_client.close()
     except Exception as e:
         # Don't fail the main workflow if logging fails
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning(f"Failed to log workflow event: {str(e)}")
 
@@ -57,7 +58,9 @@ async def log_workflow_event(workflow_id: str, event_type: str, data: Dict[str, 
 async def get_messages(
     number_of_messages: Optional[int] = Query(None, gt=0),
     task_id: Optional[str] = Query(None, description="Filter messages by task ID"),
-    workflow_id: Optional[str] = Query(None, description="Filter messages by workflow ID"),
+    workflow_id: Optional[str] = Query(
+        None, description="Filter messages by workflow ID"
+    ),
 ):
     """
     Returns agent messages from the Redis stream and workflow metrics.
@@ -70,28 +73,30 @@ async def get_messages(
     redis_client = await get_redis()
     try:
         messages = []
-        
+
         # Get legacy messages from the original stream
         if number_of_messages:
-            entries = await redis_client.xrevrange(STREAM_NAME, count=number_of_messages)
+            entries = await redis_client.xrevrange(
+                STREAM_NAME, count=number_of_messages
+            )
             entries = list(reversed(entries))
         else:
             entries = await redis_client.xrange(STREAM_NAME)
-        
+
         # Process legacy messages
         for entry in entries:
             msg_id = entry[0]
             msg_data = entry[1]
             message = {"id": msg_id, "source": "legacy", **msg_data}
-            
+
             # Apply filters
             if task_id and not _message_matches_task_id(msg_data, task_id):
                 continue
             if workflow_id and not _message_matches_workflow_id(msg_data, workflow_id):
                 continue
-                
+
             messages.append(message)
-        
+
         # Get workflow metrics from the new stream
         try:
             workflow_entries = await redis_client.xrange(WORKFLOW_METRICS_STREAM)
@@ -99,25 +104,25 @@ async def get_messages(
                 msg_id = entry[0]
                 msg_data = entry[1]
                 message = {"id": msg_id, "source": "workflow", **msg_data}
-                
+
                 # Apply filters
                 if workflow_id and msg_data.get("workflow_id") != workflow_id:
                     continue
                 if task_id and not _workflow_message_matches_task_id(msg_data, task_id):
                     continue
-                    
+
                 messages.append(message)
         except Exception:
             # Workflow stream might not exist yet, continue with legacy messages only
             pass
-        
+
         # Sort by timestamp if possible
         messages.sort(key=lambda x: x.get("id", ""), reverse=False)
-        
+
         # Limit results if requested
         if number_of_messages:
             messages = messages[-number_of_messages:]
-        
+
         return {"messages": messages}
     except Exception as e:
         raise HTTPException(
@@ -146,7 +151,7 @@ def _message_matches_task_id(msg_data: Dict[str, Any], task_id: str) -> bool:
                 return True
         except (json.JSONDecodeError, TypeError):
             pass
-            
+
     return False
 
 
@@ -183,32 +188,32 @@ async def get_workflow_events(
     try:
         # Get workflow events from metrics stream
         entries = await redis_client.xrange(WORKFLOW_METRICS_STREAM)
-        
+
         # Filter events for the specific workflow
         workflow_events = []
         for entry in entries:
             msg_id = entry[0]
             msg_data = entry[1]
-            
+
             if msg_data.get("workflow_id") == workflow_id:
                 event = {"id": msg_id, **msg_data}
-                
+
                 # Parse the data field if it exists
                 if "data" in event:
                     try:
                         event["parsed_data"] = json.loads(event["data"])
                     except (json.JSONDecodeError, TypeError):
                         pass
-                
+
                 workflow_events.append(event)
-        
+
         # Sort by timestamp
         workflow_events.sort(key=lambda x: x.get("id", ""))
-        
+
         # Limit results if requested
         if number_of_events:
             workflow_events = workflow_events[-number_of_events:]
-        
+
         return {"workflow_id": workflow_id, "events": workflow_events}
     except Exception as e:
         raise HTTPException(
@@ -223,13 +228,13 @@ async def log_workflow_event_endpoint(
     workflow_id: str,
     event_type: str,
     event_data: Dict[str, Any],
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
+    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
 ):
     """
     Log a workflow event to Redis metrics stream.
-    
+
     This endpoint allows external systems to log workflow events for monitoring.
-    
+
     Parameters:
     - workflow_id: ID of the workflow
     - event_type: Type of event to log
@@ -248,14 +253,14 @@ async def log_workflow_event_endpoint(
 async def get_workflow_metrics():
     """
     Get aggregated metrics for all workflows.
-    
+
     Returns summary statistics about workflow performance and status.
     """
     redis_client = await get_redis()
     try:
         # Get all workflow events
         entries = await redis_client.xrange(WORKFLOW_METRICS_STREAM)
-        
+
         # Aggregate metrics
         metrics = {
             "total_workflows": 0,
@@ -263,20 +268,22 @@ async def get_workflow_metrics():
             "failed_workflows": 0,
             "in_progress_workflows": 0,
             "event_types": {},
-            "recent_activity": []
+            "recent_activity": [],
         }
-        
+
         workflow_statuses = {}
-        
+
         for entry in entries:
             msg_data = entry[1]
             workflow_id = msg_data.get("workflow_id")
             event_type = msg_data.get("event_type")
-            
+
             # Count event types
             if event_type:
-                metrics["event_types"][event_type] = metrics["event_types"].get(event_type, 0) + 1
-            
+                metrics["event_types"][event_type] = (
+                    metrics["event_types"].get(event_type, 0) + 1
+                )
+
             # Track workflow statuses
             if workflow_id:
                 if event_type == "started":
@@ -285,15 +292,17 @@ async def get_workflow_metrics():
                     workflow_statuses[workflow_id] = "completed"
                 elif event_type == "failed":
                     workflow_statuses[workflow_id] = "failed"
-            
+
             # Add to recent activity (last 10 events)
             if len(metrics["recent_activity"]) < 10:
-                metrics["recent_activity"].append({
-                    "workflow_id": workflow_id,
-                    "event_type": event_type,
-                    "timestamp": msg_data.get("timestamp")
-                })
-        
+                metrics["recent_activity"].append(
+                    {
+                        "workflow_id": workflow_id,
+                        "event_type": event_type,
+                        "timestamp": msg_data.get("timestamp"),
+                    }
+                )
+
         # Count workflow statuses
         metrics["total_workflows"] = len(workflow_statuses)
         for status in workflow_statuses.values():
@@ -303,7 +312,7 @@ async def get_workflow_metrics():
                 metrics["failed_workflows"] += 1
             elif status == "in_progress":
                 metrics["in_progress_workflows"] += 1
-        
+
         return metrics
     except Exception as e:
         raise HTTPException(

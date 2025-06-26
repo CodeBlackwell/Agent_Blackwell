@@ -64,7 +64,7 @@ services:
       - test-network
     working_dir: /app
     command: >
-      bash -c "pip install -q flask numpy && 
+      bash -c "pip install -q flask numpy &&
               python tests/mocks/vector_db/server.py"
 
   # Test runner for integration tests

@@ -305,28 +305,35 @@ class AgentWorker:
         """Process review agent message."""
         # Extract request_id first for error handling
         request_id = message_data.get("request_id", "unknown")
-        if isinstance(request_id, str) and request_id.startswith('"') and request_id.endswith('"'):
+        if (
+            isinstance(request_id, str)
+            and request_id.startswith('"')
+            and request_id.endswith('"')
+        ):
             # Handle JSON-encoded string
             try:
                 request_id = json.loads(request_id)
             except json.JSONDecodeError:
                 pass
-        
+
         # Convert request_id to string if it's not already
         request_id = str(request_id)
-        
+
         # Check for LLM error simulation
-        if message_data.get("simulate_error") == "true" or request_id == "error-review-123":
+        if (
+            message_data.get("simulate_error") == "true"
+            or request_id == "error-review-123"
+        ):
             return {
                 "request_id": request_id,
                 "error": "LLM service unavailable",
                 "error_code": 500,
-                "status": "error"
+                "status": "error",
             }
-        
+
         # Extract source code from message and handle different formats
         source_code = message_data.get("source_code", {})
-        
+
         # Handle case where source_code is a JSON string
         if isinstance(source_code, str):
             try:
@@ -334,17 +341,17 @@ class AgentWorker:
             except json.JSONDecodeError:
                 # If it's not valid JSON, create a single-file dict
                 source_code = {"code.py": source_code}
-        
+
         # Ensure source_code is a dictionary
         if not isinstance(source_code, dict):
             source_code = {}
-        
+
         # Determine code quality based on simple heuristics
         code_quality = 85  # Default to good quality
         issues = []
         recommendations = []
         approval_status = "approved"
-        
+
         # Check review focus
         review_focus = message_data.get("review_focus", [])
         if isinstance(review_focus, str):
@@ -352,85 +359,112 @@ class AgentWorker:
                 review_focus = json.loads(review_focus)
             except json.JSONDecodeError:
                 review_focus = [review_focus]
-        
+
         # Determine if this is a performance or security focused review
         is_performance_review = False
         is_security_review = False
-        
+
         if isinstance(review_focus, list):
-            is_performance_review = any(focus in ["performance", "optimization", "efficiency"] for focus in review_focus)
-            is_security_review = any(focus in ["security", "vulnerabilities", "best_practices"] for focus in review_focus)
-            
+            is_performance_review = any(
+                focus in ["performance", "optimization", "efficiency"]
+                for focus in review_focus
+            )
+            is_security_review = any(
+                focus in ["security", "vulnerabilities", "best_practices"]
+                for focus in review_focus
+            )
+
         # Check for security issues in code
         for file_name, code in source_code.items():
             # Check for eval/exec usage
             if "eval(" in code or "exec(" in code:
                 code_quality = 25
-                issues.append({
-                    "severity": "critical",
-                    "description": f"Use of eval() or exec() is dangerous in {file_name}",
-                    "file": file_name,
-                    "category": "security"
-                })
+                issues.append(
+                    {
+                        "severity": "critical",
+                        "description": f"Use of eval() or exec() is dangerous in {file_name}",
+                        "file": file_name,
+                        "category": "security",
+                    }
+                )
                 recommendations.append("Remove all uses of eval() and exec()")
                 approval_status = "rejected"
-            
+
             # Check for command injection
             if "os.system(" in code or "subprocess.call(" in code:
                 code_quality = 40
-                issues.append({
-                    "severity": "high",
-                    "description": f"Potential command injection in {file_name}",
-                    "file": file_name,
-                    "category": "security"
-                })
-                
+                issues.append(
+                    {
+                        "severity": "high",
+                        "description": f"Potential command injection in {file_name}",
+                        "file": file_name,
+                        "category": "security",
+                    }
+                )
+
             # Check for SQL injection
             if "sqlite3" in code and "f'" in code and "SELECT" in code:
                 code_quality = 30
-                issues.append({
-                    "severity": "critical",
-                    "description": f"SQL injection vulnerability in {file_name}",
-                    "file": file_name,
-                    "category": "security"
-                })
-                recommendations.append("Use parameterized queries to prevent SQL injection")
+                issues.append(
+                    {
+                        "severity": "critical",
+                        "description": f"SQL injection vulnerability in {file_name}",
+                        "file": file_name,
+                        "category": "security",
+                    }
+                )
+                recommendations.append(
+                    "Use parameterized queries to prevent SQL injection"
+                )
                 approval_status = "rejected"
-                
+
             # Check for weak cryptography
             if "hashlib.md5" in code or "hashlib.sha1" in code:
                 code_quality = 50
-                issues.append({
-                    "severity": "high",
-                    "description": f"Weak cryptographic hash function in {file_name}",
-                    "file": file_name,
-                    "category": "security"
-                })
-                recommendations.append("Use stronger hash functions like SHA-256 or bcrypt")
+                issues.append(
+                    {
+                        "severity": "high",
+                        "description": f"Weak cryptographic hash function in {file_name}",
+                        "file": file_name,
+                        "category": "security",
+                    }
+                )
+                recommendations.append(
+                    "Use stronger hash functions like SHA-256 or bcrypt"
+                )
                 recommendations.append("Use safer alternatives to os.system()")
                 approval_status = "rejected"
-            
+
             # Check for type hints
-            if "def " in code and ":" not in code.split("def ")[1].split("(")[1].split(")")[0]:
+            if (
+                "def " in code
+                and ":" not in code.split("def ")[1].split("(")[1].split(")")[0]
+            ):
                 if code_quality > 70:
                     code_quality = 70
-                issues.append({
-                    "severity": "medium",
-                    "description": f"Missing type hints in {file_name}",
-                    "file": file_name
-                })
+                issues.append(
+                    {
+                        "severity": "medium",
+                        "description": f"Missing type hints in {file_name}",
+                        "file": file_name,
+                    }
+                )
                 recommendations.append("Add type hints to function parameters")
                 approval_status = "needs_revision"
-                
+
             # Special case for medium quality code test
-            if "def process_data(items):" in code and "result = []" in code and "result.append" in code:
+            if (
+                "def process_data(items):" in code
+                and "result = []" in code
+                and "result.append" in code
+            ):
                 code_quality = 65
                 approval_status = "needs_revision"
-        
+
         # If no issues found but code quality is not perfect
         if not issues and code_quality == 85:
             recommendations.append("Consider adding more unit tests")
-        
+
         # Generate review summary
         if code_quality >= 80:
             review_summary = "High quality code with good practices"
@@ -440,7 +474,7 @@ class AgentWorker:
             review_summary = "Code has significant issues that should be addressed"
         else:
             review_summary = "Code has critical issues that must be fixed"
-        
+
         # Create response object
         response = {
             "request_id": request_id,
@@ -448,85 +482,96 @@ class AgentWorker:
             "code_quality_score": code_quality,
             "issues_found": issues,
             "recommendations": recommendations,
-            "status": "completed"
+            "status": "completed",
         }
-        
+
         # Always use expected_status if provided (for test cases)
         if "expected_status" in message_data:
             response["approval_status"] = message_data["expected_status"]
         else:
             # Set approval status based on code quality and issues
-            if code_quality < 40 or any(issue.get("severity") == "critical" for issue in issues):
+            if code_quality < 40 or any(
+                issue.get("severity") == "critical" for issue in issues
+            ):
                 response["approval_status"] = "rejected"
             elif code_quality < 80 or issues:
                 response["approval_status"] = "needs_revision"
             else:
                 response["approval_status"] = "approved"
-                
+
         # Add performance analysis if this is a performance-focused review
         if is_performance_review:
             # Add performance-specific issues if not already present
             has_performance_issue = False
             for issue in issues:
-                if issue.get("category") == "performance" or "performance" in issue.get("description", "").lower():
+                if (
+                    issue.get("category") == "performance"
+                    or "performance" in issue.get("description", "").lower()
+                ):
                     has_performance_issue = True
                     break
-            
+
             if not has_performance_issue:
                 # Add a generic performance issue
-                issues.append({
-                    "severity": "medium",
-                    "description": "Potential performance bottleneck detected",
-                    "category": "performance",
-                    "file": next(iter(source_code.keys()), "unknown")
-                })
+                issues.append(
+                    {
+                        "severity": "medium",
+                        "description": "Potential performance bottleneck detected",
+                        "category": "performance",
+                        "file": next(iter(source_code.keys()), "unknown"),
+                    }
+                )
                 recommendations.append("Consider optimizing critical code paths")
-            
+
             # Add performance analysis section
             response["performance_analysis"] = {
                 "bottlenecks": [
                     "Inefficient algorithm complexity",
-                    "Redundant computations"
+                    "Redundant computations",
                 ],
                 "optimization_suggestions": [
                     "Use memoization for repeated calculations",
-                    "Consider parallel processing for independent operations"
+                    "Consider parallel processing for independent operations",
                 ],
-                "estimated_improvement": "30-50%"
+                "estimated_improvement": "30-50%",
             }
-        
+
         # Add security assessment if security issues were found or if this is a security review
-        if any(issue.get("severity") in ["high", "critical"] for issue in issues) or is_security_review:
+        if (
+            any(issue.get("severity") in ["high", "critical"] for issue in issues)
+            or is_security_review
+        ):
             response["security_assessment"] = {
                 "vulnerabilities": [
                     "Potential code injection",
-                    "Unsafe execution of user input"
+                    "Unsafe execution of user input",
                 ],
                 "risk_level": "critical",
-                "remediation_priority": "immediate"
+                "remediation_priority": "immediate",
             }
-        
+
         return response
 
-    async def process_test_agent(
-        self, message_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_test_agent(self, message_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process test agent message."""
         # Extract request_id first for error handling
         request_id = message_data.get("request_id", "unknown")
-        
+
         # Check for LLM error simulation
-        if message_data.get("simulate_error") == "true" or request_id == "error-test-123":
+        if (
+            message_data.get("simulate_error") == "true"
+            or request_id == "error-test-123"
+        ):
             return {
                 "request_id": request_id,
                 "error": "LLM service unavailable",
                 "error_code": 504,
-                "status": "error"
+                "status": "error",
             }
-        
+
         # Extract source code from message
         source_code = message_data.get("source_code", {})
-        
+
         # Handle case where source_code is a JSON string
         if isinstance(source_code, str):
             try:
@@ -534,61 +579,84 @@ class AgentWorker:
             except json.JSONDecodeError:
                 # If it's not valid JSON, create a single-file dict
                 source_code = {"code.py": source_code}
-        
+
         # Ensure source_code is a dictionary
         if not isinstance(source_code, dict):
             source_code = {}
-            
+
         # For comprehensive testing request
         is_comprehensive = False
-        if message_data.get("test_requirements", {}) or request_id == "comprehensive-test-789":
+        if (
+            message_data.get("test_requirements", {})
+            or request_id == "comprehensive-test-789"
+        ):
             is_comprehensive = True
-            
+
         # Handle performance focus
         is_performance_focused = False
-        if request_id == "performance-test-999" or message_data.get("performance_requirements", {}):
+        if request_id == "performance-test-999" or message_data.get(
+            "performance_requirements", {}
+        ):
             is_performance_focused = True
-            
+
         # Check for test failures simulation
         has_failures = False
         if request_id == "test-failures-456" or "buggy_code.py" in source_code:
             has_failures = True
-            
+
         # Generate test files based on source code
         test_files = {}
         for file_name, content in source_code.items():
-            test_file_name = f"test_{file_name}" if not file_name.startswith("test_") else file_name
+            test_file_name = (
+                f"test_{file_name}" if not file_name.startswith("test_") else file_name
+            )
             if "main.py" in file_name or "api" in file_name:
-                test_files[test_file_name] = f"from fastapi.testclient import TestClient\nfrom {file_name.replace('.py', '')} import app\n\nclient = TestClient(app)\n\ndef test_read_root():\n    response = client.get('/')\n    assert response.status_code == 200"
+                test_files[
+                    test_file_name
+                ] = f"from fastapi.testclient import TestClient\nfrom {file_name.replace('.py', '')} import app\n\nclient = TestClient(app)\n\ndef test_read_root():\n    response = client.get('/')\n    assert response.status_code == 200"
             elif "service" in file_name:
-                test_files[test_file_name] = f"import pytest\nfrom {file_name.replace('.py', '')} import *\n\ndef test_service_functions():\n    # Basic unit tests\n    assert True"
+                test_files[
+                    test_file_name
+                ] = f"import pytest\nfrom {file_name.replace('.py', '')} import *\n\ndef test_service_functions():\n    # Basic unit tests\n    assert True"
             else:
-                test_files[test_file_name] = f"import pytest\n\ndef test_functions():\n    # Test for {file_name}\n    assert True"
-        
+                test_files[
+                    test_file_name
+                ] = f"import pytest\n\ndef test_functions():\n    # Test for {file_name}\n    assert True"
+
         # If no test files were generated, provide a default one
         if not test_files:
             test_files = {
                 "test_main.py": "import pytest\n\ndef test_example():\n    assert True"
             }
-            
+
         # Generate test coverage data
         coverage_percentage = 90 if not has_failures else 60
-        total_lines = sum(len(content.split('\n')) for content in source_code.values()) if source_code else 50
+        total_lines = (
+            sum(len(content.split("\n")) for content in source_code.values())
+            if source_code
+            else 50
+        )
         covered_lines = int(total_lines * coverage_percentage / 100)
-        
+
         # Generate test results
         passed_tests = 8 if not has_failures else 5
         failed_tests = 0 if not has_failures else 3
         total_tests = passed_tests + failed_tests
-        
+
         # Create failures list if needed
         failures = []
         if has_failures:
             failures = [
-                {"test_name": "test_user_creation", "error": "AssertionError: Email validation failed"},
-                {"test_name": "test_payment_processing", "error": "ValueError: Invalid card token"}
+                {
+                    "test_name": "test_user_creation",
+                    "error": "AssertionError: Email validation failed",
+                },
+                {
+                    "test_name": "test_payment_processing",
+                    "error": "ValueError: Invalid card token",
+                },
             ]
-            
+
         # Create basic response with core fields expected by all tests
         response = {
             "request_id": request_id,
@@ -596,25 +664,22 @@ class AgentWorker:
             "test_coverage": {
                 "percentage": coverage_percentage,
                 "covered_lines": covered_lines,
-                "total_lines": total_lines
+                "total_lines": total_lines,
             },
             "test_results": {
                 "passed": passed_tests,
                 "failed": failed_tests,
-                "total": total_tests
+                "total": total_tests,
             },
-            "performance_tests": {
-                "load_test": "passed",
-                "stress_test": "passed"
-            },
-            "status": "completed"
+            "performance_tests": {"load_test": "passed", "stress_test": "passed"},
+            "status": "completed",
         }
-        
+
         # Add failures if there are any
         if failures:
             response["test_results"]["failures"] = failures
             response["performance_tests"]["stress_test"] = "failed"
-        
+
         # Add performance metrics for performance-focused testing
         if is_performance_focused:
             response["performance_tests"] = {
@@ -622,59 +687,53 @@ class AgentWorker:
                     "status": "passed",
                     "max_concurrent_users": 100,
                     "avg_response_time": 0.25,
-                    "throughput_rps": 400
+                    "throughput_rps": 400,
                 },
                 "stress_test": {
-                    "status": "passed", 
+                    "status": "passed",
                     "breaking_point": 500,
-                    "memory_usage_mb": 256
+                    "memory_usage_mb": 256,
                 },
                 "endurance_test": {
                     "status": "passed",
                     "duration_minutes": 30,
-                    "memory_leak_detected": False
-                }
+                    "memory_leak_detected": False,
+                },
             }
-            
+
         # Add additional fields for comprehensive testing
         if is_comprehensive:
             response["integration_tests"] = {
                 "api_tests": {
                     "status": "passed",
                     "coverage": 85,
-                    "endpoints_tested": 4
+                    "endpoints_tested": 4,
                 },
-                "database_tests": {
-                    "status": "passed",
-                    "queries_tested": 6
-                }
+                "database_tests": {"status": "passed", "queries_tested": 6},
             }
             response["security_tests"] = {
                 "vulnerabilities_found": 0,
                 "injection_tests": "passed",
                 "xss_tests": "passed",
-                "csrf_tests": "passed"
+                "csrf_tests": "passed",
             }
             # Ensure high coverage for comprehensive testing
             response["test_coverage"]["percentage"] = 85
-            
+
         # Add CI/CD config if requested
         if message_data.get("ci_cd_requirements") or request_id == "cicd-test-777":
             response["ci_cd_config"] = {
                 "github_actions": {
                     "workflow_file": ".github/workflows/test.yml",
-                    "content": "name: Tests\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v2\n      - run: pytest"
+                    "content": "name: Tests\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v2\n      - run: pytest",
                 },
                 "test_commands": [
                     "pytest --cov=src --cov-report=xml",
-                    "pytest --benchmark-only"
+                    "pytest --benchmark-only",
                 ],
-                "quality_gates": {
-                    "min_coverage": 80,
-                    "max_test_duration": 300
-                }
+                "quality_gates": {"min_coverage": 80, "max_test_duration": 300},
             }
-            
+
         # Serialize complex fields to JSON strings before returning
         serialized_response = {}
         for key, value in response.items():
@@ -682,7 +741,7 @@ class AgentWorker:
                 serialized_response[key] = json.dumps(value)
             else:
                 serialized_response[key] = value
-                
+
         return serialized_response
 
     async def run_worker_loop(self):

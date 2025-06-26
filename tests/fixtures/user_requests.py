@@ -53,6 +53,7 @@ TEST_AGENT_REQUESTS = [
     "Write performance tests for this database query function",
 ]
 
+
 # Sample user request data structures
 def generate_user_request_data() -> List[Dict]:
     """Generate sample user request data for testing."""
@@ -64,7 +65,7 @@ def generate_user_request_data() -> List[Dict]:
             "complexity": "medium",
             "timestamp": "2025-01-01T12:00:00Z",
             "tags": ["api", "crud", "books"],
-            "priority": "normal"
+            "priority": "normal",
         },
         {
             "id": "req_002",
@@ -73,7 +74,7 @@ def generate_user_request_data() -> List[Dict]:
             "complexity": "complex",
             "timestamp": "2025-01-01T12:05:00Z",
             "tags": ["realtime", "websocket", "chat"],
-            "priority": "high"
+            "priority": "high",
         },
         {
             "id": "req_003",
@@ -82,9 +83,10 @@ def generate_user_request_data() -> List[Dict]:
             "complexity": "simple",
             "timestamp": "2025-01-01T12:10:00Z",
             "tags": ["validation", "email", "utility"],
-            "priority": "low"
-        }
+            "priority": "low",
+        },
     ]
+
 
 # Request variations for testing edge cases
 EDGE_CASE_REQUESTS = [

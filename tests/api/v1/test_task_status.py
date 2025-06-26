@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.main import app
 from src.api.dependencies import get_orchestrator
+from src.api.main import app
 
 
 @pytest.fixture
@@ -28,17 +28,17 @@ def mock_orchestrator():
             "workflow_id": "pending-workflow",
             "results": None,
             "execution_summary": None,
-            "error": None
+            "error": None,
         },
         "completed-workflow": {
             "status": "completed",
-            "workflow_id": "completed-workflow", 
+            "workflow_id": "completed-workflow",
             "results": {"output": "Workflow completed successfully"},
             "execution_summary": {
                 "started_at": "2025-01-01T00:00:00Z",
-                "completed_at": "2025-01-01T00:05:00Z"
+                "completed_at": "2025-01-01T00:05:00Z",
             },
-            "error": None
+            "error": None,
         },
         # Default response for any other workflow ID
         "default": {
@@ -46,13 +46,15 @@ def mock_orchestrator():
             "workflow_id": "nonexistent-task",
             "results": None,
             "execution_summary": None,
-            "error": "Workflow not found"
+            "error": "Workflow not found",
         },
     }
 
     # Use AsyncMock's side_effect to implement different return values based on input
     async def side_effect(workflow_id):
-        return workflow_status_responses.get(workflow_id, workflow_status_responses["default"])
+        return workflow_status_responses.get(
+            workflow_id, workflow_status_responses["default"]
+        )
 
     # Create a dedicated mock for get_workflow_status with the side_effect
     mock.get_workflow_status = AsyncMock(side_effect=side_effect)
@@ -84,10 +86,10 @@ def client(mock_orchestrator):
 
 def test_task_status_endpoint_exists(client):
     """Test that the task status endpoints are properly set up.
-    
+
     Note: The task-status endpoint is marked as deprecated in the router,
     and the workflow-status endpoint is the preferred replacement.
-    
+
     This test verifies that we can access the API status functionality
     through at least one of these endpoints correctly.
     """
@@ -95,7 +97,7 @@ def test_task_status_endpoint_exists(client):
     # Even if it's a 404 for a non-existent workflow, we should get a proper
     # JSON response with an error message, not a route-not-found 404
     response = client.get("/api/v1/workflow-status/some-id")
-    
+
     # Check that we get a JSON response (indicating the endpoint exists)
     # The response for a non-existent workflow would be a 404, but with JSON content
     try:
@@ -105,9 +107,12 @@ def test_task_status_endpoint_exists(client):
     except ValueError:
         # If we can't parse JSON, the test failed
         assert False, "Endpoint should return valid JSON response"
-    
+
     # Verify we get either a proper error response or a workflow status
-    assert response.status_code in [200, 404], f"Expected status code 200 or 404, got {response.status_code}"
+    assert response.status_code in [
+        200,
+        404,
+    ], f"Expected status code 200 or 404, got {response.status_code}"
 
 
 def test_task_status_not_found(client, mock_orchestrator):
@@ -123,20 +128,24 @@ def test_task_status_pending(client, mock_orchestrator):
     """Test task status endpoint with pending task."""
     response = client.get("/api/v1/task-status/pending-workflow")
     assert response.status_code == 200, "Should return 200 for existing pending task"
-    
+
     data = response.json()
     assert data["status"] == "running", "Status should be running for pending task"
-    assert data["workflow_id"] == "pending-workflow", "Should return correct workflow ID"
+    assert (
+        data["workflow_id"] == "pending-workflow"
+    ), "Should return correct workflow ID"
 
 
 def test_task_status_completed(client, mock_orchestrator):
     """Test task status endpoint with completed task."""
     response = client.get("/api/v1/task-status/completed-workflow")
     assert response.status_code == 200, "Should return 200 for completed task"
-    
+
     data = response.json()
     assert data["status"] == "completed", "Status should be completed"
-    assert data["workflow_id"] == "completed-workflow", "Should return correct workflow ID"
+    assert (
+        data["workflow_id"] == "completed-workflow"
+    ), "Should return correct workflow ID"
     assert "results" in data, "Should include results for completed task"
     assert data["results"] is not None, "Results should not be None"
     assert "output" in data["results"], "Results should contain output"

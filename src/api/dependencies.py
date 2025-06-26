@@ -65,9 +65,7 @@ async def initialize_orchestrator() -> LangGraphOrchestrator:
 
     # Create the LangGraph orchestrator instance
     orchestrator = LangGraphOrchestrator(
-        openai_api_key=openai_api_key,
-        enable_checkpointing=True,
-        max_retries=3
+        openai_api_key=openai_api_key, enable_checkpointing=True, max_retries=3
     )
 
     logger.info(f"Created LangGraph orchestrator instance: {id(orchestrator)}")

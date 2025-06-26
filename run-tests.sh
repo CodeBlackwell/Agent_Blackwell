@@ -46,10 +46,10 @@ print_usage() {
 setup_environment() {
     echo -e "${YELLOW}Starting test environment...${NC}"
     docker compose -f $COMPOSE_FILE up -d
-    
+
     echo -e "${YELLOW}Waiting for services to be ready...${NC}"
     sleep 5
-    
+
     echo -e "${GREEN}Test environment is ready!${NC}"
     docker compose -f $COMPOSE_FILE ps
 }
@@ -138,13 +138,13 @@ check_prerequisites() {
         echo -e "${RED}Error: Docker is not installed or not in PATH${NC}"
         exit 1
     fi
-    
+
     if ! docker compose version &> /dev/null; then
         echo -e "${RED}Error: Docker Compose is not available${NC}"
         echo "Make sure you have Docker Compose V2 installed"
         exit 1
     fi
-    
+
     if [ ! -f $COMPOSE_FILE ]; then
         echo -e "${RED}Error: $COMPOSE_FILE not found${NC}"
         echo "Make sure you're running this script from the project root"

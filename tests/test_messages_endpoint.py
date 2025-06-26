@@ -25,7 +25,7 @@ def test_get_all_messages(mock_get_redis):
             ("2-0", {"field2": "value2"}),
         ],
         # Second call: workflow metrics stream (empty for this test)
-        []
+        [],
     ]
     mock_get_redis.return_value = mock_redis
 
@@ -77,7 +77,7 @@ def test_get_messages_with_task_filter(mock_get_redis):
             ("3-0", {"result": '{"task_id": "task-456", "output": "result"}'}),
         ],
         # Workflow metrics stream (empty)
-        []
+        [],
     ]
     mock_get_redis.return_value = mock_redis
 
@@ -102,7 +102,7 @@ def test_get_messages_with_workflow_filter(mock_get_redis):
         [
             ("1-0", {"workflow_id": "workflow-123", "event_type": "started"}),
             ("2-0", {"workflow_id": "workflow-456", "event_type": "completed"}),
-        ]
+        ],
     ]
     mock_get_redis.return_value = mock_redis
 
@@ -140,15 +140,22 @@ def test_filter_messages_by_task_id(mock_get_redis):
     mock_redis.xrange.side_effect = [
         # Legacy stream
         [
-            ("1-0", {"task": json.dumps({"task_id": target_task_id, "task_type": "spec"})}),
+            (
+                "1-0",
+                {"task": json.dumps({"task_id": target_task_id, "task_type": "spec"})},
+            ),
             ("2-0", {"task": json.dumps({"task_id": "xyz789", "task_type": "design"})}),
             (
                 "3-0",
-                {"result": json.dumps({"task_id": target_task_id, "status": "complete"})},
+                {
+                    "result": json.dumps(
+                        {"task_id": target_task_id, "status": "complete"}
+                    )
+                },
             ),
         ],
         # Workflow metrics stream (empty)
-        []
+        [],
     ]
     mock_get_redis.return_value = mock_redis
 

@@ -101,6 +101,9 @@ class BaseAgentIntegrationTest:
     @pytest.fixture
     async def agent_worker(self, redis_client):
         """Start the agent worker in the background during integration tests."""
+        # Clear Redis streams before starting worker to ensure clean state
+        await self.clear_redis_streams(redis_client)
+
         # Create worker instance
         worker = AgentWorker(redis_host="redis-test", redis_port=6379)
 
@@ -131,35 +134,57 @@ class BaseAgentIntegrationTest:
                     pass
             await worker.stop()
 
+    async def clear_redis_streams(self, redis_client: redis.Redis) -> None:
+        """Clear all agent streams to ensure test isolation."""
+        # Define all agent stream names
+        agent_types = [
+            "spec_agent",
+            "design_agent",
+            "coding_agent",
+            "review_agent",
+            "test_agent",
+        ]
+        stream_types = ["input", "output"]
+
+        for agent_type in agent_types:
+            for stream_type in stream_types:
+                stream_name = f"agent:{agent_type}:{stream_type}"
+                try:
+                    # Delete the entire stream (removes all messages)
+                    await redis_client.delete(stream_name)
+                except Exception as e:
+                    # Ignore errors if stream doesn't exist
+                    pass
+
     async def setup_mock_llm_response(
         self, content: str, status_code: int = 200
     ) -> AsyncMock:
         """Setup a mock LLM API response."""
         mock_response = AsyncMock()
         mock_response.status = status_code
-        mock_response.json = AsyncMock(
-            return_value={
-                "id": "mock-completion-id",
-                "object": "chat.completion",
-                "created": 1677858242,
-                "model": "gpt-3.5-turbo-test",
-                "usage": {
-                    "prompt_tokens": 13,
-                    "completion_tokens": len(content) // 4,
-                    "total_tokens": len(content) // 4 + 13,
-                },
-                "choices": [
-                    {
-                        "message": {"role": "assistant", "content": content},
-                        "finish_reason": "stop",
-                        "index": 0,
-                    }
-                ],
-            }
-        )
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(await mock_response.json())
-        )
+
+        # Create the response data structure
+        response_data = {
+            "id": "mock-completion-id",
+            "object": "chat.completion",
+            "created": 1677858242,
+            "model": "gpt-3.5-turbo-test",
+            "usage": {
+                "prompt_tokens": 13,
+                "completion_tokens": len(content) // 4,
+                "total_tokens": len(content) // 4 + 13,
+            },
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": content},
+                    "finish_reason": "stop",
+                    "index": 0,
+                }
+            ],
+        }
+
+        mock_response.json = AsyncMock(return_value=response_data)
+        mock_response.text = AsyncMock(return_value=json.dumps(response_data))
         return mock_response
 
     async def publish_to_agent_stream(
@@ -175,8 +200,31 @@ class BaseAgentIntegrationTest:
         Returns:
             Message ID in Redis stream
         """
-        stream_name = f"agent:{agent_type}:input"
-        message_id = await redis_client.xadd(stream_name, message)
+        # Map short agent names to full agent worker stream names
+        agent_type_mapping = {
+            "spec": "spec_agent",
+            "design": "design_agent",
+            "coding": "coding_agent",
+            "review": "review_agent",
+            "test": "test_agent",
+        }
+
+        # Use the full agent name for stream naming
+        full_agent_type = agent_type_mapping.get(agent_type, agent_type)
+        stream_name = f"agent:{full_agent_type}:input"
+
+        # Serialize complex fields for Redis stream storage
+        # Redis streams can only store string values
+        serialized_message = {}
+        for key, value in message.items():
+            if isinstance(value, (dict, list)):
+                # Serialize complex objects as JSON strings
+                serialized_message[key] = json.dumps(value)
+            else:
+                # Keep simple values as strings
+                serialized_message[key] = str(value)
+
+        message_id = await redis_client.xadd(stream_name, serialized_message)
         return message_id
 
     async def wait_for_agent_output(
@@ -192,7 +240,18 @@ class BaseAgentIntegrationTest:
         Returns:
             Tuple of (message_id, message_data) or (None, None) if timeout
         """
-        stream_name = f"agent:{agent_type}:output"
+        # Map short agent names to full agent worker stream names
+        agent_type_mapping = {
+            "spec": "spec_agent",
+            "design": "design_agent",
+            "coding": "coding_agent",
+            "review": "review_agent",
+            "test": "test_agent",
+        }
+
+        # Use the full agent name for stream naming
+        full_agent_type = agent_type_mapping.get(agent_type, agent_type)
+        stream_name = f"agent:{full_agent_type}:output"
         start_time = asyncio.get_event_loop().time()
 
         while asyncio.get_event_loop().time() - start_time < timeout:

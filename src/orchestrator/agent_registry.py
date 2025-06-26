@@ -173,7 +173,7 @@ class AgentRegistry:
         """Initialize all agents in the system."""
         # Initialize the Spec Agent
         spec_agent = SpecAgent(openai_api_key=self.openai_api_key)
-        self.register_agent("spec", spec_agent)
+        self.register_agent("spec_agent", spec_agent)
 
         # Initialize the Design Agent
         self.register_design_agent()
@@ -193,7 +193,7 @@ class AgentRegistry:
         """Register the Design Agent with the registry."""
         try:
             design_agent = DesignAgent(openai_api_key=self.openai_api_key)
-            self.register_agent("design", design_agent)
+            self.register_agent("design_agent", design_agent)
             logger.info("Design Agent registered successfully")
         except Exception as e:
             logger.error(f"Failed to register Design Agent: {e}")
@@ -203,7 +203,7 @@ class AgentRegistry:
         """Register the Coding Agent with the registry."""
         try:
             coding_agent = CodingAgent(openai_api_key=self.openai_api_key)
-            self.register_agent("coding", coding_agent)
+            self.register_agent("coding_agent", coding_agent)
             logger.info("Coding Agent registered successfully")
         except Exception as e:
             logger.error(f"Failed to register Coding Agent: {e}")
@@ -213,7 +213,7 @@ class AgentRegistry:
         """Register the Review Agent with the registry."""
         try:
             review_agent = ReviewAgent(openai_api_key=self.openai_api_key)
-            self.register_agent("review", review_agent)
+            self.register_agent("review_agent", review_agent)
             logger.info("Review Agent registered successfully")
         except Exception as e:
             logger.error(f"Failed to register Review Agent: {e}")
@@ -223,7 +223,7 @@ class AgentRegistry:
         """Register the Test Agent with the registry."""
         try:
             test_agent = TestGeneratorAgent(openai_api_key=self.openai_api_key)
-            self.register_agent("test", test_agent)
+            self.register_agent("test_agent", test_agent)
             logger.info("Test Agent registered successfully")
         except Exception as e:
             logger.error(f"Failed to register Test Agent: {e}")
@@ -238,15 +238,15 @@ class AgentRegistry:
             agent: Agent instance to register
         """
         # Create the appropriate wrapper based on agent type
-        if agent_name == "spec":
+        if agent_name == "spec_agent":
             self.agents[agent_name] = SpecAgentWrapper(agent)
-        elif agent_name == "design":
+        elif agent_name == "design_agent":
             self.agents[agent_name] = DesignAgentWrapper(agent)
-        elif agent_name == "coding":
+        elif agent_name == "coding_agent":
             self.agents[agent_name] = CodingAgentWrapper(agent)
-        elif agent_name == "review":
+        elif agent_name == "review_agent":
             self.agents[agent_name] = ReviewAgentWrapper(agent)
-        elif agent_name == "test":
+        elif agent_name == "test_agent":
             self.agents[agent_name] = TestAgentWrapper(agent)
         else:
             # Generic registration for other agent types

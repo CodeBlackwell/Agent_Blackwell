@@ -114,9 +114,8 @@ class ReviewAgentWrapper:
         code_to_review = task.get("code", "")
         requirements = task.get("requirements", "")
 
-        review_result = await self.review_agent.review_code(
-            code=code_to_review, requirements=requirements
-        )
+        # Pass code_to_review as the code_files parameter (matches ReviewAgent.review_code signature)
+        review_result = await self.review_agent.review_code(code_to_review)
 
         return {
             "task_id": task.get("task_id"),

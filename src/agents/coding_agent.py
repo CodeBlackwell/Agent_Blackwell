@@ -52,13 +52,21 @@ class CodingAgent:
             with open(prompt_path, "r") as f:
                 prompt_content = f.read()
 
+            # Update the prompt template to match our coding_agent_prompt.txt format
+            # The prompt doesn't actually use '{files}' but needs our input variables
+            # Modify the prompt template to work with our inputs
+            modified_prompt = (
+                prompt_content
+                + "\n\nTask Description: {task_description}\n\nDesign Specs: {design_specs}\n\nArchitecture Diagram: {architecture_diagram}"
+            )
+
             self.prompt_template = PromptTemplate(
                 input_variables=[
                     "task_description",
                     "design_specs",
                     "architecture_diagram",
                 ],
-                template=prompt_content,
+                template=modified_prompt,
             )
 
             # Create chain using the RunnableSequence pattern (prompt | llm)

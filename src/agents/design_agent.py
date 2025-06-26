@@ -125,8 +125,15 @@ class DesignAgent:
                 }
             )
 
-            # Extract the content from the result
-            content = result["text"]
+            # Extract the content from the AIMessage result object
+            # AIMessage objects aren't subscriptable, need to access content correctly
+            if hasattr(result, "content"):
+                content = result.content
+            elif isinstance(result, dict) and "text" in result:
+                content = result["text"]
+            else:
+                # Fallback to string representation if neither approach works
+                content = str(result)
 
             # Parse the content to extract diagrams and API contract
             # This is a simplified version - in a real implementation, we would need

@@ -15,3 +15,4 @@ description: Create modular, atomic git commits by reviewing file changes, organ
 - After all groups:
   - Show `git log --oneline` to verify clean history
   - Append commit summary and reasoning to `blog_notes.md`
+  - Git commit with summary message blog_notes.md

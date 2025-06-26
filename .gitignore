@@ -46,6 +46,7 @@ coverage.xml
 # Logs
 logs/
 *.log
+test_logs/
 
 # OS specific files
 .DS_Store

@@ -100,8 +100,10 @@ class TestTaskRouting:
         mock_agent = orchestrator_client.agents["spec"]
         mock_agent.ainvoke.return_value = {
             "status": "completed",
-            "result": "Test specification generated successfully",
-            "artifacts": ["spec.md", "requirements.txt"],
+            "result": {
+                "message": "Test specification generated successfully",
+                "artifacts": ["spec.md", "requirements.txt"],
+            },
         }
 
         # Create and process a task
@@ -127,25 +129,36 @@ class TestTaskRouting:
         # Verify agent was called with correct parameters
         mock_agent.ainvoke.assert_called_once()
         call_args = mock_agent.ainvoke.call_args[0][0]
-        # Agent receives task_data structure with description rather than input field
-        assert call_args.get("description") == "Create API specification"
+        # Access description from task_data as it's nested in the actual implementation
+        description = None
+        if "task_data" in call_args and "description" in call_args["task_data"]:
+            description = call_args["task_data"]["description"]
+        elif "description" in call_args:
+            description = call_args["description"]
+        assert description == "Create API specification"
 
     async def test_agent_coordination_workflow(self, orchestrator_client):
         """Test multi-agent workflow coordination."""
         # Mock agents with different response types
         spec_result = {
             "status": "completed",
-            "result": "API specification created",
-            "next_agent": "design",
+            "result": {
+                "message": "API specification created",
+                "next_agent": "design",
+            },
         }
         design_result = {
             "status": "completed",
-            "result": "System design completed",
-            "next_agent": "coding",
+            "result": {
+                "message": "System design completed",
+                "next_agent": "coding",
+            },
         }
         coding_result = {
             "status": "completed",
-            "result": "Code implementation finished",
+            "result": {
+                "message": "Code implementation finished",
+            },
         }
 
         orchestrator_client.agents["spec"].ainvoke.return_value = spec_result
@@ -237,7 +250,7 @@ class TestErrorHandling:
         mock_agent = orchestrator_client.agents["spec"]
         mock_agent.ainvoke.side_effect = [
             Exception("Temporary failure"),
-            {"status": "completed", "result": "Success on retry"},
+            {"status": "completed", "result": {"message": "Success on retry"}},
         ]
 
         task_data = {
@@ -270,7 +283,10 @@ class TestPerformanceAndConcurrency:
             await asyncio.sleep(0.1)  # Simulate work
             # Access task_data which includes the description field
             input_value = input_data.get("description", "") if input_data else ""
-            return {"status": "completed", "result": f"Processed: {input_value}"}
+            return {
+                "status": "completed",
+                "result": {"message": f"Processed: {input_value}"},
+            }
 
         for agent_name in ["spec", "design", "coding"]:
             orchestrator_client.agents[agent_name].ainvoke.side_effect = mock_agent_work

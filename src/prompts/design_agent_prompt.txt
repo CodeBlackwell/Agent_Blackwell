@@ -19,6 +19,6 @@ For API contracts, include:
 
 Ensure your diagrams are clear, concise, and accurately represent the system described in the task. Use proper Mermaid syntax that can be rendered in Markdown.
 
-Task Description: {task_description}
+Task Description: {{task_description}}
 
-Additional Context: {additional_context}
+Additional Context: {{additional_context}}

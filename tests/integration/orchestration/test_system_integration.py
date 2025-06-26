@@ -82,6 +82,7 @@ class TestEndToEndWorkflows:
             "platform": "slack",
             "user_id": "product_manager",
             "channel_id": "development",
+            "timestamp": datetime.now().isoformat(),
         }
 
         response = client_with_mock_orchestrator.post(

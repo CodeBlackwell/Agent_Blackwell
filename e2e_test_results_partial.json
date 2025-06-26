@@ -1,0 +1,19 @@
+{
+  "timestamp": "2025-06-25T22:36:48.474097",
+  "total_tests_run": 1,
+  "results": {
+    "passed": [
+      {
+        "test": "Health Check",
+        "passed": true,
+        "timestamp": 1750905406.471067,
+        "details": {}
+      }
+    ],
+    "failed": []
+  },
+  "summary": {
+    "passed": 1,
+    "failed": 0
+  }
+}

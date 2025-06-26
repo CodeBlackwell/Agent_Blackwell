@@ -1,0 +1,120 @@
+services:
+  # Test application service
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: agent-blackwell-app-test
+    restart: unless-stopped
+    ports:
+      - "8001:8000"  # Different port from production to avoid conflicts
+    environment:
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - PINECONE_API_KEY=test-api-key
+      - OPENAI_API_KEY=test-api-key
+      - ENVIRONMENT=test
+    volumes:
+      - .:/app
+    depends_on:
+      - redis-test
+      - mockapi
+      - mock-vector-db
+    networks:
+      - test-network
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Redis service for test environment
+  redis-test:
+    image: redis:7-alpine
+    container_name: agent-blackwell-redis-test
+    restart: unless-stopped
+    ports:
+      - "6380:6379"  # Different port from production to avoid conflicts
+    volumes:
+      - redis-test-data:/data
+    networks:
+      - test-network
+    command: redis-server --appendonly yes --protected-mode no --loglevel warning
+
+  # Mock OpenAI API service using Wiremock
+  mockapi:
+    image: wiremock/wiremock:2.35.0
+    container_name: agent-blackwell-mockapi
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tests/mocks/openai:/home/wiremock/mappings
+    networks:
+      - test-network
+    command: --verbose
+
+  # Mock Vector Database (Pinecone alternative for testing)
+  mock-vector-db:
+    image: python:3.11-slim
+    container_name: agent-blackwell-mock-vector-db
+    restart: unless-stopped
+    ports:
+      - "5001:5000"  # Changed from 5000:5000 to avoid port conflicts
+    volumes:
+      - .:/app
+      - ./tests/mocks/vector_db:/app/vector_db
+    networks:
+      - test-network
+    working_dir: /app
+    command: >
+      bash -c "pip install -q flask numpy && 
+              python tests/mocks/vector_db/server.py"
+
+  # Test runner for integration tests
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: agent-blackwell-test-runner
+    volumes:
+      - .:/app
+    environment:
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - PINECONE_API_KEY=test-api-key
+      - OPENAI_API_KEY=test-api-key
+      - MOCK_API_URL=http://mockapi:8080
+      - VECTOR_DB_URL=http://mock-vector-db:5001
+      - ENVIRONMENT=test
+    networks:
+      - test-network
+    depends_on:
+      - app-test
+      - redis-test
+      - mockapi
+      - mock-vector-db
+    command: pytest -xvs tests/ --integration
+
+  # Agent worker for integration tests
+  agent-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: agent-blackwell-agent-worker
+    volumes:
+      - .:/app
+    environment:
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=test-api-key
+      - ENVIRONMENT=test
+    networks:
+      - test-network
+    depends_on:
+      - redis-test
+    command: python tests/workers/agent_worker.py
+    restart: unless-stopped
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  redis-test-data:

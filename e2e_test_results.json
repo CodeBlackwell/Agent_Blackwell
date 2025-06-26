@@ -1,0 +1,154 @@
+{
+  "passed": [
+    {
+      "test": "Health Check",
+      "passed": true,
+      "timestamp": 1750899901.5775511,
+      "details": {}
+    },
+    {
+      "test": "Feature Request Creation",
+      "passed": true,
+      "timestamp": 1750899903.587172,
+      "details": {
+        "description": "Create a data visualization dashboard using pandas and matplotlib",
+        "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+        "response": {
+          "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+          "status": "processing"
+        }
+      }
+    },
+    {
+      "test": "Workflow Status Check",
+      "passed": true,
+      "timestamp": 1750899908.592243,
+      "details": {
+        "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+        "response": {
+          "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+          "status": "unknown",
+          "results": null,
+          "execution_summary": null,
+          "error": null
+        }
+      }
+    },
+    {
+      "test": "Legacy Task Status",
+      "passed": true,
+      "timestamp": 1750899910.600389,
+      "details": {
+        "task_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+        "response": {
+          "workflow_id": "c7cce971-acd8-4ef4-a3d9-00befd463e8d",
+          "status": "unknown",
+          "results": null,
+          "execution_summary": null,
+          "error": null
+        }
+      }
+    },
+    {
+      "test": "Synchronous Workflow Execution",
+      "passed": true,
+      "timestamp": 1750899931.124716,
+      "details": {
+        "description": "Write a simple 'Hello World' function in Python",
+        "response": {
+          "workflow_id": "6a9a3160-1895-4f20-a7c0-55b22b616a62",
+          "status": "failed",
+          "results": {
+            "spec_tasks": [
+              {
+                "task_id": "T-001",
+                "title": "Analyze user request",
+                "description": "Analyze the user's request for a 'Hello World' function in Python and identify the requirements",
+                "priority": "high",
+                "estimated_hours": 0.5,
+                "dependencies": [],
+                "assignee": "spec_agent"
+              },
+              {
+                "task_id": "T-002",
+                "title": "Design function structure",
+                "description": "Design the structure of the 'Hello World' function, including the function name, parameters (if any), and return type",
+                "priority": "medium",
+                "estimated_hours": 0.5,
+                "dependencies": [
+                  "T-001"
+                ],
+                "assignee": "design_agent"
+              },
+              {
+                "task_id": "T-003",
+                "title": "Write 'Hello World' function",
+                "description": "Write the 'Hello World' function in Python based on the designed structure",
+                "priority": "high",
+                "estimated_hours": 0.5,
+                "dependencies": [
+                  "T-002"
+                ],
+                "assignee": "coding_agent"
+              },
+              {
+                "task_id": "T-004",
+                "title": "Review 'Hello World' function",
+                "description": "Review the written 'Hello World' function to ensure it meets the user's request and follows Python coding standards",
+                "priority": "high",
+                "estimated_hours": 0.5,
+                "dependencies": [
+                  "T-003"
+                ],
+                "assignee": "review_agent"
+              },
+              {
+                "task_id": "T-005",
+                "title": "Test 'Hello World' function",
+                "description": "Test the 'Hello World' function to ensure it works as expected and doesn't have any bugs",
+                "priority": "high",
+                "estimated_hours": 0.5,
+                "dependencies": [
+                  "T-004"
+                ],
+                "assignee": "test_agent"
+              }
+            ],
+            "design_specs": "As an AI, I need specific task description and additional context to generate a Mermaid diagram and an API contract. Please provide the details about the system or process that you want to visualize or the API that you need to define. For example, you can provide information about a user registration system, an e-commerce platform, a blog management system, etc.",
+            "code_result": {
+              "files": [],
+              "explanation": "Error generating code: 'Input to PromptTemplate is missing variables {\\'\\\\n  \"files\"\\'}.  Expected: [\\'\\\\n  \"files\"\\', \\'architecture_diagram\\', \\'design_specs\\', \\'task_description\\'] Received: [\\'task_description\\', \\'design_specs\\', \\'architecture_diagram\\']\\nNote: if you intended {\\n  \"files\"} to be part of the string and not a variable, please escape it with double curly braces like: \\'{{\\n  \"files\"}}\\'.\\nFor troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/INVALID_PROMPT_INPUT '"
+            },
+            "review_feedback": null,
+            "test_results": null
+          },
+          "execution_summary": {
+            "completed_agents": [
+              "spec",
+              "design",
+              "coding"
+            ],
+            "failed_agents": [
+              "review"
+            ],
+            "error_messages": [
+              "review: ReviewAgent.review_code() got an unexpected keyword argument 'code'"
+            ],
+            "total_agents": 4
+          },
+          "error": null
+        }
+      }
+    },
+    {
+      "test": "Streaming Workflow",
+      "passed": true,
+      "timestamp": 1750899963.747819,
+      "details": {
+        "workflow_id": "3710e6a2-cd29-4b38-b418-1b02968a0beb",
+        "updates_received": 3
+      }
+    }
+  ],
+  "failed": []
+}

@@ -1,0 +1,61 @@
+# Phase 5 Integration Test Requirements
+# Additional dependencies for orchestration and API integration testing
+
+# Core testing framework (inherited from main requirements)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+
+# API testing dependencies
+httpx>=0.24.0
+fastapi[all]>=0.100.0
+requests>=2.31.0
+
+# Performance and load testing
+pytest-xdist>=3.3.0  # Parallel test execution
+pytest-benchmark>=4.0.0  # Performance benchmarks
+locust>=2.15.0  # Load testing (if needed)
+
+# Test reporting and coverage
+pytest-html>=3.2.0  # HTML test reports
+pytest-cov>=4.1.0  # Code coverage
+coverage>=7.2.0
+
+# Mocking and test utilities
+responses>=0.23.0  # HTTP response mocking
+freezegun>=1.2.0  # Time mocking for tests
+factory-boy>=3.3.0  # Test data factories
+
+# Monitoring and metrics testing
+prometheus-client>=0.17.0  # For metrics validation
+
+# Redis testing utilities
+redis>=4.5.0
+fakeredis>=2.16.0  # In-memory Redis for testing
+
+# Docker and environment management
+docker>=6.1.0  # Docker API client for container management
+python-dotenv>=1.0.0  # Environment variable management
+
+# Async utilities
+aiohttp>=3.8.0  # Additional async HTTP client
+anyio>=3.7.0  # Async compatibility layer
+
+# Data validation and serialization
+pydantic>=2.0.0
+jsonschema>=4.18.0
+
+# Logging and debugging
+structlog>=23.1.0
+colorlog>=6.7.0
+
+# System monitoring
+psutil>=5.9.0  # System resource monitoring in tests
+
+# Time and date utilities
+python-dateutil>=2.8.0
+arrow>=1.2.0
+
+# Development and debugging
+ipdb>=0.13.0  # Enhanced debugger for test development
+rich>=13.0.0  # Rich console output for better test formatting

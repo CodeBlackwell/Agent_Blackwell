@@ -201,9 +201,101 @@ class AgentWorker:
         self, message_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Process coding agent message."""
+        # Check if the message contains an error status
+        if message_data.get("status") == "error" or message_data.get("error"):
+            return {
+                "request_id": message_data.get("request_id", "unknown"),
+                "error": message_data.get("error", "Unknown error occurred"),
+                "error_code": message_data.get("error_code", "UNKNOWN_ERROR"),
+                "status": "failed",
+            }
+
+        # Normal processing for successful requests
         return {
             "request_id": message_data.get("request_id", "unknown"),
-            "code_implementation": "Mock code implementation",
+            "source_code": {
+                "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/')\ndef read_root():\n    return {'Hello': 'World'}",
+                "api/users.py": "from fastapi import APIRouter\n\nrouter = APIRouter()\n\n@router.get('/users')\ndef get_users():\n    return []",
+                "user-service": {
+                    "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/users')\ndef get_users():\n    return []\n\n@app.get('/users/{user_id}')\ndef get_user(user_id: int):\n    return {'id': user_id, 'name': 'Test User'}",
+                    "models.py": "from sqlalchemy import Column, Integer, String\nfrom sqlalchemy.ext.declarative import declarative_base\n\nBase = declarative_base()\n\nclass User(Base):\n    __tablename__ = 'users'\n    id = Column(Integer, primary_key=True)\n    email = Column(String, unique=True)\n    name = Column(String)\n",
+                },
+                "order-service": {
+                    "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/orders')\ndef get_orders():\n    return []\n\n@app.get('/orders/{order_id}')\ndef get_order(order_id: int):\n    return {'id': order_id, 'status': 'pending'}"
+                },
+                "payment-service": {
+                    "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/payments')\ndef get_payments():\n    return []\n\n@app.post('/payments')\ndef create_payment():\n    return {'id': 1, 'status': 'completed'}"
+                },
+            },
+            "file_structure": [
+                {"path": "main.py", "type": "file"},
+                {"path": "api", "type": "directory"},
+                {"path": "api/users.py", "type": "file"},
+            ],
+            "dependencies": {"requirements": ["fastapi>=0.68.0", "uvicorn>=0.15.0"]},
+            "documentation": {
+                "api_docs": "# API Documentation\n\nThis is a simple API with FastAPI.\n\n## Endpoints\n\n- GET /: Returns a hello world message\n- GET /users: Returns an empty list of users",
+                "setup_instructions": "1. Install dependencies\n2. Run with uvicorn main:app",
+                "deployment_notes": "Use Docker for production deployment",
+            },
+            "test_files": {
+                "test_main.py": "from fastapi.testclient import TestClient\nfrom main import app\n\nclient = TestClient(app)\n\ndef test_read_root():\n    response = client.get('/')\n    assert response.status_code == 200\n    assert response.json() == {'Hello': 'World'}"
+            },
+            "linting_config": {
+                "pyproject.toml": "[tool.flake8]\nmax-line-length = 88\nextend-ignore = E203\n\n[tool.black]\nline-length = 88"
+            },
+            "deployment_config": {
+                "docker-compose.yml": "version: '3'\nservices:\n  app:\n    build: .\n    ports:\n      - '8000:8000'\n",
+                "Dockerfile": 'FROM python:3.9\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD ["uvicorn", "main:app", "--host", "0.0.0.0"]\n',
+                "services": [
+                    {
+                        "name": "api-gateway",
+                        "port": 8000,
+                        "environment": ["PORT=8000", "DEBUG=false"],
+                    },
+                    {
+                        "name": "user-service",
+                        "port": 8001,
+                        "environment": [
+                            "PORT=8001",
+                            "DB_URL=postgres://user:pass@db:5432/users",
+                        ],
+                    },
+                    {
+                        "name": "order-service",
+                        "port": 8002,
+                        "environment": [
+                            "PORT=8002",
+                            "DB_URL=postgres://user:pass@db:5432/orders",
+                        ],
+                    },
+                    {
+                        "name": "payment-service",
+                        "port": 8003,
+                        "environment": [
+                            "PORT=8003",
+                            "DB_URL=postgres://user:pass@db:5432/payments",
+                        ],
+                    },
+                ],
+            },
+            "docker_config": {
+                "services": [
+                    {
+                        "name": "api-gateway",
+                        "port": 8000,
+                        "dockerfile": 'FROM python:3.9-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD ["uvicorn", "main:app", "--host", "0.0.0.0"]\n',
+                    },
+                    {
+                        "name": "user-service",
+                        "port": 8001,
+                        "dockerfile": 'FROM python:3.9-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD ["uvicorn", "main:app", "--host", "0.0.0.0"]\n',
+                    },
+                ],
+                "networks": ["api-network", "backend-network"],
+                "volumes": ["postgres-data", "redis-data"],
+                "docker-compose.yml": "version: '3'\nservices:\n  api-gateway:\n    build: ./api-gateway\n    ports:\n      - '8000:8000'\n    environment:\n      - PORT=8000\n      - DEBUG=false\n  user-service:\n    build: ./user-service\n    ports:\n      - '8001:8001'\n    environment:\n      - PORT=8001\n      - DB_URL=postgres://user:pass@db:5432/users\n  order-service:\n    build: ./order-service\n    ports:\n      - '8002:8002'\n    environment:\n      - PORT=8002\n      - DB_URL=postgres://user:pass@db:5432/orders\n  payment-service:\n    build: ./payment-service\n    ports:\n      - '8003:8003'\n    environment:\n      - PORT=8003\n      - DB_URL=postgres://user:pass@db:5432/payments\n  db:\n    image: postgres:13\n    volumes:\n      - postgres-data:/var/lib/postgresql/data\n    environment:\n      - POSTGRES_PASSWORD=password\n      - POSTGRES_USER=user\nvolumes:\n  postgres-data:\n",
+            },
             "status": "completed",
         }
 

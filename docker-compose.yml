@@ -39,7 +39,7 @@ services:
       - redis-data:/data
     networks:
       - agent-network
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --protected-mode no --loglevel warning
 
   # Prometheus for monitoring (optional)
   prometheus:

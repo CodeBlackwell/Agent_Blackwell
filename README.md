@@ -402,12 +402,15 @@ You can monitor progress at any time using the workflow status endpoint.
 
 #### Running the E2E Test Gauntlet
 
-The `e2e_test_gauntlet.py` script provides comprehensive validation of all API endpoints:
+The `e2e_test_gauntlet.py` script provides comprehensive validation of all API endpoints and flexible execution modes:
 
 ```bash
 # Ensure the API is running first, then:
 cd scripts
 python e2e_test_gauntlet.py --url http://localhost:8000
+
+# Run with options:
+python e2e_test_gauntlet.py --url http://localhost:8000 --max-tests 3 --output-dir logs
 ```
 
 The script tests:

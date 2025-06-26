@@ -324,6 +324,270 @@ The following features are planned for upcoming releases:
 - **Agent Memory Persistence**: Long-term knowledge retention across sessions
 - **Advanced Monitoring Dashboard**: Real-time insights into agent performance and resource usage
 
+## 📚 Comprehensive User Guide
+
+This section provides detailed instructions on using Agent Blackwell, from initial setup to advanced features and troubleshooting.
+
+### 🚀 Quick Start
+
+#### 1. Environment Setup
+
+Create a `.env` file in the project root with your API keys:
+
+```bash
+# Required API keys
+OPENAI_API_KEY=your-openai-key
+PINECONE_API_KEY=your-pinecone-key
+
+# Optional integrations
+SLACK_API_TOKEN=your-slack-token
+SLACK_SIGNING_SECRET=your-slack-signing-secret
+
+# Infrastructure configuration
+REDIS_URL=redis://localhost:6379/0
+PORT=8000
+```
+
+#### 2. Start Required Services
+
+Using Docker Compose (recommended for new users):
+
+```bash
+# Start all services (API, Redis, Prometheus, Grafana)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+```
+
+Or start services individually:
+
+```bash
+# Terminal 1: Start Redis
+redis-server
+
+# Terminal 2: Start the API server
+python -m src.api.main
+```
+
+#### 3. Submit Your First Feature Request
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/feature-request" \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Create a simple function that calculates the Fibonacci sequence up to n terms"}'
+```
+
+You'll receive a response with a `workflow_id` that you can use to check status:
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/workflow-status/your-workflow-id"
+```
+
+### 🔄 End-to-End Workflow
+
+Here's what happens when you submit a feature request:
+
+1. **Initialization**: The system assigns a unique workflow_id
+2. **Spec Generation**: The Spec Agent creates detailed requirements
+3. **Design Phase**: The Design Agent creates architecture diagrams
+4. **Implementation**: The Coding Agent writes code to fulfill specs
+5. **Quality Assurance**: The Review Agent analyzes code quality
+6. **Testing**: The Test Agent creates comprehensive tests
+7. **Delivery**: Final code and documentation are delivered
+
+You can monitor progress at any time using the workflow status endpoint.
+
+### 🧪 Test Run Procedures
+
+#### Running the E2E Test Gauntlet
+
+The `e2e_test_gauntlet.py` script provides comprehensive validation of all API endpoints:
+
+```bash
+# Ensure the API is running first, then:
+cd scripts
+python e2e_test_gauntlet.py --url http://localhost:8000
+```
+
+The script tests:
+- Health check endpoint
+- Feature request creation
+- Workflow status checking
+- Synchronous workflow execution
+- Streaming workflow execution
+- Legacy endpoint compatibility
+
+Results are saved to `e2e_test_results.json` for analysis.
+
+#### Running Unit Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test modules
+pytest tests/agents/test_spec_agent.py
+
+# Run with coverage report
+python -m pytest --cov=src tests/
+```
+
+### 📋 API Reference
+
+| Endpoint | Method | Purpose |
+|----------|--------|--------|
+| `/` | GET | Health check |
+| `/health` | GET | Detailed health with service status |
+| `/api/v1/feature-request` | POST | Submit new feature request |
+| `/api/v1/workflow-status/{id}` | GET | Check workflow status |
+| `/api/v1/execute-workflow` | POST | Execute workflow synchronously |
+| `/api/v1/stream-workflow/{id}` | GET | Stream workflow execution |
+| `/api/v1/task-status/{id}` | GET | Legacy status endpoint |
+| `/api/v1/messages` | GET | Access inter-agent communications |
+
+### 🔍 Monitoring and Observability
+
+Agent Blackwell provides comprehensive monitoring capabilities:
+
+#### 1. Agent Message Stream
+
+Monitor inter-agent communications in real-time:
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/messages?number_of_messages=10"
+```
+
+Filter by task:
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/messages?task_id=your-workflow-id"
+```
+
+#### 2. Prometheus Metrics
+
+Access API performance metrics at:
+
+```
+http://localhost:8000/metrics
+```
+
+#### 3. Grafana Dashboards
+
+When using Docker Compose, access pre-configured dashboards at:
+
+```
+http://localhost:3000
+```
+
+Default credentials: admin/admin
+
+### 🔧 Specific Feature Guides
+
+#### Custom Agent Configuration (Coming Soon)
+
+> **Note**: This feature is planned for future implementation and is not yet available.
+
+In an upcoming release, agent configuration will be customizable through environment variables:
+
+```bash
+# Example: Configure the Spec Agent to use GPT-4o (FUTURE FEATURE)
+SPEC_AGENT_MODEL=gpt-4o
+SPEC_AGENT_TEMPERATURE=0.7
+
+# Example: Configure the Coding Agent to use Claude (FUTURE FEATURE)
+CODING_AGENT_PROVIDER=anthropic
+CODING_AGENT_MODEL=claude-3-opus-20240229
+CODING_AGENT_TEMPERATURE=0.2
+```
+
+This will be part of the planned "Per-Agent Model Configuration" feature mentioned in the roadmap.
+
+#### Slack Integration
+
+To enable Slack integration:
+
+1. Create a Slack app at https://api.slack.com/apps
+2. Enable Socket Mode and Event Subscriptions
+3. Subscribe to the `app_mention` event
+4. Install the app to your workspace
+5. Set environment variables:
+
+```bash
+SLACK_API_TOKEN=xoxb-your-token
+SLACK_SIGNING_SECRET=your-signing-secret
+SLACK_APP_TOKEN=xapp-your-app-token
+```
+
+Once configured, mention the bot in Slack:
+
+```
+@Agent-Blackwell Create a function to parse CSV files
+```
+
+The bot will respond with a workflow ID and status updates.
+
+#### Advanced Redis Configuration
+
+Fine-tune Redis for production:
+
+```bash
+# Persistence configuration
+REDIS_PERSISTENCE_MODE=rdb
+REDIS_RDB_FILENAME=dump.rdb
+REDIS_SAVE_FREQUENCY=60
+
+# Performance tuning
+REDIS_MAX_MEMORY=2gb
+REDIS_MAX_MEMORY_POLICY=allkeys-lru
+
+# Security (if exposed)
+REDIS_PASSWORD=your-strong-password
+REDIS_TLS_ENABLED=true
+```
+
+#### Vector Database Management
+
+Manage Pinecone indexes:
+
+```bash
+# List indexes
+python -m src.utils.pinecone_tools list-indexes
+
+# Create a new index
+python -m src.utils.pinecone_tools create-index \
+  --name agent-blackwell \
+  --dimension 1536 \
+  --metric cosine
+
+# Delete an index
+python -m src.utils.pinecone_tools delete-index --name agent-blackwell
+```
+
+### 🔮 Troubleshooting
+
+#### Common Issues
+
+1. **Redis Connection Errors**
+   - Verify Redis is running: `redis-cli ping`
+   - Check connection URL in .env file
+   - Ensure Redis port (6379) is not blocked by firewall
+
+2. **API Key Errors**
+   - Verify API keys are correctly set in .env
+   - Check for trailing spaces in API keys
+   - Ensure you have proper subscription level for required features
+
+3. **Agent Timeout Issues**
+   - Increase timeout settings in `src/config/settings.py`
+   - Check API provider status for outages
+   - Consider using a different model or reducing complexity
+
+4. **Docker Networking Problems**
+   - Restart Docker: `docker-compose down && docker-compose up -d`
+   - Check for port conflicts: `netstat -tulpn | grep 8000`
+   - Verify Docker network setup: `docker network ls`
+
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page.

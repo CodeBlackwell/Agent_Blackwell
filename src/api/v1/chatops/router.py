@@ -8,6 +8,7 @@ interaction with the Agent Blackwell system through various chat platforms.
 import inspect
 import logging
 import re
+import uuid
 from typing import Any, Dict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -277,7 +278,7 @@ async def handle_deploy_command(
 
 
 async def enqueue_agent_task(
-    orchestrator: Orchestrator,
+    orchestrator: Any,  # Changed from Orchestrator to Any to support both orchestrator types
     agent_type: str,
     description: str,
     params: Dict[str, str],
@@ -293,13 +294,33 @@ async def enqueue_agent_task(
     }
 
     agent_name = agent_map.get(agent_type, agent_type)
-
-    task_data = {
-        "description": description,
-        **params,  # Include any additional parameters from the command
-    }
-
-    return await orchestrator.enqueue_task(agent_name, task_data)
+    
+    try:
+        # Check if we're using LangGraphOrchestrator (which has execute_workflow)
+        if hasattr(orchestrator, 'execute_workflow'):
+            # Generate a workflow ID
+            workflow_id = str(uuid.uuid4())
+            # Start the workflow execution
+            await orchestrator.execute_workflow(
+                workflow_id=workflow_id,
+                user_request=description,
+                task_type=f"{agent_name}_request"
+            )
+            return workflow_id
+        # Fall back to legacy Orchestrator with enqueue_task
+        elif hasattr(orchestrator, 'enqueue_task'):
+            task_data = {
+                "description": description,
+                **params,  # Include any additional parameters from the command
+            }
+            return await orchestrator.enqueue_task(agent_name, task_data)
+        else:
+            # Neither method exists
+            logger.error("Orchestrator has neither execute_workflow nor enqueue_task methods")
+            raise AttributeError("Incompatible orchestrator implementation")
+    except Exception as e:
+        logger.error(f"Error in enqueue_agent_task: {e}")
+        raise
 
 
 def summarize_result(result: Any) -> str:

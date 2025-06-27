@@ -31,6 +31,9 @@ RUN poetry install --no-interaction --no-ansi
 # Fix Redis asyncio import issue with specific installation
 RUN pip install --disable-pip-version-check redis==4.6.0
 
+# Install psutil for system monitoring tests
+RUN pip install --disable-pip-version-check psutil>=5.9.0
+
 # Copy project files
 COPY . .
 

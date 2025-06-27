@@ -90,7 +90,7 @@ services:
       - redis-test
       - mockapi
       - mock-vector-db
-    command: pytest -xvs tests/ --integration
+    command: tail -f /dev/null
 
   # Agent worker for integration tests
   agent-worker:

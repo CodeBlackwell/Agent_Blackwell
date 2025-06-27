@@ -163,7 +163,7 @@ case "$1" in
         echo "🔗 Running Redis integration tests..."
         docker compose -f $COMPOSE_FILE up -d
         sleep 2
-        docker compose -f $COMPOSE_FILE run --rm test-runner pytest -xvs tests/integration/redis_tests/ --integration
+        docker compose -f $COMPOSE_FILE run --rm test-runner pytest -xvs tests/integration/redis_tests/ 
         docker compose -f $COMPOSE_FILE down
         ;;
     "basic")

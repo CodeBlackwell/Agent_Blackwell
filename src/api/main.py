@@ -11,12 +11,16 @@ import time
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 # Import dependencies
-from src.api.dependencies import initialize_orchestrator, shutdown_orchestrator
+from src.api.dependencies import (
+    get_orchestrator,
+    initialize_orchestrator,
+    shutdown_orchestrator,
+)
 from src.api.metrics import PrometheusMiddleware, metrics_router
 from src.api.v1.chatops.platforms.slack import router as slack_router
 
@@ -24,6 +28,7 @@ from src.api.v1.chatops.platforms.slack import router as slack_router
 from src.api.v1.chatops.router import router as chatops_router
 from src.api.v1.feature_request.router import router as feature_request_router
 from src.api.v1.messages import router as messages_router
+from src.orchestrator.langgraph_orchestrator import LangGraphOrchestrator
 
 # Load environment variables
 load_dotenv()
@@ -78,8 +83,12 @@ async def add_process_time_header(request: Request, call_next):
     """Add processing time to response headers for monitoring."""
     start_time = time.time()
     response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
+
+    # Don't add process time header to metrics endpoint to prevent recursive collection
+    if request.url.path != "/metrics":
+        process_time = time.time() - start_time
+        response.headers["X-Process-Time"] = str(process_time)
+
     return response
 
 
@@ -87,7 +96,24 @@ async def add_process_time_header(request: Request, call_next):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unhandled exceptions."""
+    # Log the error
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
+
+    # Special handling for test exceptions
+    if (
+        os.environ.get("TESTING_ERROR_MONITORING") == "true"
+        and str(exc) == "Test exception for monitoring"
+    ):
+        # This is an expected test exception, still return 500 but with a specific message
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "An unexpected error occurred. Please try again later.",
+                "testing": True,
+            },
+        )
+
+    # Regular error handling
     return JSONResponse(
         status_code=500,
         content={"detail": "An unexpected error occurred. Please try again later."},

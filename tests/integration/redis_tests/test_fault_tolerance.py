@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import redis.asyncio as redis
-from redis.exceptions import ConnectionError, TimeoutError
+from redis.exceptions import ConnectionError, ResponseError, TimeoutError
 
 from src.config.settings import get_settings
 from tests.fixtures.main import get_fixtures_by_category
@@ -51,10 +51,12 @@ class TestRedisConnectionFaultTolerance:
         # Simulate connection issues with mock
         with patch.object(redis_client, "xadd") as mock_xadd:
             # First call fails with connection error
+            future = asyncio.Future()
+            future.set_result("success_message_id")
             mock_xadd.side_effect = [
                 ConnectionError("Connection lost"),
                 ConnectionError("Still down"),
-                "success_message_id",  # Recovery
+                future,
             ]
 
             # Try to publish during connection issues
@@ -105,15 +107,16 @@ class TestRedisConnectionFaultTolerance:
             await redis_client.xgroup_create(
                 stream_name, consumer_group, id="0", mkstream=True
             )
-        except redis.exceptions.ResponseError as e:
+        except ResponseError as e:
             if "BUSYGROUP" not in str(e):
                 raise
 
         # Simulate connection drop during consumption
         consumed_messages = []
         with patch.object(redis_client, "xreadgroup") as mock_xreadgroup:
-            # First call succeeds
-            mock_xreadgroup.side_effect = [
+            # Create futures for the mock responses
+            future1 = asyncio.Future()
+            future1.set_result(
                 [
                     (
                         stream_name,
@@ -124,8 +127,11 @@ class TestRedisConnectionFaultTolerance:
                             )
                         ],
                     )
-                ],
-                ConnectionError("Connection lost during consumption"),
+                ]
+            )
+
+            future3 = asyncio.Future()
+            future3.set_result(
                 [
                     (
                         stream_name,
@@ -136,7 +142,14 @@ class TestRedisConnectionFaultTolerance:
                             )
                         ],
                     )
-                ],
+                ]
+            )
+
+            # First call succeeds, second fails with connection error, third succeeds
+            mock_xreadgroup.side_effect = [
+                future1,
+                ConnectionError("Connection lost during consumption"),
+                future3,
             ]
 
             # First consumption succeeds
@@ -271,7 +284,7 @@ class TestRedisServiceRestart:
             await redis_client.xgroup_create(
                 stream_name, consumer_group, id="0", mkstream=True
             )
-        except redis.exceptions.ResponseError as e:
+        except ResponseError as e:
             if "BUSYGROUP" not in str(e):
                 raise
 
@@ -340,7 +353,7 @@ class TestRedisConsumerGroupRebalancing:
             await redis_client.xgroup_create(
                 stream_name, consumer_group, id="0", mkstream=True
             )
-        except redis.exceptions.ResponseError as e:
+        except ResponseError as e:
             if "BUSYGROUP" not in str(e):
                 raise
 
@@ -417,7 +430,7 @@ class TestRedisConsumerGroupRebalancing:
             await redis_client.xgroup_create(
                 stream_name, consumer_group, id="0", mkstream=True
             )
-        except redis.exceptions.ResponseError as e:
+        except ResponseError as e:
             if "BUSYGROUP" not in str(e):
                 raise
 

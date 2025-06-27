@@ -16,3 +16,6 @@ description: Create modular, atomic git commits by reviewing file changes, organ
   - Show `git log --oneline` to verify clean history
   - Append commit summary and reasoning to `blog_notes.md`
   - Git commit with summary message blog_notes.md
+
+
+- The Definition of Done for this workflow is that there are no unstage commits remaining in the repo. nothing shows up when git status is used.

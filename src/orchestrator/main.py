@@ -10,18 +10,27 @@ import json
 import logging
 import os
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 # LangChain imports
-from pinecone import Pinecone, ServerlessSpec
 from redis import Redis
+
+# Optional imports for vector storage
+try:
+    from pinecone import Pinecone, ServerlessSpec
+
+    PINECONE_AVAILABLE = True
+except ImportError:
+    PINECONE_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Pinecone not available - vector storage features disabled")
 
 # Local imports
 from src.orchestrator.agent_registry import AgentRegistry
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Changed to DEBUG for more verbose logging
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -40,49 +49,111 @@ class Orchestrator:
     def __init__(
         self,
         redis_url: str = "redis://localhost:6379",
-        pinecone_api_key: Optional[str] = None,
-        openai_api_key: Optional[str] = None,
         task_stream: str = "agent_tasks",
         result_stream: str = "agent_results",
+        is_test_mode: bool = False,
+        openai_api_key: Optional[str] = None,
+        pinecone_api_key: Optional[str] = None,
         skip_pinecone_init: bool = False,
-    ):
+    ) -> None:
         """
-        Initialize the orchestrator with Redis and Pinecone connections.
+        Initialize the orchestrator with Redis and stream configuration.
 
         Args:
             redis_url: URL for Redis connection
-            pinecone_api_key: API key for Pinecone (optional for local dev)
-            openai_api_key: API key for OpenAI (optional, will use env var if not provided)
-            task_stream: Name of the Redis stream for tasks
-            result_stream: Name of the Redis stream for results
-            skip_pinecone_init: If True, skip Pinecone initialization (useful for tests)
+            task_stream: Name of the main task stream
+            result_stream: Name of the result stream
+            is_test_mode: Whether running in test mode (affects stream naming)
+            openai_api_key: OpenAI API key for agent initialization
+            pinecone_api_key: Pinecone API key for vector storage
+            skip_pinecone_init: Skip Pinecone initialization for testing
         """
-        # Initialize Redis client
-        self.redis_client = Redis.from_url(redis_url)
-        self.task_stream = task_stream
-        self.result_stream = result_stream
+        try:
+            # Store configuration
+            self.redis_url = redis_url
+            self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
 
-        # Initialize Pinecone client (if API key provided and not skipping initialization)
+            # For synchronous operations (used in some diagnostic methods)
+            self.redis_client = Redis.from_url(redis_url, decode_responses=False)
+            # For async operations (used in main processing loop)
+            self.async_redis_client = Redis.from_url(redis_url, decode_responses=False)
+
+            # Define Redis streams
+            self.task_stream = task_stream
+            self.result_stream = result_stream
+            self.is_test_mode = is_test_mode
+
+            # If we're in test mode, prepend "test_" to stream names if not already prefixed
+            if is_test_mode and not task_stream.startswith("test_"):
+                self.task_stream = f"test_{task_stream}"
+                logger.debug(
+                    f"Test mode enabled, using task stream: {self.task_stream}"
+                )
+            if is_test_mode and not result_stream.startswith("test_"):
+                self.result_stream = f"test_{result_stream}"
+                logger.debug(
+                    f"Test mode enabled, using result stream: {self.result_stream}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to initialize orchestrator: {e}")
+            raise
+
+        # Agent type mapping to handle both naming formats (with/without _agent suffix)
+        self.agent_type_mapping = {
+            # Standard agent type format
+            "spec": ["spec", "spec_agent"],
+            "design": ["design", "design_agent"],
+            "coding": ["coding", "coding_agent"],
+            "review": ["review", "review_agent"],
+            "test": ["test", "test_agent"],
+            # Support for agent type with suffix
+            "spec_agent": ["spec", "spec_agent"],
+            "design_agent": ["design", "design_agent"],
+            "coding_agent": ["coding", "coding_agent"],
+            "review_agent": ["review", "review_agent"],
+            "test_agent": ["test", "test_agent"],
+        }
+
+        # Agent-specific stream name mapping
+        self.agent_stream_mapping = {
+            # Map task type to potential agent stream names
+            "spec": ["agent:spec:input", "agent:spec_agent:input"],
+            "design": ["agent:design:input", "agent:design_agent:input"],
+            "coding": ["agent:coding:input", "agent:coding_agent:input"],
+            "review": ["agent:review:input", "agent:review_agent:input"],
+            "test": ["agent:test:input", "agent:test_agent:input"],
+            # Support for agent type with suffix
+            "spec_agent": ["agent:spec:input", "agent:spec_agent:input"],
+            "design_agent": ["agent:design:input", "agent:design_agent:input"],
+            "coding_agent": ["agent:coding:input", "agent:coding_agent:input"],
+            "review_agent": ["agent:review:input", "agent:review_agent:input"],
+            "test_agent": ["agent:test:input", "agent:test_agent:input"],
+        }
+
+        # Initialize Pinecone if configured
         self.pinecone_client = None
         self.vector_index = None
-        if pinecone_api_key and not skip_pinecone_init:
-            self.pinecone_client = Pinecone(api_key=pinecone_api_key)
-            # Create or get index
-            if "agent-memory" not in self.pinecone_client.list_indexes().names():
-                self.pinecone_client.create_index(
-                    name="agent-memory",
-                    dimension=1536,  # OpenAI embeddings dimension
-                    metric="cosine",
-                    spec=ServerlessSpec(cloud="aws", region="us-west-2"),
-                )
-            self.vector_index = self.pinecone_client.Index("agent-memory")
+        if PINECONE_AVAILABLE and pinecone_api_key and not skip_pinecone_init:
+            try:
+                self.pinecone_client = Pinecone(api_key=pinecone_api_key)
+                # Create or get index
+                if "agent-memory" not in self.pinecone_client.list_indexes().names():
+                    self.pinecone_client.create_index(
+                        name="agent-memory",
+                        dimension=1536,  # OpenAI embeddings dimension
+                        metric="cosine",
+                        spec=ServerlessSpec(cloud="aws", region="us-west-2"),
+                    )
+                self.vector_index = self.pinecone_client.Index("agent-memory")
+                logger.info("Pinecone vector store initialized")
+            except Exception as e:
+                logger.warning(f"Pinecone initialization failed: {e}")
 
         # Initialize agent registry
         self.agents = {}
         self.agent_registry = None
-        self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
 
-        logger.info("Orchestrator initialized")
+        logger.info("Orchestrator initialized successfully")
 
     def register_agent(self, agent_name: str, agent_executor) -> None:
         """
@@ -110,18 +181,74 @@ class Orchestrator:
         except Exception as e:
             logger.error(f"Error initializing agents: {e}")
 
+    async def diagnose_task_routing(self, task_type: str):
+        """Run diagnostic tests on task routing configuration."""
+        mode_emoji = "🧪" if self.is_test_mode else "🚀"
+        logger.debug(f"{mode_emoji} ===== TASK ROUTING DIAGNOSTIC =====")
+        logger.debug(f"Mode: {'TEST' if self.is_test_mode else 'PRODUCTION'}")
+        logger.debug(f"Task Type: {task_type}")
+        logger.debug(
+            f"Redis URL: {self.redis_url if hasattr(self, 'redis_url') else 'Not set'}"
+        )
+        logger.debug(f"Task Stream: {self.task_stream}")
+        logger.debug(f"Result Stream: {self.result_stream}")
+
+        # Check agent type mapping for this task type
+        if task_type in self.agent_type_mapping:
+            logger.debug(
+                f"Agent type mapping for '{task_type}': {self.agent_type_mapping[task_type]}"
+            )
+        else:
+            logger.warning(f"No agent type mapping found for '{task_type}'")
+
+        # Check stream mapping for this task type
+        if task_type in self.agent_stream_mapping:
+            logger.debug(
+                f"Stream mapping for '{task_type}': {self.agent_stream_mapping[task_type]}"
+            )
+        else:
+            logger.warning(f"No stream mapping found for '{task_type}'")
+
+        # Check Redis connectivity
+        try:
+            ping_result = self.redis_client.ping()
+            logger.debug(f"Redis ping result: {ping_result}")
+            logger.debug("✅ Redis connection: OK")
+        except Exception as e:
+            logger.error(f"❌ Redis connection FAILED: {e}")
+
+        # List registered agents
+        logger.debug("Registered agents:")
+        for agent_type, agent in self.agents.items():
+            logger.debug(
+                f"  - {agent_type}: {type(agent).__name__ if agent else 'None'}"
+            )
+
+        # Redis client details
+        logger.debug(f"Redis client type: {type(self.redis_client).__name__}")
+        logger.debug(
+            f"Redis client connection pool: {self.redis_client.connection_pool}"
+        )
+
+        logger.debug(f"{mode_emoji} =====================================")
+
     async def enqueue_task(self, task_type: str, task_data: Dict[str, Any]) -> str:
-        """
-        Add a task to the task queue.
+        """Enqueue a task to the Redis stream for processing.
 
         Args:
-            task_type: Type of task (corresponds to agent name)
-            task_data: Dictionary containing task parameters
+            task_type: Type of task
+            task_data: Dictionary containing task data
 
         Returns:
-            task_id: Unique ID for the enqueued task
+            Task ID
         """
+        # Create a unique task ID
         task_id = str(uuid.uuid4())
+
+        # Call diagnostics before enqueueing
+        await self.diagnose_task_routing(task_type)
+
+        # Build task dictionary
         task = {
             "task_id": task_id,
             "task_type": task_type,
@@ -129,11 +256,52 @@ class Orchestrator:
             **task_data,
         }
 
-        # Add to Redis stream
-        self.redis_client.xadd(self.task_stream, {"task": json.dumps(task)})
+        # Convert task to JSON string
+        task_json = json.dumps(task)
 
-        logger.info(f"Enqueued task {task_id} of type {task_type}")
-        return task_id
+        # Add to main task queue
+        try:
+            # Add to the main task queue first
+            msg_id = self.redis_client.xadd(self.task_stream, {"task": task_json})
+            msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
+            logger.info(
+                f"✅ Successfully enqueued task {task_id} of type {task_type} with message ID {msg_id_str}"
+            )
+
+            # In test mode, we only use the main test_agent_tasks stream
+            # In production mode, we also publish to agent-specific streams for compatibility
+            if not self.is_test_mode:
+                # Only publish to agent-specific streams in production mode
+                for stream_name in self.agent_stream_mapping.get(task_type, []):
+                    try:
+                        agent_msg_id = self.redis_client.xadd(
+                            stream_name, {"task": task_json}
+                        )
+                        agent_msg_id_str = (
+                            agent_msg_id.decode()
+                            if isinstance(agent_msg_id, bytes)
+                            else str(agent_msg_id)
+                        )
+                        logger.info(
+                            f"✅ Task {task_id} also published to agent stream {stream_name} with ID {agent_msg_id_str}"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"❌ Failed to publish task {task_id} to agent stream {stream_name}: {e}"
+                        )
+
+            return task_id
+        except Exception as e:
+            logger.error(f"❌ Failed to enqueue task: {e}")
+            # Add Redis info for debugging
+            try:
+                info = self.redis_client.info()
+                logger.debug(f"Redis info: {info}")
+            except Exception as info_error:
+                logger.error(f"❌ Could not get Redis info: {info_error}")
+
+            # Re-raise the exception
+            raise
 
     async def submit_feature_request(self, description: str) -> str:
         """
@@ -162,161 +330,136 @@ class Orchestrator:
 
         return task_id
 
-    async def get_task_status(self, task_id: str) -> Dict[str, Any]:
-        """
-        Get the status of a task.
-
-        Args:
-            task_id: ID of the task to check
-
-        Returns:
-            Dictionary with task status information
-        """
-        # Check for result first to see if task completed
-        results = self.redis_client.xrange(
-            self.result_stream,
-            min="-",
-            max="+",
-            count=None,
-        )
-
-        for _, msg in results:
-            msg_data = json.loads(msg[b"result"].decode("utf-8"))
-            if msg_data.get("task_id") == task_id:
-                # Return the result directly with its status
-                return msg_data
-
-        # Check for pending task
-        tasks = self.redis_client.xrange(
-            self.task_stream,
-            min="-",
-            max="+",
-            count=None,
-        )
-
-        for _, msg in tasks:
-            task_data = json.loads(msg[b"task"].decode("utf-8"))
-            if task_data["task_id"] == task_id:
-                # Return a pending status with the task data
-                return {"task_id": task_id, "status": "pending", "task": task_data}
-
-        # If not found in either stream
-        return {"task_id": task_id, "status": "not_found"}
-
     async def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Process a single task using the appropriate agent.
+        """Process a task by finding the appropriate agent and executing it.
 
         Args:
-            task: Task dictionary with task_type and parameters
+            task: The task to process with task_type and other parameters
 
         Returns:
-            Result dictionary
+            Dictionary with task results or error information
         """
+        logger.debug(f"Processing task: {json.dumps(task, indent=2)}")
+
         task_id = task.get("task_id")
         task_type = task.get("task_type")
+        agent = None
+
+        # Use our mapping to find the right agent
+        agent_types_to_try = [task_type]
+        if task_type in self.agent_type_mapping:
+            agent_types_to_try = self.agent_type_mapping[task_type]
+            logger.debug(f"Will try these agent types: {agent_types_to_try}")
+
+        # Try each possible agent type
+        for agent_type in agent_types_to_try:
+            if agent_type in self.agents:
+                agent = self.agents[agent_type]
+                logger.info(f"Found registered agent for type {agent_type}")
+                break
 
         try:
-            # Check if agent exists
-            if task_type not in self.agents:
-                logger.error(f"No agent registered for task type: {task_type}")
+            # Check if any agent was found
+            if not agent:
+                logger.error(
+                    f"No agent registered for task type: {task_type} or its alternatives"
+                )
                 error_result = {
                     "task_id": task_id,
                     "status": "error",
-                    "error": f"No agent registered for task type: {task_type}",
+                    "error": f"No agent registered for task type: {task_type} or its alternatives",
                 }
+                logger.debug(f"Available agents: {list(self.agents.keys())}")
 
                 # Store error in Redis
                 self.redis_client.xadd(
                     self.result_stream, {"result": json.dumps(error_result)}
                 )
-
                 return error_result
 
-            # For now, implement special handling for dummy and echo agents
-            if task_type == "dummy":
-                result = {
-                    "task_id": task_id,
-                    "status": "completed",
-                    "result": (
-                        "pong"
-                        if task.get("input") == "ping"
-                        else "echo: " + str(task.get("input", ""))
-                    ),
-                }
-            elif task_type == "echo":
-                # Echo agent just returns the input
-                result = {
-                    "task_id": task_id,
-                    "status": "completed",
-                    "result": "echo: " + str(task.get("input", "")),
-                }
+            # Invoke the agent
+            result = await agent.ainvoke(task)
+            logger.debug(f"Agent {task_type} returned result: {result}")
+
+            # Create and store the result
+            full_result = {
+                "task_id": task_id,
+                "status": "completed",
+            }
+
+            # Merge in the agent result if it's a dict
+            if isinstance(result, dict):
+                full_result.update(result)
             else:
-                # Execute the agent
-                agent = self.agents[task_type]
-                agent_result = await agent.ainvoke(task)
+                full_result["result"] = result
 
-                result = {
-                    "task_id": task_id,
-                    "status": "completed",
-                    "result": agent_result,
-                }
+            # Add the result to Redis
+            logger.debug(
+                f"Adding result to stream: {json.dumps(full_result, indent=2)}"
+            )
+            self.redis_client.xadd(
+                self.result_stream, {"result": json.dumps(full_result)}
+            )
 
-                # Handle sub-tasks if this was a spec_agent task
-                if task_type == "spec_agent" and isinstance(agent_result, dict):
-                    # Check if there are tasks in the result
-                    if "output" in agent_result and isinstance(
-                        agent_result["output"], list
-                    ):
-                        sub_tasks = agent_result["output"]
-                        logger.info(f"Found {len(sub_tasks)} sub-tasks from spec_agent")
+            # Handle sub-tasks if this was a spec_agent task
+            if task_type == "spec_agent" and isinstance(result, dict):
+                # Check if there are tasks in the result
+                if "output" in result and isinstance(result["output"], list):
+                    sub_tasks = result["output"]
+                    logger.info(f"Found {len(sub_tasks)} sub-tasks from spec_agent")
 
-                        # Enqueue each sub-task
-                        for i, sub_task in enumerate(sub_tasks):
-                            # Extract task information
-                            task_type = sub_task.get("task_type", "general")
-                            task_description = sub_task.get("description", "")
+                    # Enqueue each sub-task
+                    for i, sub_task in enumerate(sub_tasks):
+                        # Extract task information
+                        subtask_type = sub_task.get("task_type", "general")
+                        task_description = sub_task.get("description", "")
 
-                            # Create a new task with the extracted information
-                            new_task_data = {
-                                "input": task_description,
-                                "parent_task_id": task_id,
-                                "priority": sub_task.get("priority", "medium"),
-                                "metadata": {
-                                    "source": "spec_agent",
-                                    "original_request": task.get("input", ""),
-                                    "sub_task_index": i,
-                                },
-                            }
+                        # Create a new task with the extracted information
+                        new_task_data = {
+                            "description": task_description,
+                            "priority": sub_task.get("priority", "medium"),
+                            "parent_task": task_id,
+                            "source": "subtask",
+                        }
 
-                            # Enqueue the new task if we have an agent for it
-                            if task_type in self.agents or task_type == "general":
-                                sub_task_id = await self.enqueue_task(
-                                    task_type, new_task_data
-                                )
-                                logger.info(
-                                    f"Enqueued sub-task {sub_task_id} of type {task_type}"
-                                )
-                            else:
-                                logger.warning(
-                                    f"No agent registered for sub-task type: {task_type}"
-                                )
+                        # Check if we have an agent for this subtask type
+                        valid_agent_found = False
+                        for st_type in self.agent_type_mapping.get(
+                            subtask_type, [subtask_type]
+                        ):
+                            if st_type in self.agents:
+                                valid_agent_found = True
+                                break
 
-            # Store result in Redis
-            self.redis_client.xadd(self.result_stream, {"result": json.dumps(result)})
+                        if valid_agent_found:
+                            # Add the subtask to the queue
+                            sub_task_id = await self.enqueue_task(
+                                subtask_type, new_task_data
+                            )
+                            logger.info(
+                                f"Enqueued sub-task {i+1}/{len(sub_tasks)}: {sub_task_id} ({subtask_type})"
+                            )
+                        else:
+                            logger.warning(
+                                f"No agent registered for sub-task type: {subtask_type}"
+                            )
 
             logger.info(f"Completed task {task_id}")
-            return result
+            return full_result
 
         except Exception as e:
-            error_result = {"task_id": task_id, "status": "error", "error": str(e)}
-
+            # Handle any errors
+            logger.error(f"Error processing task {task_id}: {e}", exc_info=True)
+            error_result = {
+                "task_id": task_id,
+                "status": "error",
+                "error": str(e),
+            }
             # Store error in Redis
             self.redis_client.xadd(
                 self.result_stream, {"result": json.dumps(error_result)}
             )
 
-            logger.error(f"Error processing task {task_id}: {e}")
             return error_result
 
     async def run_loop(self) -> None:

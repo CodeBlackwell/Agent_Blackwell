@@ -1,6 +1,6 @@
-# Agent Blackwell Scripts
+# Agent Blackwell Testing Infrastructure
 
-This directory contains utility scripts for testing and validating the Agent Blackwell system. These scripts provide comprehensive testing capabilities across different phases of the system, from individual agent testing to end-to-end API validation and vector database operations.
+This directory contains the unified testing infrastructure for the Agent Blackwell system. The consolidated test scripts provide comprehensive testing capabilities across all system components, from individual agent testing to end-to-end API validation.
 
 ## Quick Start Guide
 
@@ -8,22 +8,63 @@ For immediate testing, run these commands in order:
 
 ```bash
 # 1. Install dependencies
-pip install -r ./scripts/requirements-test.txt
+pip install -r ./tests/scripts/requirements-test.txt
 
-# 2. Run Phase 3 agent tests
-./scripts/run_phase3_agent_integration_tests_with_verification.sh
-
-# 3. Run Phase 4 vector DB tests
-./scripts/run_phase4_vector_db_integration_tests_with_verification.sh
-
-# 4. Run Phase 5 orchestration tests
-./scripts/run_phase5_orchestration_api_integration_tests.sh
-
-# 5. Run E2E API validation
-python ./scripts/e2e_test_gauntlet.py
+# 2. Run the unified test runner with different test suites
+./tests/scripts/run-all-tests.sh phase3  # Agent integration tests
+./tests/scripts/run-all-tests.sh phase4  # Vector DB tests
+./tests/scripts/run-all-tests.sh phase5  # Orchestration & API tests
+./tests/scripts/run-all-tests.sh api     # E2E API validation
 ```
 
-## Available Scripts
+## Unified Test Runner
+
+The `run-all-tests.sh` script is the single entry point for all test suites in the project. It provides a consistent interface, rich logging, and smart environment detection.
+
+### Key Features
+
+- **Smart Environment Management**: Automatic Docker environment setup and health checks
+- **Comprehensive Logging**: Timestamped logs with categories and levels
+- **Test Category Organization**: Hierarchical command structure for all test types
+- **Consolidated Test Execution**: Single interface for all test suites
+- **Enhanced Error Handling**: Consistent error reporting and exit codes
+
+### Usage Examples
+
+```bash
+# Run specific test phases
+./tests/scripts/run-all-tests.sh phase3  # Agent tests
+./tests/scripts/run-all-tests.sh phase4  # Vector DB tests
+./tests/scripts/run-all-tests.sh phase5  # Orchestration & API tests
+
+# Run specific agent tests
+./tests/scripts/run-all-tests.sh agents all
+./tests/scripts/run-all-tests.sh agents spec
+./tests/scripts/run-all-tests.sh agents design
+./tests/scripts/run-all-tests.sh agents coding
+./tests/scripts/run-all-tests.sh agents review
+./tests/scripts/run-all-tests.sh agents test
+
+# Run specific Redis tests
+./tests/scripts/run-all-tests.sh redis all
+./tests/scripts/run-all-tests.sh redis basic
+./tests/scripts/run-all-tests.sh redis load
+./tests/scripts/run-all-tests.sh redis fault
+
+# Infrastructure management
+./tests/scripts/run-all-tests.sh infra setup
+./tests/scripts/run-all-tests.sh infra clean
+./tests/scripts/run-all-tests.sh infra reset
+./tests/scripts/run-all-tests.sh infra status
+
+# View Docker logs
+./tests/scripts/run-all-tests.sh logs
+
+# Get help
+./tests/scripts/run-all-tests.sh help
+```
+
+## Test Components
 
 ### 1. `e2e_test_gauntlet.py` - End-to-End API Testing
 
@@ -43,19 +84,19 @@ python ./scripts/e2e_test_gauntlet.py
 
 ```bash
 # Basic usage - run all tests
-python ./scripts/e2e_test_gauntlet.py
+python ./tests/scripts/e2e_test_gauntlet.py
 
 # Run with custom API URL
-python ./scripts/e2e_test_gauntlet.py --base-url http://your-api:8000
+python ./tests/scripts/e2e_test_gauntlet.py --base-url http://your-api:8000
 
 # Debug mode - run only first 3 tests
-python ./scripts/e2e_test_gauntlet.py --max-tests 3
+python ./tests/scripts/e2e_test_gauntlet.py --max-tests 3
 
 # Interactive mode with test customization
-python ./scripts/e2e_test_gauntlet.py --interactive
+python ./tests/scripts/e2e_test_gauntlet.py --interactive
 
 # Custom output directory
-python ./scripts/e2e_test_gauntlet.py --output-dir custom_logs
+python ./tests/scripts/e2e_test_gauntlet.py --output-dir custom_logs
 ```
 
 **Command Line Options:**
@@ -72,12 +113,7 @@ python ./scripts/e2e_test_gauntlet.py --output-dir custom_logs
 5. **Synchronous Workflow** - Full sync execution (60s)
 6. **Streaming Workflow** - Real-time streaming (30s)
 
-**Requirements:**
-- Python 3.8+
-- requests, aiohttp, python-dotenv packages
-- Running Agent Blackwell API server
-
-### 2. `run_phase3_agent_integration_tests_with_verification.sh` - Agent Integration Testing
+### 2. Phase 3 - Agent Integration Testing
 
 **Purpose:** Comprehensive testing and verification of all agent types including mock/real LLM integration, persistence, and inter-agent transitions.
 
@@ -98,39 +134,20 @@ python ./scripts/e2e_test_gauntlet.py --output-dir custom_logs
 - Prerequisites checking and environment validation
 - Automatic cleanup and resource management
 
-**Usage Examples:**
-
+**Usage:**
 ```bash
 # Run all agent integration tests
-./scripts/run_phase3_agent_integration_tests_with_verification.sh
+./tests/scripts/run-all-tests.sh phase3
 
-# Test specific agent types (use base run-tests.sh script)
-./run-tests.sh spec      # SpecAgent only
-./run-tests.sh design    # DesignAgent only
-./run-tests.sh coding    # CodingAgent only
-./run-tests.sh review    # ReviewAgent only
-./run-tests.sh test      # TestAgent only
-
-# Check environment status
-./run-tests.sh status
-
-# Clean up test environment
-./run-tests.sh clean
+# Test specific agent types
+./tests/scripts/run-all-tests.sh agents spec
+./tests/scripts/run-all-tests.sh agents design
+./tests/scripts/run-all-tests.sh agents coding
+./tests/scripts/run-all-tests.sh agents review
+./tests/scripts/run-all-tests.sh agents test
 ```
 
-**Verification Areas:**
-1. **Mock Integration** - Structured output validation
-2. **Real LLM Integration** - Authentication and rate limiting
-3. **Persistence** - Redis storage and retrieval
-4. **Agent Transitions** - Inter-agent data compatibility
-5. **Error Handling** - Graceful failure management
-
-**Requirements:**
-- Docker and Docker Compose V2
-- jq (recommended for JSON processing)
-- Must run from project root directory
-
-### 3. `run_phase4_vector_db_integration_tests_with_verification.sh` - Vector Database Testing
+### 3. Phase 4 - Vector Database Testing
 
 **Purpose:** Comprehensive testing of Pinecone/Vector DB integration including embedding operations, semantic search, and knowledge persistence.
 
@@ -144,18 +161,10 @@ python ./scripts/e2e_test_gauntlet.py --output-dir custom_logs
 - Batch operations and bulk data handling
 - Mock and real vector DB integration
 
-**Usage Examples:**
-
+**Usage:**
 ```bash
 # Run all vector DB integration tests
-./scripts/run_phase4_vector_db_integration_tests_with_verification.sh
-
-# Run with detailed logging
-./scripts/run_phase4_vector_db_integration_tests_with_verification.sh --verbose
-
-# Test specific categories
-./scripts/run_phase4_vector_db_integration_tests_with_verification.sh --category embedding
-./scripts/run_phase4_vector_db_integration_tests_with_verification.sh --category search
+./tests/scripts/run-all-tests.sh phase4
 ```
 
 **Test Categories:**
@@ -165,12 +174,7 @@ python ./scripts/e2e_test_gauntlet.py --output-dir custom_logs
 4. **Knowledge Persistence** - Long-term storage and retrieval
 5. **Performance Testing** - Load testing and throughput validation
 
-**Requirements:**
-- Docker and Docker Compose V2
-- Pinecone API key (for real DB testing)
-- Python 3.8+ with vector processing libraries
-
-### 4. `run_phase5_orchestration_api_integration_tests.sh` - System Integration Testing
+### 4. Phase 5 - System Integration Testing
 
 **Purpose:** End-to-end system integration testing focusing on orchestration, task routing, API endpoints, and monitoring capabilities.
 
@@ -184,35 +188,16 @@ python ./scripts/e2e_test_gauntlet.py --output-dir custom_logs
 - Performance testing and load validation
 - Health checks and system resilience
 
-**Usage Examples:**
-
+**Usage:**
 ```bash
 # Run all Phase 5 integration tests
-./scripts/run_phase5_orchestration_api_integration_tests.sh
-
-# Run specific test categories
-./scripts/run_phase5_orchestration_api_integration_tests.sh orchestration
-./scripts/run_phase5_orchestration_api_integration_tests.sh api
-./scripts/run_phase5_orchestration_api_integration_tests.sh monitoring
-./scripts/run_phase5_orchestration_api_integration_tests.sh system
-
-# List available test categories
-./scripts/run_phase5_orchestration_api_integration_tests.sh --list
-
-# Show help and usage information
-./scripts/run_phase5_orchestration_api_integration_tests.sh --help
+./tests/scripts/run-all-tests.sh phase5
 ```
 
 **Test Categories:**
 1. **Orchestration** - Task routing, lifecycle, agent coordination
 2. **API** - REST endpoints, ChatOps, error handling
-3. **Monitoring** - Metrics, observability, health checks
-4. **System** - End-to-end workflows, performance, resilience
-
-**Requirements:**
-- Docker and Docker Compose V2
-- All system services running (Redis, API, monitoring)
-- Python 3.8+ with async testing capabilities
+3. **System** - End-to-end workflows, performance, resilience
 
 ### 5. `requirements-test.txt` - Testing Dependencies
 
@@ -228,12 +213,12 @@ python-dotenv>=1.0.0  # Environment variable management
 **Usage:**
 ```bash
 # Install all testing dependencies
-pip install -r ./scripts/requirements-test.txt
+pip install -r ./tests/scripts/requirements-test.txt
 
 # Install in virtual environment (recommended)
 python -m venv test_env
 source test_env/bin/activate  # On Windows: test_env\Scripts\activate
-pip install -r ./scripts/requirements-test.txt
+pip install -r ./tests/scripts/requirements-test.txt
 ```
 
 ## Complete Testing Workflow
@@ -247,7 +232,7 @@ pip install -r ./scripts/requirements-test.txt
    source agent_test_env/bin/activate  # Windows: agent_test_env\Scripts\activate
 
    # Install dependencies
-   pip install -r ./scripts/requirements-test.txt
+   pip install -r ./tests/scripts/requirements-test.txt
    ```
 
 2. **Docker Environment:**
@@ -264,31 +249,31 @@ pip install -r ./scripts/requirements-test.txt
 
 1. **Phase 3 - Agent Integration:**
    ```bash
-   ./scripts/run_phase3_agent_integration_tests_with_verification.sh
+   ./tests/scripts/run-all-tests.sh phase3
    ```
 
 2. **Phase 4 - Vector Database:**
    ```bash
-   ./scripts/run_phase4_vector_db_integration_tests_with_verification.sh
+   ./tests/scripts/run-all-tests.sh phase4
    ```
 
 3. **Phase 5 - System Integration:**
    ```bash
-   ./scripts/run_phase5_orchestration_api_integration_tests.sh
+   ./tests/scripts/run-all-tests.sh phase5
    ```
 
 4. **End-to-End API Validation:**
    ```bash
-   python ./scripts/e2e_test_gauntlet.py --interactive
+   python ./tests/scripts/e2e_test_gauntlet.py --interactive
    ```
 
 ### Log Files and Results
 
 All scripts generate detailed logs in these locations:
 - **Test Logs:** `./test_logs/` or `./logs/`
-- **Naming Pattern:** `phase[X]_test_run_[TIMESTAMP].log`
+- **Naming Pattern:** `unified_tests_[TIMESTAMP].log`
 - **Results Files:** JSON format with test outcomes and metrics
-- **Docker Logs:** Available via `docker-compose logs [service]`
+- **Docker Logs:** Available via `./tests/scripts/run-all-tests.sh logs`
 
 ## Troubleshooting
 
@@ -296,20 +281,20 @@ All scripts generate detailed logs in these locations:
 
 1. **Permission Denied:**
    ```bash
-   chmod +x ./scripts/*.sh
+   chmod +x ./tests/scripts/*.sh
    ```
 
 2. **Docker Issues:**
    ```bash
    docker-compose -f docker-compose-test.yml down
    docker system prune -f
-   ./run-tests.sh clean
+   ./tests/scripts/run-all-tests.sh infra clean
    ```
 
 3. **Python Dependencies:**
    ```bash
    pip install --upgrade pip
-   pip install -r ./scripts/requirements-test.txt --force-reinstall
+   pip install -r ./tests/scripts/requirements-test.txt --force-reinstall
    ```
 
 4. **Port Conflicts:**
@@ -327,27 +312,35 @@ Most scripts support debug and verbose modes:
 
 ```bash
 # E2E Gauntlet debug mode
-python ./scripts/e2e_test_gauntlet.py --max-tests 1
+python ./tests/scripts/e2e_test_gauntlet.py --max-tests 1
 
 # Shell scripts with detailed output
-bash -x ./scripts/run_phase3_agent_integration_tests_with_verification.sh
+bash -x ./tests/scripts/run-all-tests.sh phase3
 ```
 
-## Adding New Scripts
+## Adding New Tests
 
-When adding new scripts to this directory:
+When adding new tests to this infrastructure:
 
-1. **Include comprehensive documentation** in script headers
-2. **Use consistent error handling** with proper exit codes
-3. **Add command-line arguments** with help text
-4. **Follow naming conventions:** `run_phase[X]_[description].sh` or `[purpose]_[type].py`
-5. **Update this README.md** with complete usage documentation
-6. **Test thoroughly** in both success and failure scenarios
-7. **Add logging and result tracking** for debugging and monitoring
+1. **Add test files** to the appropriate directory:
+   - Unit tests: `./tests/unit/`
+   - Integration tests: `./tests/integration/`
+   - System tests: `./tests/integration/system/`
+
+2. **Follow naming conventions:**
+   - Test files: `test_*.py`
+   - Test functions: `test_*`
+   - Test classes: `Test*`
+
+3. **Use pytest fixtures** for common setup and teardown
+   - Environment fixtures: `./tests/conftest.py`
+   - Category-specific fixtures: `./tests/integration/conftest.py`
+
+4. **Update the unified runner** if needed for new test categories
 
 ## Support
 
-For issues with specific scripts:
+For issues with the testing infrastructure:
 - Check the generated log files for detailed error information
 - Verify all prerequisites are installed and accessible
 - Ensure Docker services are running and healthy

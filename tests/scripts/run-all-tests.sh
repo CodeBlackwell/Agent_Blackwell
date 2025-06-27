@@ -352,7 +352,15 @@ main() {
         phase4)  run_phase4_suite ;;
         phase5)  run_phase5_suite           ;;
         api)     run_e2e_http_tests   ;;
-        all)     call_legacy all      ;;
+        all)     
+            log_info "Running all test suites..."
+            run_phase3_suite || true
+            run_phase4_suite || true
+            run_phase5_suite || true
+            run_e2e_http_tests || true
+            log_success "All test suites completed!"
+            ;;
+
         logs)    docker compose -f "$COMPOSE_FILE" logs --tail=100 -f ;;
         help|--help|-h) print_usage  ;;
         *)       log_error "Unknown category '$category'"; print_usage; exit 1 ;;

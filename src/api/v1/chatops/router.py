@@ -120,8 +120,7 @@ async def process_command(
                 )
 
             # Schedule the task in the background
-            background_tasks.add_task(
-                enqueue_agent_task,
+            task_id = await enqueue_agent_task(
                 orchestrator=orchestrator,
                 agent_type=command_type,
                 description=command_args,
@@ -130,7 +129,8 @@ async def process_command(
 
             return ChatCommandResponse(
                 message=f"✅ Your {command_type} request has been queued. "
-                f"I'll notify you when it's complete."
+                f"I'll notify you when it's complete.\n"
+                f"Track status with: !status {task_id}"
             )
         else:
             return ChatCommandResponse(
@@ -154,22 +154,56 @@ async def get_task_status(
     """
     logger.info(f"Getting status for task: {task_id}")
 
-    status = await orchestrator.get_task_status(task_id)
+    try:
+        # Handle different orchestrator types - either LangGraphOrchestrator or traditional Orchestrator
+        if hasattr(orchestrator, "get_workflow_status"):
+            # This is a LangGraphOrchestrator
+            status = await orchestrator.get_workflow_status(task_id)
 
-    # If status is None, raise a 404 not found error
-    if not status:
+            # Map the workflow status fields to task status fields
+            return TaskStatusResponse(
+                task_id=task_id,
+                status=status.get("status", "unknown"),
+                progress=status.get("progress", 0),
+                result=status.get("results", {}),
+                created_at=status.get("created_at"),
+                updated_at=status.get("updated_at"),
+            )
+        elif hasattr(orchestrator, "get_task_status"):
+            # This is the traditional Orchestrator
+            status = await orchestrator.get_task_status(task_id)
+
+            # If status is None, raise a 404 not found error
+            if not status:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND,
+                    detail=f"Task with ID {task_id} not found",
+                )
+
+            return TaskStatusResponse(
+                task_id=task_id,
+                status=status.get("status", "unknown"),
+                progress=status.get("progress", 0),
+                result=status.get("result", {}),
+                created_at=status.get("created_at"),
+                updated_at=status.get("updated_at"),
+            )
+        else:
+            # Neither method exists
+            logger.error(
+                "Orchestrator has neither get_workflow_status nor get_task_status methods"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="The orchestrator implementation doesn't support status retrieval",
+            )
+
+    except Exception as e:
+        logger.error(f"Error getting task status: {e}")
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail=f"Task with ID {task_id} not found"
+            status_code=500,
+            detail="An unexpected error occurred. Please try again later.",
         )
-
-    return TaskStatusResponse(
-        task_id=task_id,
-        status=status.get("status", "unknown"),
-        progress=status.get("progress", 0),
-        result=status.get("result", {}),
-        created_at=status.get("created_at"),
-        updated_at=status.get("updated_at"),
-    )
 
 
 @router.get("/help", response_model=Dict[str, Any])

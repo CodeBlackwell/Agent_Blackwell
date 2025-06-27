@@ -98,7 +98,7 @@ class TestCodingAgentIntegration:
                 registry.register_coding_agent()
 
                 # Check that the coding agent is registered
-                coding_agent = registry.get_agent("coding")
+                coding_agent = registry.get_agent("coding_agent")
                 assert coding_agent is not None, "Coding Agent should be registered"
 
                 # Verify the agent has the expected interface
@@ -118,7 +118,7 @@ class TestCodingAgentIntegration:
             registry.register_coding_agent()
 
             # Get the registered agent
-            coding_agent = registry.get_agent("coding")
+            coding_agent = registry.get_agent("coding_agent")
 
             # Act
             task = {

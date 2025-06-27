@@ -103,7 +103,7 @@ class TestDesignAgentIntegration:
                 orchestrator.agent_registry = mock_agent_registry
 
                 # Check that the design agent is registered
-                design_agent = mock_agent_registry.get_agent("design")
+                design_agent = mock_agent_registry.get_agent("design_agent")
                 assert design_agent is not None, "Design Agent should be registered"
 
                 # Verify the agent has the expected interface
@@ -114,7 +114,7 @@ class TestDesignAgentIntegration:
     async def test_design_agent_invocation(self, mock_agent_registry):
         """Test that the Design Agent can be invoked through the registry."""
         # Get the design agent from the registry
-        design_agent = mock_agent_registry.get_agent("design")
+        design_agent = mock_agent_registry.get_agent("design_agent")
         assert design_agent is not None
 
         # Mock the agent's ainvoke method

@@ -35,10 +35,10 @@ def docker_is_running() -> bool:
     """Check if Docker is running on the system."""
     try:
         result = subprocess.run(
-            ["docker", "info"], 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE, 
-            check=False
+            ["docker", "info"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
         )
         return result.returncode == 0
     except Exception:
@@ -53,7 +53,7 @@ def docker_compose_is_running(project_dir: str) -> bool:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
-            cwd=project_dir
+            cwd=project_dir,
         )
         return len(result.stdout.decode().strip()) > 0
     except Exception as e:
@@ -63,70 +63,70 @@ def docker_compose_is_running(project_dir: str) -> bool:
 
 def setup_docker(project_dir: str, headless: bool = True) -> Tuple[bool, str]:
     """Set up Docker environment for testing.
-    
+
     Args:
         project_dir: The project directory containing docker-compose.yml
         headless: Whether to run in headless mode (no console output from containers)
-        
+
     Returns:
         Tuple of (success, message)
     """
     if not docker_is_running():
         return False, "🚫 Docker is not running. Please start Docker and try again."
-    
+
     logger.info("\n" + "=" * 70)
     logger.info("🐳 Setting up Docker environment...")
-    
+
     # Check if services are already running
     if docker_compose_is_running(project_dir):
         logger.info("🔄 Docker Compose services are already running")
         return True, "Docker services already running"
-    
+
     try:
         # Build and start the containers
         logger.info("🏗️  Building and starting Docker containers...")
-        
+
         cmd = ["docker", "compose", "up"]
         if headless:
             cmd.append("-d")
-            
+
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE if headless else None,
             stderr=subprocess.PIPE if headless else None,
             check=False,
-            cwd=project_dir
+            cwd=project_dir,
         )
-        
+
         if result.returncode != 0 and headless:
             error_msg = result.stderr.decode() if result.stderr else "Unknown error"
             return False, f"Failed to start Docker services: {error_msg}"
-        
+
         # Give services time to initialize
         if headless:
             logger.info("⏳ Waiting for services to initialize (30s)...")
             time.sleep(30)
-        
+
         logger.info("✅ Docker environment is ready!")
         logger.info("=" * 70 + "\n")
         return True, "Docker services started successfully"
-        
+
     except Exception as e:
         return False, f"Error setting up Docker: {e}"
 
 
 def teardown_docker(project_dir: str) -> Tuple[bool, str]:
     """Tear down Docker environment after testing.
-    
+
     Args:
         project_dir: The project directory containing docker-compose.yml
-        
+
     Returns:
         Tuple of (success, message)
     """
     logger.info("\n" + "=" * 70)
     logger.info("🧹 Cleaning up Docker environment...")
-    
+
     try:
         # Stop the containers
         result = subprocess.run(
@@ -134,17 +134,17 @@ def teardown_docker(project_dir: str) -> Tuple[bool, str]:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
-            cwd=project_dir
+            cwd=project_dir,
         )
-        
+
         if result.returncode != 0:
             error_msg = result.stderr.decode() if result.stderr else "Unknown error"
             return False, f"Failed to stop Docker services: {error_msg}"
-        
+
         logger.info("✅ Docker environment cleaned up successfully!")
         logger.info("=" * 70 + "\n")
         return True, "Docker services stopped successfully"
-        
+
     except Exception as e:
         return False, f"Error tearing down Docker: {e}"
 
@@ -166,31 +166,28 @@ class AgentBlackwellGauntlet:
         self.last_message_timestamp = 0  # Track last seen message timestamp
         self.output_dir = None  # Directory for logs/results
         self.run_timestamp = None  # Human-readable timestamp for this run
+        self.message_timeout = 45  # Default timeout for message monitoring in seconds
+        self.seen_message_ids = {}  # Map of workflow_id -> set of seen message IDs
 
         # Test feature requests with varying complexity
         self.test_feature_requests = [
             # Simple specification request
-            """Create a REST API endpoint for user authentication with JWT tokens. 
+            """Create a REST API endpoint for user authentication with JWT tokens.
             Include login, logout, and token refresh functionality.""",
-            
             # Design request
-            """Design a microservices architecture for an e-commerce platform with 
+            """Design a microservices architecture for an e-commerce platform with
             user management, product catalog, order processing, and payment services.""",
-            
             # Code implementation request
-            """Implement a Python class for managing Redis connections with connection pooling, 
+            """Implement a Python class for managing Redis connections with connection pooling,
             retry logic, and health checks.""",
-            
             # Code review request
-            """Review this FastAPI application structure and suggest improvements for 
+            """Review this FastAPI application structure and suggest improvements for
             scalability, security, and maintainability.""",
-            
             # Testing request
-            """Create comprehensive unit and integration tests for a user registration 
+            """Create comprehensive unit and integration tests for a user registration
             system with email validation and password hashing.""",
-            
             # Complex multi-agent workflow
-            """Build a complete CI/CD pipeline configuration for a Python web application 
+            """Build a complete CI/CD pipeline configuration for a Python web application
             including testing, security scanning, and deployment automation.""",
         ]
 
@@ -290,7 +287,9 @@ class AgentBlackwellGauntlet:
             messages = response.json().get("messages", [])
             if not messages and fail_on_error:
                 logger.error(f"📭 No messages retrieved for workflow_id: {workflow_id}")
-                raise AssertionError(f"No agent messages retrieved for workflow_id: {workflow_id}")
+                raise AssertionError(
+                    f"No agent messages retrieved for workflow_id: {workflow_id}"
+                )
             return messages
         except RequestException as e:
             if fail_on_error:
@@ -301,24 +300,31 @@ class AgentBlackwellGauntlet:
                 return []
 
     def display_agent_messages(
-        self, workflow_id: str = None, show_new_only: bool = True, fail_on_error: bool = True
+        self,
+        workflow_id: str = None,
+        show_new_only: bool = True,
+        fail_on_error: bool = True,
     ) -> bool:
         """Display agent messages from the API.
-        
+
         Returns:
             bool: True if messages were successfully retrieved, False otherwise.
         """
         logger.info("\n" + "✨" * 25)
-        logger.info(f"🔍 Checking agent messages for workflow: {workflow_id if workflow_id else 'all'}")
+        logger.info(
+            f"🔍 Checking agent messages for workflow: {workflow_id if workflow_id else 'all'}"
+        )
         logger.info("✨" * 25)
-        
+
         try:
-            messages = self.fetch_agent_messages(workflow_id, fail_on_error=fail_on_error)
-            
+            messages = self.fetch_agent_messages(
+                workflow_id, fail_on_error=fail_on_error
+            )
+
             # Initialize seen message IDs for this workflow if needed
             if workflow_id not in self.seen_message_ids:
                 self.seen_message_ids[workflow_id] = set()
-            
+
             # Filter out messages we've already seen if requested
             if show_new_only and workflow_id in self.seen_message_ids:
                 new_messages = []
@@ -338,7 +344,7 @@ class AgentBlackwellGauntlet:
                 return True
 
             logger.info(f"📨 Found {len(messages)} agent messages:\n")
-            
+
             # Get agent emojis for different agent types
             agent_emojis = {
                 "spec": "📖",  # 📖
@@ -349,7 +355,7 @@ class AgentBlackwellGauntlet:
                 "system": "⚙️",  # ⚙️
                 "orchestrator": "🎸",  # 🎸
             }
-            
+
             # Message type emojis
             type_emojis = {
                 "status": "📊",  # 📊
@@ -358,27 +364,27 @@ class AgentBlackwellGauntlet:
                 "progress": "📈",  # 📈
                 "message": "💬",  # 💬
             }
-            
+
             for i, msg in enumerate(messages):
-                agent_name = msg.get('agent_name', 'unknown')
-                message_type = msg.get('message_type', 'message')
-                
+                agent_name = msg.get("agent_name", "unknown")
+                message_type = msg.get("message_type", "message")
+
                 # Get appropriate emoji for agent and message type
                 agent_emoji = "🤖"  # Default robot emoji
                 for agent_key, emoji in agent_emojis.items():
                     if agent_key in agent_name.lower():
                         agent_emoji = emoji
                         break
-                        
+
                 type_emoji = type_emojis.get(message_type.lower(), "💬")
-                
+
                 # Format message header with emojis
                 logger.info(
                     f"\n{agent_emoji} {agent_name.upper()} {type_emoji} {message_type.capitalize()} "
                     f"[Message {i+1}/{len(messages)}]"
                 )
                 logger.info("-" * 60)
-                
+
                 # Format content based on type
                 content = msg.get("content", {})
                 if isinstance(content, dict):
@@ -387,18 +393,24 @@ class AgentBlackwellGauntlet:
                     logger.info(f"\n{formatted_content}\n")
                 else:
                     logger.info(f"\n{content}\n")
-                    
+
                 logger.info("-" * 60)
-            
+
             logger.info("\n" + "✨" * 25)
-            logger.info(f"🌐 End of messages for workflow: {workflow_id if workflow_id else 'all'}")
+            logger.info(
+                f"🌐 End of messages for workflow: {workflow_id if workflow_id else 'all'}"
+            )
             logger.info("✨" * 25 + "\n")
             return True
-            
+
         except Exception as e:
             if fail_on_error:
                 logger.error(f"\n❌ Error retrieving or displaying agent messages: {e}")
-                self._record_result("Agent Message Retrieval", False, {"error": str(e), "workflow_id": workflow_id})
+                self._record_result(
+                    "Agent Message Retrieval",
+                    False,
+                    {"error": str(e), "workflow_id": workflow_id},
+                )
                 logger.info("✨" * 25 + "\n")
                 return False
             else:
@@ -406,9 +418,11 @@ class AgentBlackwellGauntlet:
                 logger.info("✨" * 25 + "\n")
                 return True
 
-    def monitor_workflow_messages(self, workflow_id: str, duration_seconds: int = None, fail_on_error: bool = True):
+    def monitor_workflow_messages(
+        self, workflow_id: str, duration_seconds: int = None, fail_on_error: bool = True
+    ):
         """Monitor agent messages for a workflow for a specified duration.
-        
+
         Args:
             workflow_id: The workflow ID to monitor
             duration_seconds: How long to monitor for messages (in seconds)
@@ -416,63 +430,72 @@ class AgentBlackwellGauntlet:
         """
         # Use class-level timeout if available, otherwise use parameter or default
         if duration_seconds is None:
-            duration_seconds = getattr(self, 'message_timeout', 45)
-            
+            duration_seconds = getattr(self, "message_timeout", 45)
+
         logger.info("\n" + "🔭" * 20)
         logger.info(f"📡 Monitoring agent messages for workflow {workflow_id}")
         logger.info(f"⏱️  Monitoring duration: {duration_seconds} seconds")
         logger.info("🔭" * 20)
-        
+
         start_time = time.time()
         end_time = start_time + duration_seconds
         message_count = 0
         last_check_time = start_time
-        
+
         # Show progress indicators during long waits
-        progress_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        progress_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         progress_idx = 0
-        
+
         while time.time() < end_time:
             try:
                 current_time = time.time()
                 elapsed = current_time - start_time
                 remaining = end_time - current_time
-                
+
                 # Update progress indicator every second
                 if current_time - last_check_time >= 1:
                     progress_char = progress_chars[progress_idx % len(progress_chars)]
                     progress_idx += 1
-                    print(f"\r{progress_char} Monitoring: {elapsed:.1f}s elapsed, {remaining:.1f}s remaining...", end="")
+                    print(
+                        f"\r{progress_char} Monitoring: {elapsed:.1f}s elapsed, {remaining:.1f}s remaining...",
+                        end="",
+                    )
                     last_check_time = current_time
-                    
+
                     # Check for new messages every 2 seconds
                     if progress_idx % 2 == 0:
-                        if self.display_agent_messages(workflow_id, show_new_only=True, fail_on_error=False):
+                        if self.display_agent_messages(
+                            workflow_id, show_new_only=True, fail_on_error=False
+                        ):
                             message_count += 1
-                
+
                 # Sleep briefly to avoid hammering the API and CPU
                 time.sleep(0.1)
-                
+
             except Exception as e:
                 logger.warning(f"⚠️ Error during message monitoring: {e}")
-        
+
         # Clear the progress line and show final status
         print("\r" + " " * 80, end="\r")
-        
+
         elapsed = time.time() - start_time
         logger.info(f"\n📊 Monitoring complete after {elapsed:.1f}s")
         logger.info(f"📬 Messages received: {message_count}")
-        
+
         if message_count == 0 and fail_on_error:
             logger.error("\n❌ No agent messages detected during monitoring period")
             self._record_result(
-                "Agent Message Monitoring", 
-                False, 
-                {"error": "No messages detected", "workflow_id": workflow_id, "duration": duration_seconds}
+                "Agent Message Monitoring",
+                False,
+                {
+                    "error": "No messages detected",
+                    "workflow_id": workflow_id,
+                    "duration": duration_seconds,
+                },
             )
             logger.info("🔭" * 20 + "\n")
             return False
-        
+
         logger.info("✅ Message monitoring successful")
         logger.info("🔭" * 20 + "\n")
         return True
@@ -492,21 +515,21 @@ class AgentBlackwellGauntlet:
 
     def run_feature_request_test(self) -> Optional[str]:
         """Run the feature request test.
-        
+
         Returns:
             str: The workflow ID if successful, None otherwise
         """
         logger.info("\n" + "🚀" * 30)
         logger.info("🚀 RUNNING FEATURE REQUEST TEST")
         logger.info("🚀" * 30)
-        
+
         try:
             # Generate a unique test description
             test_id = str(uuid.uuid4())[:8]
             description = f"Test feature request {test_id}"
-            
+
             logger.info(f"📝 Request description: {description}")
-            
+
             # Send the feature request
             logger.info("📤 Sending feature request to API...")
             response = requests.post(
@@ -514,49 +537,64 @@ class AgentBlackwellGauntlet:
                 json={"description": description},
                 timeout=10,
             )
-            
+
             if response.status_code != 200:
-                logger.error(f"\n❌ FAILED: Feature Request API returned {response.status_code}")
+                logger.error(
+                    f"\n❌ FAILED: Feature Request API returned {response.status_code}"
+                )
                 logger.error(f"Details: {response.text}")
-                self._record_result("Feature Request", False, {"status_code": response.status_code, "response": response.text})
+                self._record_result(
+                    "Feature Request",
+                    False,
+                    {"status_code": response.status_code, "response": response.text},
+                )
                 return None
-                
+
             data = response.json()
             workflow_id = data.get("workflow_id")
-            
+
             if not workflow_id:
                 logger.error("\n❌ FAILED: No workflow ID returned")
-                self._record_result("Feature Request", False, {"error": "No workflow ID", "response": data})
+                self._record_result(
+                    "Feature Request",
+                    False,
+                    {"error": "No workflow ID", "response": data},
+                )
                 return None
-                
+
             logger.info(f"\n✅ PASSED: Feature request submitted successfully")
             logger.info(f"📋 Workflow ID: {workflow_id}")
             self._record_result("Feature Request", True, {"workflow_id": workflow_id})
-            
+
             # Wait a bit before monitoring messages to allow the workflow to start
             wait_time = 10
             logger.info(f"\n⏳ Waiting {wait_time}s for workflow to initialize...")
-            
+
             # Show a spinner while waiting
-            spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+            spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
             for i in range(wait_time * 2):
-                print(f"\r{spinner_chars[i % len(spinner_chars)]} Initializing workflow...", end="")
+                print(
+                    f"\r{spinner_chars[i % len(spinner_chars)]} Initializing workflow...",
+                    end="",
+                )
                 time.sleep(0.5)
             print("\r" + " " * 50, end="\r")
-            
+
             # Get timeout from class attribute if available
-            monitor_duration = getattr(self, 'message_timeout', 45)
+            monitor_duration = getattr(self, "message_timeout", 45)
             logger.info(f"📡 Starting message monitoring for {monitor_duration}s...")
-            
+
             # Monitor for agent messages
-            self.monitor_workflow_messages(workflow_id, duration_seconds=monitor_duration)
-            
+            self.monitor_workflow_messages(
+                workflow_id, duration_seconds=monitor_duration
+            )
+
             logger.info("\n" + "🏁" * 30)
             logger.info("🏁 FEATURE REQUEST TEST COMPLETE")
             logger.info("🏁" * 30 + "\n")
-            
+
             return workflow_id
-            
+
         except Exception as e:
             logger.error(f"\n❌ FAILED: Feature Request test")
             logger.error(f"Details: {str(e)}")
@@ -571,9 +609,15 @@ class AgentBlackwellGauntlet:
             return ""
 
     def check_workflow_status(self, workflow_id: str) -> bool:
-        """Test workflow status endpoint."""
+        """Check the status of a workflow."""
+        logger.info("\n" + "🔍" * 30)
+        logger.info("🔍 CHECKING WORKFLOW STATUS")
+        logger.info("🔍" * 30)
+        
         try:
-            logger.info(f"Checking workflow status for ID: {workflow_id}")
+            logger.info(f"\n📋 Workflow ID: {workflow_id}")
+            logger.info("🔄 Requesting status from API...")
+            
             response = self.session.get(
                 f"{self.base_url}/api/v1/workflow-status/{workflow_id}"
             )
@@ -581,27 +625,39 @@ class AgentBlackwellGauntlet:
             result = response.json()
 
             # Validate response format
-            assert "workflow_id" in result, "Response missing workflow_id"
-            assert "status" in result, "Response missing status"
+            assert "status" in result, "Response missing status field"
+            status = result["status"]
 
-            logger.info(f"Workflow status: {result.get('status', 'unknown')}")
-
-            # Display agent messages for this workflow with proper error handling
-            logger.info("🔍 Checking agent messages for this workflow...")
-            if not self.display_agent_messages(workflow_id, show_new_only=True, fail_on_error=True):
-                logger.error(f"Failed to retrieve agent messages for workflow {workflow_id}")
-                # We'll continue with the test but mark this step as failed
-                self._record_result("Workflow Status Message Retrieval", False, {"workflow_id": workflow_id})
+            # Format status with appropriate emoji
+            status_emoji = "🟢" if status.lower() in ["completed", "success", "done"] else \
+                         "🔴" if status.lower() in ["failed", "error"] else \
+                         "🟡" if status.lower() in ["in_progress", "running", "pending"] else "⚪"
+            
+            logger.info(f"\n{status_emoji} Workflow status: {status.upper()}")
 
             self._record_result(
                 "Workflow Status Check",
                 True,
-                {"workflow_id": workflow_id, "response": result},
+                {"workflow_id": workflow_id, "status": status, "response": result},
             )
+
+            # Display agent messages for this workflow with improved error handling
+            logger.info("\n📬 Retrieving agent messages for this workflow...")
+            self.display_agent_messages(workflow_id, fail_on_error=True)
+
+            logger.info("\n" + "✓" * 30)
+            logger.info("✓ WORKFLOW STATUS CHECK COMPLETE")
+            logger.info("✓" * 30 + "\n")
             return True
+            
         except (RequestException, AssertionError) as e:
-            self._record_result("Workflow Status Check", False, {"error": str(e)})
-            logger.error(f"Workflow status check failed: {e}")
+            self._record_result(
+                "Workflow Status Check", False, {"workflow_id": workflow_id, "error": str(e)}
+            )
+            logger.error(f"\n❌ Workflow status check failed: {e}")
+            logger.info("\n" + "✓" * 30)
+            logger.info("✓ WORKFLOW STATUS CHECK FAILED")
+            logger.info("✓" * 30 + "\n")
             return False
 
     def run_synchronous_workflow(self) -> Dict[str, Any]:
@@ -783,7 +839,7 @@ Please ensure the code is production-ready with proper error handling, logging, 
         """Test ChatOps command endpoint with various command types."""
         try:
             logger.info("🤖 Testing ChatOps commands...")
-            
+
             # Test commands to try - Updated payload structure based on API schema
             # From the schema: ChatCommandRequest requires platform, user_id, channel_id, command, timestamp
             test_commands = [
@@ -792,105 +848,110 @@ Please ensure the code is production-ready with proper error handling, logging, 
                     "user_id": "test_user",
                     "channel_id": "test_channel",
                     "command": "!help",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 },
                 {
                     "platform": "slack",
                     "user_id": "test_user",
                     "channel_id": "test_channel",
                     "command": "!spec Create a user authentication system",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 },
                 {
                     "platform": "slack",
                     "user_id": "test_user",
                     "channel_id": "test_channel",
                     "command": "!design Microservices architecture for e-commerce",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 },
                 {
                     "platform": "slack",
                     "user_id": "test_user",
                     "channel_id": "test_channel",
                     "command": "!code Implement Redis connection pool",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 },
                 {
                     "platform": "slack",
                     "user_id": "test_user",
                     "channel_id": "test_channel",
                     "command": "!review Review this FastAPI application structure",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 },
                 {
                     "platform": "slack",
                     "user_id": "test_user",
                     "channel_id": "test_channel",
                     "command": "!test Create comprehensive unit and integration tests",
-                    "timestamp": datetime.now().isoformat()
-                }
+                    "timestamp": datetime.now().isoformat(),
+                },
             ]
-            
+
             chatops_results = []
             success_count = 0
-            
+
             for cmd_test in test_commands:
-                command_text = cmd_test['command']
+                command_text = cmd_test["command"]
                 logger.info(f"Testing command: {command_text}")
-                
+
                 try:
                     response = self.session.post(
-                        f"{self.base_url}/api/v1/chatops/command",
-                        json=cmd_test
+                        f"{self.base_url}/api/v1/chatops/command", json=cmd_test
                     )
                     response.raise_for_status()
                     result = response.json()
-                    
+
                     # Validate response format
                     assert "message" in result, "ChatOps response missing message"
-                    
-                    chatops_results.append({
-                        "command": command_text,
-                        "status": "success",
-                        "response": result
-                    })
-                    
+
+                    chatops_results.append(
+                        {
+                            "command": command_text,
+                            "status": "success",
+                            "response": result,
+                        }
+                    )
+
                     logger.info(f"✅ Command '{command_text}' executed successfully")
                     success_count += 1
-                    
+
                 except RequestException as e:
                     # Log the error but continue testing other commands
                     logger.warning(f"Command '{command_text}' failed: {e}")
-                    chatops_results.append({
-                        "command": command_text,
-                        "status": "failed",
-                        "error": str(e)
-                    })
-                
+                    chatops_results.append(
+                        {"command": command_text, "status": "failed", "error": str(e)}
+                    )
+
                 time.sleep(1)  # Brief pause between commands
-            
+
             # Consider test successful if at least one command worked
             if success_count > 0:
                 self._record_result(
                     "ChatOps Commands Test",
                     True,
-                    {"commands_tested": len(test_commands), 
-                     "successful": success_count,
-                     "results": chatops_results}
+                    {
+                        "commands_tested": len(test_commands),
+                        "successful": success_count,
+                        "results": chatops_results,
+                    },
                 )
-                logger.info(f"✅ {success_count}/{len(test_commands)} ChatOps commands executed successfully")
+                logger.info(
+                    f"✅ {success_count}/{len(test_commands)} ChatOps commands executed successfully"
+                )
                 return True
             else:
                 self._record_result(
                     "ChatOps Commands Test",
                     False,
-                    {"commands_tested": len(test_commands), 
-                     "successful": 0,
-                     "results": chatops_results}
+                    {
+                        "commands_tested": len(test_commands),
+                        "successful": 0,
+                        "results": chatops_results,
+                    },
                 )
                 logger.error("All ChatOps commands failed")
                 return False
-        
+
         except Exception as e:
             self._record_result("ChatOps Commands Test", False, {"error": str(e)})
             logger.error(f"ChatOps commands test failed: {e}")
@@ -1383,7 +1444,7 @@ async def main():
     )
 
     # Test selection options
-    test_group = parser.add_argument_group('📝 Test Selection Options')
+    test_group = parser.add_argument_group("📝 Test Selection Options")
     test_group.add_argument(
         "--max-tests",
         "-n",
@@ -1395,9 +1456,9 @@ async def main():
         action="store_true",
         help="Run in interactive mode with customizable test selection",
     )
-    
+
     # Docker management options
-    docker_group = parser.add_argument_group('🐳 Docker Management Options')
+    docker_group = parser.add_argument_group("🐳 Docker Management Options")
     docker_group.add_argument(
         "--docker",
         action="store_true",
@@ -1418,28 +1479,26 @@ async def main():
         action="store_true",
         help="Stop Docker containers after tests (or immediately if --docker-only)",
     )
-    
+
     # API and output options
-    config_group = parser.add_argument_group('⚙️ Configuration Options')
+    config_group = parser.add_argument_group("⚙️ Configuration Options")
     config_group.add_argument(
         "--base-url",
         default="http://localhost:8000",
         help="Base URL for the Agent Blackwell API (default: http://localhost:8000)",
     )
     config_group.add_argument(
-        "--output-dir", 
-        default="logs", 
-        help="Directory to store logs and test outputs"
+        "--output-dir", default="logs", help="Directory to store logs and test outputs"
     )
     config_group.add_argument(
         "--message-timeout",
         type=int,
         default=45,
-        help="Timeout in seconds when waiting for agent messages (default: 45)"
+        help="Timeout in seconds when waiting for agent messages (default: 45)",
     )
 
     args = parser.parse_args()
-    
+
     # Print fancy banner
     print("\n" + "=" * 80)
     print("🤖 🚨 💻  AGENT BLACKWELL E2E TEST GAUNTLET  💻 🚨 🤖")
@@ -1455,7 +1514,7 @@ async def main():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Configure file logging
     log_file = os.path.join(output_dir, f"gauntlet_{timestamp}.log")
     file_handler = logging.FileHandler(log_file)
@@ -1465,11 +1524,11 @@ async def main():
     )
     file_handler.setFormatter(formatter)
     logging.getLogger().addHandler(file_handler)
-    
+
     # Get project directory (parent of script directory)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.dirname(script_dir)
-    
+
     # Handle Docker operations
     docker_started = False
     if args.docker or args.docker_only:
@@ -1478,14 +1537,16 @@ async def main():
             logger.error(f"🚫 Docker setup failed: {message}")
             return
         docker_started = True
-        
+
         # If docker-only flag is set, exit after starting Docker
         if args.docker_only:
-            logger.info("🐳 Docker containers started successfully. Exiting as requested.")
+            logger.info(
+                "🐳 Docker containers started successfully. Exiting as requested."
+            )
             if args.teardown_docker:
                 teardown_docker(project_dir)
             return
-    
+
     # Validate max_tests range
     if args.max_tests is not None:
         if args.max_tests < 1 or args.max_tests > 7:

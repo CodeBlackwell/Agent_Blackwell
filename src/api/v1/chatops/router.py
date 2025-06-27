@@ -294,21 +294,21 @@ async def enqueue_agent_task(
     }
 
     agent_name = agent_map.get(agent_type, agent_type)
-    
+
     try:
         # Check if we're using LangGraphOrchestrator (which has execute_workflow)
-        if hasattr(orchestrator, 'execute_workflow'):
+        if hasattr(orchestrator, "execute_workflow"):
             # Generate a workflow ID
             workflow_id = str(uuid.uuid4())
             # Start the workflow execution
             await orchestrator.execute_workflow(
                 workflow_id=workflow_id,
                 user_request=description,
-                task_type=f"{agent_name}_request"
+                task_type=f"{agent_name}_request",
             )
             return workflow_id
         # Fall back to legacy Orchestrator with enqueue_task
-        elif hasattr(orchestrator, 'enqueue_task'):
+        elif hasattr(orchestrator, "enqueue_task"):
             task_data = {
                 "description": description,
                 **params,  # Include any additional parameters from the command
@@ -316,7 +316,9 @@ async def enqueue_agent_task(
             return await orchestrator.enqueue_task(agent_name, task_data)
         else:
             # Neither method exists
-            logger.error("Orchestrator has neither execute_workflow nor enqueue_task methods")
+            logger.error(
+                "Orchestrator has neither execute_workflow nor enqueue_task methods"
+            )
             raise AttributeError("Incompatible orchestrator implementation")
     except Exception as e:
         logger.error(f"Error in enqueue_agent_task: {e}")

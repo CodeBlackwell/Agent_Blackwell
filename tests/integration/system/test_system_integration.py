@@ -31,7 +31,7 @@ class TestEndToEndWorkflow:
         mock_orch = MagicMock()
         mock_orch.enqueue_task = AsyncMock()
         mock_orch.get_task_status = AsyncMock()
-        
+
         # Simple task tracking for basic functionality
         mock_orch._tasks = {}
 
@@ -104,7 +104,7 @@ class TestSystemHealthChecks:
         mock_orch = MagicMock()
         mock_orch.enqueue_task = AsyncMock(return_value="test-task-123")
         mock_orch.get_task_status = AsyncMock(return_value={"status": "completed"})
-        
+
         app.dependency_overrides[get_orchestrator] = lambda: mock_orch
         with TestClient(app) as client:
             yield client

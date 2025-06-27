@@ -15,6 +15,7 @@ pip install -r ./tests/scripts/requirements-test.txt
 ./tests/scripts/run-all-tests.sh phase4  # Vector DB tests
 ./tests/scripts/run-all-tests.sh phase5  # Orchestration & API tests
 ./tests/scripts/run-all-tests.sh api     # E2E API validation
+./tests/scripts/run-all-tests.sh unit    # Root directory tests
 ```
 
 ## Unified Test Runner
@@ -36,6 +37,7 @@ The `run-all-tests.sh` script is the single entry point for all test suites in t
 ./tests/scripts/run-all-tests.sh phase3  # Agent tests
 ./tests/scripts/run-all-tests.sh phase4  # Vector DB tests
 ./tests/scripts/run-all-tests.sh phase5  # Orchestration & API tests
+./tests/scripts/run-all-tests.sh unit    # Root directory tests
 
 # Run specific agent tests
 ./tests/scripts/run-all-tests.sh agents all
@@ -140,6 +142,7 @@ python ./tests/scripts/e2e_test_gauntlet.py --output-dir custom_logs
 ./tests/scripts/run-all-tests.sh phase3
 
 # Test specific agent types
+./tests/scripts/run-all-tests.sh agents all
 ./tests/scripts/run-all-tests.sh agents spec
 ./tests/scripts/run-all-tests.sh agents design
 ./tests/scripts/run-all-tests.sh agents coding

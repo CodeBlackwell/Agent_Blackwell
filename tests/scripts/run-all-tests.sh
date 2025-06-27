@@ -79,7 +79,7 @@ auto_environment_setup() {
     fi
     log_info "Starting Docker test environment via docker compose…"
     docker compose -f "$COMPOSE_FILE" up -d
-    
+
     # Wait for healthy services with exponential back-off (max ~30s)
     local attempt=1
     local max_attempts=6
@@ -156,6 +156,7 @@ Top-level categories:
   phase4       Vector-DB (Phase 4) integration suite
   phase5       Orchestration/API (Phase 5) integration suite
   api          End-to-end API tests via Poetry env
+  unit         Run unit tests via Poetry
   all          Run everything
   logs         Tail recent Docker logs
   help         Show this help
@@ -266,6 +267,28 @@ handle_agents() {
     esac
 }
 
+# ------------ Unit Tests ------------------------------------------------ #
+run_unit_tests() {
+    log_info "Running tests from root tests/ directory via Poetry..."
+    if ! command -v poetry >/dev/null 2>&1; then
+        log_error "Poetry not installed – install it or adjust your PATH."
+        exit 1
+    fi
+
+    # Ensure virtualenv and deps
+    poetry install --no-interaction --with dev >/dev/null
+
+    # Run tests in the root tests/ directory
+    log_info "Executing tests in root tests/ directory..."
+    if poetry run python -m pytest tests/ -k "not integration and not api"; then
+        log_success "Root directory tests completed successfully."
+        return 0
+    else
+        log_error "Root directory tests failed. Check output for details."
+        return 1
+    fi
+}
+
 run_e2e_http_tests() {
     log_info "Running E2E HTTP tests via Poetry…"
     if ! command -v poetry >/dev/null 2>&1; then
@@ -273,8 +296,29 @@ run_e2e_http_tests() {
         exit 1
     fi
     # Ensure virtualenv and deps
-    poetry install --no-interaction --with test >/dev/null
+    poetry install --no-interaction --with dev >/dev/null
+
+    # Start the API server in the background
+    log_info "Starting API server for E2E tests..."
+    poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+    API_PID=$!
+
+    # Give the API server time to start up
+    log_info "Waiting for API server to start (5s)..."
+    sleep 5
+
+    # Run the E2E tests
+    log_info "Running E2E tests..."
     poetry run python tests/scripts/e2e_test_gauntlet.py
+    E2E_EXIT_CODE=$?
+
+    # Shutdown the API server
+    log_info "Shutting down API server..."
+    kill $API_PID
+    wait $API_PID 2>/dev/null || true
+
+    # Return the exit code from the E2E tests
+    return $E2E_EXIT_CODE
 }
 
 # ------------ Phase 3 Integration Suite ---------------------------------- #
@@ -352,8 +396,10 @@ main() {
         phase4)  run_phase4_suite ;;
         phase5)  run_phase5_suite           ;;
         api)     run_e2e_http_tests   ;;
-        all)     
+        unit)    run_unit_tests       ;;
+        all)
             log_info "Running all test suites..."
+            run_unit_tests || true
             run_phase3_suite || true
             run_phase4_suite || true
             run_phase5_suite || true

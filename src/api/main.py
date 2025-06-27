@@ -27,7 +27,11 @@ from src.api.v1.chatops.platforms.slack import router as slack_router
 # Import routers
 from src.api.v1.chatops.router import router as chatops_router
 from src.api.v1.feature_request.router import router as feature_request_router
+from src.api.v1.jobs import router as jobs_router
 from src.api.v1.messages import router as messages_router
+from src.api.v1.streaming import initialize_streaming_service
+from src.api.v1.streaming import router as streaming_router
+from src.api.v1.streaming import shutdown_streaming_service
 from src.orchestrator.langgraph_orchestrator import LangGraphOrchestrator
 
 # Load environment variables
@@ -126,6 +130,8 @@ app.include_router(slack_router)
 app.include_router(feature_request_router)
 app.include_router(metrics_router)
 app.include_router(messages_router, prefix="/api/v1")
+app.include_router(jobs_router, prefix="/api/v1")
+app.include_router(streaming_router)
 
 
 # Root endpoint
@@ -174,6 +180,28 @@ async def health_check():
         or "degraded",
         "services": health_status,
     }
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    logger.info("Starting up Agent Blackwell API...")
+
+    # Initialize streaming service if orchestrator is available
+    try:
+        orchestrator = get_orchestrator()
+        if orchestrator and hasattr(orchestrator, "async_redis_client"):
+            await initialize_streaming_service(orchestrator.async_redis_client)
+            logger.info("Real-time streaming service initialized")
+    except Exception as e:
+        logger.warning(f"Could not initialize streaming service: {e}")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown."""
+    logger.info("Shutting down Agent Blackwell API...")
+    await shutdown_streaming_service()
 
 
 if __name__ == "__main__":

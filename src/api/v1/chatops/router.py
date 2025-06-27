@@ -9,9 +9,12 @@ import inspect
 import logging
 import re
 import uuid
-from typing import Any, Dict
+from datetime import datetime
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from starlette.status import HTTP_404_NOT_FOUND
 
 from src.api.dependencies import get_orchestrator
@@ -130,7 +133,7 @@ async def process_command(
             return ChatCommandResponse(
                 message=f"✅ Your {command_type} request has been queued. "
                 f"I'll notify you when it's complete.\n"
-                f"Track status with: !status {task_id}"
+                f"Track status with: /status/{task_id}"
             )
         else:
             return ChatCommandResponse(
@@ -315,8 +318,12 @@ async def enqueue_agent_task(
     orchestrator: Any,  # Changed from Orchestrator to Any to support both orchestrator types
     agent_type: str,
     description: str,
-    params: Dict[str, str],
+    params: Dict[str, str] = None,
 ) -> str:
+    """Enqueue a task for an agent."""
+    # Ensure params is not None
+    if params is None:
+        params = {}
     """Enqueue a task for an agent."""
     # Map command type to agent name
     agent_map = {
@@ -357,6 +364,65 @@ async def enqueue_agent_task(
     except Exception as e:
         logger.error(f"Error in enqueue_agent_task: {e}")
         raise
+
+
+# Feature Request direct endpoints
+class FeatureRequest(BaseModel):
+    """Model for direct feature request submissions."""
+
+    description: str = Field(..., description="Feature request description")
+    priority: str = Field(None, description="Priority level (high, medium, low)")
+    tags: List[str] = Field(
+        default_factory=list, description="Tags for categorizing the request"
+    )
+    context: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional context"
+    )
+
+
+@router.post("/feature", response_model=Dict[str, str])
+async def create_feature_request(
+    request: FeatureRequest,
+    orchestrator: Orchestrator = Depends(get_orchestrator),
+) -> Dict[str, str]:
+    """
+    Create a new feature request directly.
+
+    This endpoint allows bypassing the ChatOps command format and directly
+    submitting feature requests to the spec agent.
+    """
+    logger.info(f"Received direct feature request: {request.description}")
+
+    try:
+        # Create params dictionary from request fields
+        params = {
+            "priority": request.priority,
+            "tags": request.tags,
+            "context": request.context,
+        }
+
+        # Filter out None values
+        params = {k: v for k, v in params.items() if v is not None}
+
+        # Send to spec agent
+        task_id = await enqueue_agent_task(
+            orchestrator=orchestrator,
+            agent_type="spec",
+            description=request.description,
+            params=params,
+        )
+
+        return {
+            "task_id": task_id,
+            "message": "Feature request submitted successfully",
+            "status_endpoint": f"/api/v1/chatops/status/{task_id}",
+        }
+
+    except Exception as e:
+        logger.error(f"Error creating feature request: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create feature request: {str(e)}"
+        )
 
 
 def summarize_result(result: Any) -> str:

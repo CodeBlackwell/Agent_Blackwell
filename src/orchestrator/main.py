@@ -32,6 +32,9 @@ from src.api.v1.chatops.models import Job, JobStatus, Task, TaskStatus
 
 # Local imports
 from src.orchestrator.agent_registry import AgentRegistry
+from .agent_health import AgentHealthMonitor, AgentStatus
+from .agent_discovery import AgentDiscoveryService, AgentRegistration
+from .agent_router import AgentRouter, RoutingRequest, TaskPriority, RoutingStrategy
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +42,36 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Global orchestrator instance
+_orchestrator_instance = None
+
+
+def get_orchestrator() -> "Orchestrator":
+    """
+    Get the global orchestrator instance.
+    
+    Returns:
+        Orchestrator instance
+        
+    Raises:
+        RuntimeError: If orchestrator is not initialized
+    """
+    global _orchestrator_instance
+    if _orchestrator_instance is None:
+        raise RuntimeError("Orchestrator not initialized. Call set_orchestrator() first.")
+    return _orchestrator_instance
+
+
+def set_orchestrator(orchestrator: "Orchestrator") -> None:
+    """
+    Set the global orchestrator instance.
+    
+    Args:
+        orchestrator: Orchestrator instance to set
+    """
+    global _orchestrator_instance
+    _orchestrator_instance = orchestrator
 
 
 class Orchestrator:
@@ -101,6 +134,30 @@ class Orchestrator:
                 logger.debug(
                     f"Test mode enabled, using result stream: {self.result_stream}"
                 )
+                
+            # Initialize agent coordination components
+            self.health_monitor = AgentHealthMonitor(
+                redis_url=redis_url,
+                heartbeat_interval=30,
+                health_check_interval=60,
+                offline_threshold=120
+            )
+            
+            self.discovery_service = AgentDiscoveryService(
+                redis_url=redis_url,
+                health_monitor=self.health_monitor,
+                discovery_interval=30,
+                cleanup_interval=300,
+                agent_timeout=180
+            )
+            
+            self.agent_router = AgentRouter(
+                redis_url=redis_url,
+                health_monitor=self.health_monitor,
+                discovery_service=self.discovery_service,
+                default_strategy=RoutingStrategy.HEALTH_AWARE
+            )
+            
         except Exception as e:
             logger.error(f"Failed to initialize orchestrator: {e}")
             raise
@@ -162,17 +219,6 @@ class Orchestrator:
 
         logger.info("Orchestrator initialized successfully")
 
-    def register_agent(self, agent_name: str, agent_executor) -> None:
-        """
-        Register an agent with the orchestrator.
-
-        Args:
-            agent_name: Name to register the agent under
-            agent_executor: Agent instance with an ainvoke method
-        """
-        self.agents[agent_name] = agent_executor
-        logger.info(f"Registered agent: {agent_name}")
-
     def initialize_agents(self) -> None:
         """
         Initialize all agents using the AgentRegistry.
@@ -187,6 +233,144 @@ class Orchestrator:
             logger.info("All agents initialized and registered")
         except Exception as e:
             logger.error(f"Error initializing agents: {e}")
+
+    async def start_coordination(self) -> None:
+        """
+        Start all agent coordination services.
+        """
+        try:
+            # Initialize router
+            await self.agent_router.initialize()
+            
+            # Start health monitoring
+            await self.health_monitor.start_monitoring()
+            
+            # Start discovery service
+            await self.discovery_service.start_discovery()
+            
+            # Register existing agents with coordination system
+            await self._register_agents_with_coordination()
+            
+            logger.info("🚀 Agent coordination system started successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to start coordination system: {e}")
+            raise
+
+    async def stop_coordination(self) -> None:
+        """
+        Stop all agent coordination services.
+        """
+        try:
+            await self.discovery_service.stop_discovery()
+            await self.health_monitor.stop_monitoring()
+            
+            logger.info("Agent coordination system stopped")
+            
+        except Exception as e:
+            logger.error(f"Error stopping coordination system: {e}")
+
+    async def _register_agents_with_coordination(self) -> None:
+        """
+        Register existing agents with the coordination system.
+        """
+        if not self.agent_registry:
+            return
+            
+        # Register each agent type with discovery service
+        agent_types = ["spec", "design", "coding", "review", "test"]
+        
+        for agent_type in agent_types:
+            try:
+                agent_id = f"{agent_type}_agent_001"  # Standard agent ID format
+                
+                # Determine capabilities based on agent type
+                capabilities = self._get_agent_capabilities(agent_type)
+                
+                await self.discovery_service.register_agent(
+                    agent_id=agent_id,
+                    agent_type=agent_type,
+                    agent_class=f"{agent_type.capitalize()}Agent",
+                    capabilities=capabilities,
+                    version="1.0.0",
+                    max_concurrent_tasks=5,
+                    priority=100,
+                    tags=[agent_type, "local", "orchestrator"],
+                    metadata={
+                        "initialized_at": datetime.utcnow().isoformat(),
+                        "orchestrator_managed": True
+                    }
+                )
+                
+                logger.info(f"Registered {agent_type} agent with coordination system")
+                
+            except Exception as e:
+                logger.error(f"Failed to register {agent_type} agent: {e}")
+
+    def _get_agent_capabilities(self, agent_type: str) -> List[str]:
+        """
+        Get capabilities for an agent type.
+        
+        Args:
+            agent_type: Type of agent
+            
+        Returns:
+            List of capabilities
+        """
+        capability_map = {
+            "spec": [
+                "requirements_analysis",
+                "specification_writing",
+                "user_story_creation",
+                "acceptance_criteria",
+                "technical_planning"
+            ],
+            "design": [
+                "system_design",
+                "architecture_planning",
+                "ui_design",
+                "database_design",
+                "api_design",
+                "scalability_planning"
+            ],
+            "coding": [
+                "code_generation",
+                "implementation",
+                "refactoring",
+                "debugging",
+                "optimization",
+                "testing_integration"
+            ],
+            "review": [
+                "code_review",
+                "quality_assessment",
+                "security_analysis",
+                "performance_review",
+                "best_practices",
+                "documentation_review"
+            ],
+            "test": [
+                "test_planning",
+                "unit_testing",
+                "integration_testing",
+                "test_automation",
+                "quality_assurance",
+                "test_reporting"
+            ]
+        }
+        
+        return capability_map.get(agent_type, [agent_type])
+
+    def register_agent(self, agent_name: str, agent_executor) -> None:
+        """
+        Register an agent with the orchestrator.
+
+        Args:
+            agent_name: Name to register the agent under
+            agent_executor: Agent instance with an ainvoke method
+        """
+        self.agents[agent_name] = agent_executor
+        logger.info(f"Registered agent: {agent_name}")
 
     async def diagnose_task_routing(self, task_type: str):
         """Run diagnostic tests on task routing configuration."""
@@ -239,103 +423,187 @@ class Orchestrator:
 
         logger.debug(f"{mode_emoji} =====================================")
 
-    async def enqueue_task(self, task_type: str, task_data: Dict[str, Any]) -> str:
-        """Enqueue a task to the Redis stream for processing.
+    async def enqueue_task(self, task: Task) -> None:
+        """
+        Enqueue a task for processing using intelligent agent routing.
 
         Args:
-            task_type: Type of task
-            task_data: Dictionary containing task data
-
-        Returns:
-            Task ID
+            task: Task to enqueue
         """
-        # Create a unique task ID
-        task_id = str(uuid.uuid4())
+        mode_emoji = "🧪" if self.is_test_mode else "🚀"
+        logger.info(f"{mode_emoji} Enqueueing task {task.task_id} (type: {task.task_type})")
 
-        # Call diagnostics before enqueueing
-        await self.diagnose_task_routing(task_type)
-
-        # Build task dictionary
-        task = {
-            "task_id": task_id,
-            "task_type": task_type,
-            "status": "pending",
-            **task_data,
-        }
-
-        # Convert task to JSON string
-        task_json = json.dumps(task)
-
-        # Add to main task queue
         try:
-            # Add to the main task queue first
-            msg_id = self.redis_client.xadd(self.task_stream, {"task": task_json})
-            msg_id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
-            logger.info(
-                f"✅ Successfully enqueued task {task_id} of type {task_type} with message ID {msg_id_str}"
+            # Create routing request
+            routing_request = RoutingRequest(
+                task_id=task.task_id,
+                task_type=task.task_type,
+                priority=self._map_task_priority(task.priority),
+                required_capabilities=self._get_required_capabilities(task),
+                preferred_tags=self._get_preferred_tags(task),
+                max_retries=3,
+                timeout_seconds=300,
+                metadata={
+                    "job_id": task.job_id,
+                    "dependencies": task.dependencies,
+                    "created_at": task.created_at.isoformat()
+                }
             )
 
-            # In test mode, we only use the main test_agent_tasks stream
-            # In production mode, we also publish to agent-specific streams for compatibility
-            if not self.is_test_mode:
-                # Only publish to agent-specific streams in production mode
-                for stream_name in self.agent_stream_mapping.get(task_type, []):
-                    try:
-                        agent_msg_id = self.redis_client.xadd(
-                            stream_name, {"task": task_json}
-                        )
-                        agent_msg_id_str = (
-                            agent_msg_id.decode()
-                            if isinstance(agent_msg_id, bytes)
-                            else str(agent_msg_id)
-                        )
-                        logger.info(
-                            f"✅ Task {task_id} also published to agent stream {stream_name} with ID {agent_msg_id_str}"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"❌ Failed to publish task {task_id} to agent stream {stream_name}: {e}"
-                        )
+            # Route task to best available agent
+            routing_result = await self.agent_router.route_with_retry(routing_request)
 
-            return task_id
+            if routing_result.success and routing_result.agent_id:
+                # Record task start with health monitor
+                await self.health_monitor.record_task_start(
+                    routing_result.agent_id, 
+                    task.task_id
+                )
+
+                # Determine target stream based on mode and routing result
+                if self.is_test_mode:
+                    # In test mode, use generic test stream
+                    target_stream = self.task_stream
+                else:
+                    # In production, use agent-specific stream
+                    agent_streams = self.agent_stream_mapping.get(task.task_type, [])
+                    target_stream = agent_streams[0] if agent_streams else self.task_stream
+
+                # Prepare task message
+                task_message = {
+                    "task_id": task.task_id,
+                    "task_type": task.task_type,
+                    "job_id": task.job_id,
+                    "priority": task.priority,
+                    "input_data": task.input_data,
+                    "dependencies": task.dependencies,
+                    "assigned_agent": routing_result.agent_id,
+                    "routing_strategy": routing_result.routing_strategy.value if routing_result.routing_strategy else None,
+                    "routing_time_ms": routing_result.routing_time_ms,
+                    "created_at": task.created_at.isoformat(),
+                    "enqueued_at": datetime.utcnow().isoformat(),
+                }
+
+                # Add task to Redis stream
+                await self.async_redis_client.xadd(target_stream, task_message)
+
+                # Update task status
+                task.status = TaskStatus.QUEUED
+                task.assigned_agent = routing_result.agent_id
+                task.updated_at = datetime.utcnow()
+                await self._save_task_to_redis(task)
+
+                logger.info(
+                    f"{mode_emoji} Task {task.task_id} routed to agent {routing_result.agent_id} "
+                    f"via {routing_result.routing_strategy.value if routing_result.routing_strategy else 'unknown'} "
+                    f"strategy (routing time: {routing_result.routing_time_ms:.1f}ms)"
+                )
+
+                # Publish task enqueued event
+                await self._publish_task_status_update(task, {
+                    "assigned_agent": routing_result.agent_id,
+                    "routing_strategy": routing_result.routing_strategy.value if routing_result.routing_strategy else None,
+                    "target_stream": target_stream
+                })
+
+            else:
+                # Routing failed - mark task as failed
+                task.status = TaskStatus.FAILED
+                task.error_message = routing_result.error_message or "Failed to route task to agent"
+                task.updated_at = datetime.utcnow()
+                await self._save_task_to_redis(task)
+
+                logger.error(
+                    f"{mode_emoji} Failed to route task {task.task_id}: {task.error_message}"
+                )
+
+                # Publish task failure event
+                await self._publish_task_status_update(task, {
+                    "routing_error": task.error_message,
+                    "retry_count": routing_result.retry_count
+                })
+
+                # Check if this affects job completion
+                await self._check_job_completion(task.job_id)
+
         except Exception as e:
-            logger.error(f"❌ Failed to enqueue task: {e}")
-            # Add Redis info for debugging
-            try:
-                info = self.redis_client.info()
-                logger.debug(f"Redis info: {info}")
-            except Exception as info_error:
-                logger.error(f"❌ Could not get Redis info: {info_error}")
+            logger.error(f"{mode_emoji} Error enqueueing task {task.task_id}: {e}")
+            
+            # Mark task as failed
+            task.status = TaskStatus.FAILED
+            task.error_message = f"Enqueue error: {str(e)}"
+            task.updated_at = datetime.utcnow()
+            await self._save_task_to_redis(task)
 
-            # Re-raise the exception
-            raise
+            # Publish error event
+            await self._publish_task_status_update(task, {
+                "enqueue_error": str(e)
+            })
 
-    async def submit_feature_request(self, description: str) -> str:
+    def _map_task_priority(self, priority: int) -> TaskPriority:
         """
-        Submit a feature request to the system.
-
+        Map task priority integer to TaskPriority enum.
+        
         Args:
-            description: Description of the requested feature
-
+            priority: Integer priority (1-4)
+            
         Returns:
-            task_id: ID of the created task
+            TaskPriority enum value
         """
-        logger.info(f"Submitting feature request: {description[:50]}...")
+        priority_map = {
+            1: TaskPriority.LOW,
+            2: TaskPriority.NORMAL,
+            3: TaskPriority.HIGH,
+            4: TaskPriority.CRITICAL
+        }
+        return priority_map.get(priority, TaskPriority.NORMAL)
 
-        # First, initialize agents if they haven't been initialized yet
-        if not self.agents or "spec_agent" not in self.agents:
-            self.initialize_agents()
+    def _get_required_capabilities(self, task: Task) -> List[str]:
+        """
+        Get required capabilities for a task based on its type and input data.
+        
+        Args:
+            task: Task to analyze
+            
+        Returns:
+            List of required capabilities
+        """
+        base_capabilities = self._get_agent_capabilities(task.task_type)
+        
+        # Add specific capabilities based on task input
+        additional_capabilities = []
+        
+        if task.input_data:
+            # Check for specific requirements in task data
+            if "security_requirements" in str(task.input_data):
+                additional_capabilities.append("security_analysis")
+            if "performance_requirements" in str(task.input_data):
+                additional_capabilities.append("performance_optimization")
+            if "scalability" in str(task.input_data):
+                additional_capabilities.append("scalability_planning")
+        
+        return base_capabilities + additional_capabilities
 
-        # Check if spec_agent is registered, if not, register a dummy one for testing
-        if "spec_agent" not in self.agents:
-            logger.warning("Spec agent not registered, using dummy agent for testing")
-            self.register_agent("spec_agent", None)
-
-        # Submit the feature request as a task to the spec agent
-        task_id = await self.enqueue_task("spec_agent", {"input": description})
-        logger.info(f"Feature request submitted as task: {task_id}")
-
-        return task_id
+    def _get_preferred_tags(self, task: Task) -> List[str]:
+        """
+        Get preferred tags for agent selection based on task characteristics.
+        
+        Args:
+            task: Task to analyze
+            
+        Returns:
+            List of preferred tags
+        """
+        tags = ["local", "orchestrator"]  # Default tags
+        
+        # Add priority-based tags
+        if task.priority >= 3:
+            tags.append("high_priority")
+        
+        # Add task-type specific tags
+        tags.append(task.task_type)
+        
+        return tags
 
     async def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -816,6 +1084,33 @@ class Orchestrator:
                 f"Error publishing task status change for job {job_id}, task {task.task_id}: {e}"
             )
 
+    async def _publish_task_status_update(
+        self, task: Task, additional_data: Dict[str, Any] = None
+    ) -> None:
+        """Publish task status update to job-specific stream for real-time updates."""
+        try:
+            event_data = {
+                "event_type": "task_status_update",
+                "job_id": task.job_id,
+                "task_id": task.task_id,
+                "status": task.status.value,
+                "agent_type": task.agent_type,
+                "description": task.description,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+            # Add any additional data
+            if additional_data:
+                event_data.update(additional_data)
+
+            # Publish to job-specific stream
+            await self.async_redis_client.xadd(f"job-stream:{task.job_id}", event_data)
+
+        except Exception as e:
+            logger.error(
+                f"Error publishing task status update for job {task.job_id}, task {task.task_id}: {e}"
+            )
+
     async def run_loop(self) -> None:
         """Main processing loop that dequeues and processes tasks."""
         logger.info("Starting orchestrator processing loop")
@@ -862,6 +1157,9 @@ class Orchestrator:
             self.register_agent("dummy", None)
         if "echo" not in self.agents:
             self.register_agent("echo", None)
+
+        # Start the coordination system
+        await self.start_coordination()
 
         # Start the processing loop
         await self.run_loop()
@@ -993,7 +1291,10 @@ class Orchestrator:
             }
 
             # Get associated tasks
-            task_ids = await self.async_redis_client.smembers(f"job:{job_id}:tasks")
+            task_ids = await self.async_redis_client.smembers(
+                f"job:{job_id}:tasks"
+            )
+
             tasks = []
             for task_id in task_ids:
                 if isinstance(task_id, bytes):

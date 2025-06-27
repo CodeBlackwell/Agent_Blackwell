@@ -32,6 +32,7 @@ from src.api.v1.messages import router as messages_router
 from src.api.v1.streaming import initialize_streaming_service
 from src.api.v1.streaming import router as streaming_router
 from src.api.v1.streaming import shutdown_streaming_service
+from src.api.v1.agents.router import router as agents_router
 from src.orchestrator.langgraph_orchestrator import LangGraphOrchestrator
 
 # Load environment variables
@@ -131,7 +132,8 @@ app.include_router(feature_request_router)
 app.include_router(metrics_router)
 app.include_router(messages_router, prefix="/api/v1")
 app.include_router(jobs_router, prefix="/api/v1")
-app.include_router(streaming_router)
+app.include_router(streaming_router, prefix="/api/v1")
+app.include_router(agents_router, prefix="/api/v1")
 
 
 # Root endpoint
@@ -185,23 +187,60 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
-    logger.info("Starting up Agent Blackwell API...")
-
-    # Initialize streaming service if orchestrator is available
     try:
-        orchestrator = get_orchestrator()
-        if orchestrator and hasattr(orchestrator, "async_redis_client"):
-            await initialize_streaming_service(orchestrator.async_redis_client)
-            logger.info("Real-time streaming service initialized")
+        logger.info("🚀 Starting Agent Blackwell API...")
+        
+        # Initialize orchestrator
+        from src.orchestrator.main import Orchestrator, set_orchestrator
+        
+        orchestrator = Orchestrator(
+            redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"),
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
+            pinecone_api_key=os.getenv("PINECONE_API_KEY"),
+            skip_pinecone_init=True  # Skip for API startup
+        )
+        
+        # Initialize agents
+        orchestrator.initialize_agents()
+        
+        # Start coordination system
+        await orchestrator.start_coordination()
+        
+        # Set global orchestrator instance
+        set_orchestrator(orchestrator)
+        
+        # Initialize streaming service
+        await initialize_streaming_service()
+        
+        logger.info("✅ Agent Blackwell API started successfully")
+        
     except Exception as e:
-        logger.warning(f"Could not initialize streaming service: {e}")
+        logger.error(f"❌ Failed to start API: {e}")
+        raise
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown."""
-    logger.info("Shutting down Agent Blackwell API...")
-    await shutdown_streaming_service()
+    try:
+        logger.info("🛑 Shutting down Agent Blackwell API...")
+        
+        # Stop coordination system
+        from src.orchestrator.main import get_orchestrator
+        try:
+            orchestrator = get_orchestrator()
+            await orchestrator.stop_coordination()
+        except RuntimeError:
+            # Orchestrator not initialized, skip
+            pass
+        
+        # Shutdown streaming service
+        await shutdown_streaming_service()
+        
+        logger.info("✅ Agent Blackwell API shutdown complete")
+        
+    except Exception as e:
+        logger.error(f"❌ Error during shutdown: {e}")
 
 
 if __name__ == "__main__":

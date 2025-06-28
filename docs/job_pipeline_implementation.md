@@ -122,6 +122,132 @@ Support for parallel or sequential agent pipelines to handle complex jobs.
   - Handle resource allocation for parallel execution
   - Synchronize milestones and reviews across pipelines
 
+## Reference Examples
+
+For each component of our implementation, we'll leverage patterns from existing ACP examples:
+
+### Orchestrator Implementation References
+
+- **Agent Orchestration Pattern**: See `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-orchestrator/agent.py` - Demonstrates coordinating multiple agents with specific responsibilities, similar to our pipeline coordination.
+- **Tool-based Agent Communication**: See `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-orchestrator/translation_tool.py` - Pattern for defining structured agent-to-agent communication, applicable to our pipeline stages.
+- **ACPCallingAgent Pattern**: See `/Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/6. ACPCallingAgent.py` - Demonstrates how to build an agent that calls other agents, which is essential for our Orchestrator.
+
+### State Management References
+
+- **TokenMemory Pattern**: See `beeai_framework.memory.TokenMemory` used in `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-orchestrator/agent.py` - Model for implementing state persistence.
+- **Session Management**: See `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/session.py` - Pattern for maintaining session state across interactions.
+
+### MCP Integration References
+
+- **MCP Tool Collection**: See `/Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/7. ACPxMCP.py` - Example of exposing external tools (like Git operations) to ACP agents through MCP.
+- **MCP Server Setup**: See `/Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/mcpserver.py` - Pattern for defining MCP tools that will be adapted for Git operations.
+
+### Pipeline Agent References
+
+- **Chained Agents**: See `/Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/5. Chained Agents.py` - Pattern for sequencing agents in a pipeline flow.
+- **Tool Definition Pattern**: See `TranslateToolInput`/`TranslateToolResult` in `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-orchestrator/translation_tool.py` - Example of structured data exchange between agents.
+- **RAG Implementation**: See `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/llama-index-rag/agent.py` - Pattern for implementing context-aware agents (useful for our code and review agents).
+
+### Human Review Interface References
+
+- **BeeAI Chat**: See `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-chat` - UI pattern adaptable for our Streamlit-based human review interface.
+- **Client Implementation**: See `/Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/8. ACPxMCP Client.py` - Pattern for client interaction with MCP-integrated ACP agents.
+
+### Parallelization Pattern References
+
+- **Parallel Agent Execution**: See `/Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-parallelization/agent.py` - Demonstrates running multiple agents concurrently using asyncio, which will be critical for our multi-pipeline execution strategy.
+- **Task Coordination**: See `asyncio.gather` pattern in the parallelization example - This approach will be adapted for coordinating concurrent feature set pipelines while maintaining proper synchronization at milestone points.
+
+### MCP Git Integration Example Pattern
+
+For integrating Git operations via MCP, we'll implement a pattern similar to the MCP server in ACPWalkthrough, but adapted for Git operations:
+
+```python
+# Example MCP Git tool integration (will be implemented in /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/mcp/git_tools.py)
+
+from mcp.server.fastmcp import FastMCP
+import git
+import os
+from dotenv import load_dotenv
+
+# Load environment variables using dotenv (following user rules)
+load_dotenv()
+
+# Create an MCP server for Git operations
+mcp = FastMCP("git_operations")
+
+# Repository path configuration
+repo_path = os.getenv("GIT_REPO_PATH")
+repo = git.Repo(repo_path)
+
+@mcp.tool()
+def create_branch(branch_name: str, from_branch: str = "main"):
+    """Create a new Git branch from the specified base branch."""
+    try:
+        # Checkout the base branch first
+        repo.git.checkout(from_branch)
+        # Create and checkout the new branch
+        repo.git.checkout("-b", branch_name)
+        return {"success": True, "branch": branch_name}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def commit_changes(message: str, files: list[str] = None):
+    """Commit changes to the current branch with the specified message.
+    If files is None, commit all changes."""
+    try:
+        if files:
+            for file in files:
+                repo.git.add(file)
+        else:
+            repo.git.add(".")
+        
+        # Create the commit
+        repo.git.commit("-m", message)
+        return {"success": True, "message": message}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def create_pull_request(title: str, description: str, base_branch: str = "main"):
+    """Create a pull request from the current branch to the base branch."""
+    try:
+        from github import Github
+        
+        # Get GitHub token from env vars
+        github_token = os.getenv("GIT_TOKEN")
+        github_repo_name = os.getenv("GIT_REPO_NAME")
+        
+        # Initialize GitHub client
+        g = Github(github_token)
+        github_repo = g.get_repo(github_repo_name)
+        
+        # Get the current branch name
+        current_branch = repo.active_branch.name
+        
+        # Create the pull request
+        pr = github_repo.create_pull(
+            title=title,
+            body=description,
+            base=base_branch,
+            head=current_branch
+        )
+        
+        return {
+            "success": True, 
+            "pr_number": pr.number,
+            "pr_url": pr.html_url
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+if __name__ == "__main__":
+    # Run the MCP server, which will expose these Git operations as tools
+    # for ACP agents to call
+    mcp.run()
+```
+
 ## Implementation Details
 
 ### Workflow Engine

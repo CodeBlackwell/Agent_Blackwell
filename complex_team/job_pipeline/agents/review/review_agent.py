@@ -34,7 +34,23 @@ class ReviewAgent(BaseAgent):
         
         Sets up the agent's server endpoint and configures review tools.
         """
-        # Placeholder for initialization code
+        # PSEUDOCODE: Initialize review agent following LLM pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/llm.py
+        # - Setup Server() with analytical LLM model for code review
+        # - Load code review templates and quality standards from centralized config
+        # - Configure model parameters for detailed code analysis and critique
+        
+        # PSEUDOCODE: Setup code analysis tools following research pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/gpt-researcher/agent.py
+        # - Initialize code quality assessment and best practices retrieval
+        # - Setup knowledge base of common code issues and patterns
+        # - Configure static analysis and security review capabilities
+        
+        # PSEUDOCODE: Initialize evaluation tools following telemetry pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/telemetry.py
+        # - Setup code metrics collection and analysis
+        # - Configure logging and tracking for review process
+        # - Initialize feedback formatting and structured output generation
         pass
     
     async def review_code(self, input: list[Message], context: Context) -> AsyncGenerator:
@@ -48,7 +64,25 @@ class ReviewAgent(BaseAgent):
         Returns:
             An async generator yielding review results and feedback
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Parse code and requirements following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/gpt-researcher/agent.py
+        # - Extract code files and original requirements from input
+        # - Analyze code structure, quality, and adherence to requirements
+        # - Research best practices and coding standards for comparison
+        
+        # PSEUDOCODE: Perform comprehensive code review using LLM following:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/llm.py
+        # - Analyze code quality, security, performance, and maintainability
+        # - Check adherence to specifications and requirements
+        # - Identify potential bugs, edge cases, and improvement opportunities
+        # - Evaluate test coverage and documentation quality
+        
+        # PSEUDOCODE: Stream review results following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/stream.py
+        # - Yield review findings incrementally (critical issues first)
+        # - Format feedback with severity levels and actionable recommendations
+        # - Include code snippets and suggested improvements
+        # - Generate structured output for orchestrator decision-making
         pass
         
     async def suggest_improvements(self, code_issues):
@@ -61,5 +95,20 @@ class ReviewAgent(BaseAgent):
         Returns:
             List of suggested improvements
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Analyze issues and generate solutions following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/openai-story-writer/agent.py
+        # - Categorize issues by severity and type (security, performance, maintainability)
+        # - Generate specific, actionable improvement suggestions for each issue
+        # - Provide code examples and refactoring recommendations
+        
+        # PSEUDOCODE: Format improvement suggestions following structured output pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/echo.py
+        # - Structure suggestions with priority levels and implementation effort estimates
+        # - Include before/after code snippets where applicable
+        # - Format output for orchestrator consumption and potential automated fixes
+        
+        # PSEUDOCODE: Return structured recommendations for pipeline integration:
+        # - Prioritize critical security and functionality issues
+        # - Group related improvements for efficient implementation
+        # - Provide guidance for code agent or human developer action
         pass

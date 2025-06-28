@@ -33,19 +33,46 @@ class DesignAgent(BaseAgent):
         
         Sets up the agent's server endpoint and configures design tools.
         """
-        # Placeholder for initialization code
+        # PSEUDOCODE: Initialize design agent following LLM integration pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/llm.py
+        # - Setup Server() with advanced LLM model for technical design
+        # - Load architecture and design templates from centralized config
+        # - Configure model parameters for detailed technical analysis
+        
+        # PSEUDOCODE: Setup design knowledge base following RAG pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/llama-index-rag/agent.py
+        # - Initialize retrieval system for design patterns and architectures
+        # - Setup knowledge base of common technical design approaches
+        # - Configure context-aware design recommendation system
         pass
     
     async def create_design(self, input: list[Message], context: Context) -> AsyncGenerator:
         """
-        Create a technical design based on a feature specification.
+        Create a technical design based on specifications.
         
         Args:
-            input: List of input messages containing the specification
+            input: List of input messages containing the specifications
             context: Context for the current request
             
         Returns:
-            An async generator yielding design documents
+            An async generator yielding technical designs
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Parse specifications following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/gpt-researcher/agent.py
+        # - Extract functional and non-functional requirements from specifications
+        # - Research relevant design patterns and architectural approaches
+        # - Analyze technical constraints and integration requirements
+        
+        # PSEUDOCODE: Generate technical design using LLM following:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/openai-story-writer/agent.py
+        # - Create system architecture and component diagrams
+        # - Define API interfaces, data models, and interaction patterns
+        # - Specify technology stack and implementation approaches
+        # - Generate detailed class structures and method signatures
+        
+        # PSEUDOCODE: Stream design sections following:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/stream.py
+        # - Yield design components incrementally (architecture first, then details)
+        # - Format output for code agent consumption with clear implementation guidance
+        # - Include cross-references, dependencies, and integration points
         pass

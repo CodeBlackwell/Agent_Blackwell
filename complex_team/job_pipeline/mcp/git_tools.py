@@ -84,21 +84,72 @@ class GitToolsServer:
     
     async def create_branch(self, repo_name: str, branch_name: str, base_branch: str = "main"):
         """
-        Create a new branch in the specified repository.
+        Create a new Git branch for feature development.
         
         Args:
             repo_name: Name of the repository
-            branch_name: Name for the new branch
+            branch_name: Name of the new branch
             base_branch: Base branch to create from (default: main)
             
         Returns:
-            Status of the branch creation operation
+            Status of branch creation
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Implement MCP Git tools following integration pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/7. ACPxMCP.py
+        # - Use subprocess or git library to execute Git commands
+        # - Create branch with proper naming convention (feature/pipeline-{timestamp})
+        # - Switch to new branch and ensure clean working directory
+        
+        # PSEUDOCODE: Handle Git operations following error handling pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/echo.py
+        # - Validate branch name and base branch existence
+        # - Execute git checkout -b command with error handling
+        # - Return structured response with success/failure status
+        
+        # PSEUDOCODE: Log operations following telemetry pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/telemetry.py
+        # - Log branch creation for audit trail
+        # - Track pipeline Git operations for debugging
+        # - Return status for orchestrator consumption
         try:
             # Implementation will use self.github_client to create branch
             return {"status": "success", "message": f"Created branch {branch_name}"}
         except GithubException as e:
+            return {"status": "error", "message": str(e)}
+    
+    async def commit_files(self, repo_name: str, files: list, commit_message: str):
+        """
+        Commit files to the current branch.
+        
+        Args:
+            repo_name: Name of the repository
+            files: List of files to commit (path and content)
+            commit_message: Commit message
+            
+        Returns:
+            Status of the commit operation
+        """
+        # PSEUDOCODE: Implement file operations following MCP integration pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/7. ACPxMCP.py
+        # - Write files to local filesystem or use GitHub API for direct commits
+        # - Stage files using git add or GitHub API file creation/update
+        # - Execute commit with structured message including pipeline metadata
+        
+        # PSEUDOCODE: Handle batch operations following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-parallelization/agent.py
+        # - Process multiple files efficiently (batch API calls if using GitHub API)
+        # - Validate file content and paths before committing
+        # - Generate comprehensive commit message with feature and stage information
+        
+        # PSEUDOCODE: Error handling and logging following telemetry pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/telemetry.py
+        # - Log commit operations for audit trail and debugging
+        # - Handle Git conflicts and authentication errors gracefully
+        # - Return detailed status for orchestrator pipeline tracking
+        try:
+            # Implementation will write files and commit via GitHub API
+            return {"status": "success", "message": f"Committed {len(files)} files"}
+        except Exception as e:
             return {"status": "error", "message": str(e)}
     
     async def commit_changes(self, repo_name: str, branch_name: str, 

@@ -159,6 +159,34 @@ class StateManager:
         # Placeholder for implementation
         pass
     
+    async def update_stage_status(self, pipeline_id: str, stage: PipelineStage, status: str):
+        """
+        Update the status of a pipeline stage.
+        
+        Args:
+            pipeline_id: Unique identifier for the pipeline
+            stage: The pipeline stage to update
+            status: New status for the stage
+        """
+        # PSEUDOCODE: Update pipeline state following store pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/store.py
+        # - Retrieve current pipeline state with thread-safe access
+        # - Update stage status with timestamp and metadata
+        # - Persist updated state to storage with atomic operations
+        
+        # PSEUDOCODE: Handle concurrent updates following session pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/session.py
+        # - Implement optimistic locking to prevent race conditions
+        # - Validate status transitions (e.g., can't go from completed to pending)
+        # - Log status changes for audit trail and debugging
+        
+        # PSEUDOCODE: Notify orchestrator following telemetry pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/telemetry.py
+        # - Send status update notification to orchestrator
+        # - Include pipeline progress metrics and next stage readiness
+        # - Trigger milestone checkpoints if stage completion detected
+        pass
+    
     async def add_artifact(self, pipeline_id: str, stage: PipelineStage, artifact: Any):
         """
         Add an artifact to a pipeline stage.
@@ -168,7 +196,16 @@ class StateManager:
             stage: Stage the artifact belongs to
             artifact: The artifact (specification, design doc, code, etc.)
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Update pipeline state following append pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/append.py
+        # - Retrieve current pipeline state
+        # - Append artifact to stage-specific artifact list
+        # - Save updated pipeline state to persistent storage
+        
+        # PSEUDOCODE: Notify orchestrator of artifact addition following notify pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/notify.py
+        # - Format notification message with pipeline ID, stage, and artifact
+        # - Send notification to orchestrator
         pass
     
     async def get_pipeline(self, pipeline_id: str) -> PipelineState:
@@ -181,7 +218,10 @@ class StateManager:
         Returns:
             The pipeline state
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Retrieve pipeline state following retrieve pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/retrieve.py
+        # - Retrieve pipeline state from persistent storage
+        # - Return pipeline state
         pass
     
     async def add_human_feedback(self, pipeline_id: str, stage: PipelineStage, feedback: str):
@@ -189,9 +229,25 @@ class StateManager:
         Add human feedback to a pipeline stage.
         
         Args:
-            pipeline_id: ID of the pipeline
-            stage: Stage the feedback is for
-            feedback: The feedback content
+            pipeline_id: Unique identifier for the pipeline
+            stage: The stage the feedback applies to
+            feedback: Human feedback text
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Store feedback following store pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/store.py
+        # - Retrieve pipeline state with thread-safe access
+        # - Add timestamped feedback entry to stage-specific feedback list
+        # - Include reviewer metadata and feedback classification
+        
+        # PSEUDOCODE: Notify orchestrator following telemetry pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/telemetry.py
+        # - Log feedback addition for audit trail and analytics
+        # - Send notification to orchestrator about human review completion
+        # - Trigger pipeline continuation or remediation workflow
+        
+        # PSEUDOCODE: Update pipeline state following session pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/session.py
+        # - Update stage status to reflect human review completion
+        # - Persist updated state with atomic operations
+        # - Return feedback confirmation for UI consumption
         pass

@@ -34,6 +34,31 @@ class ReviewApp:
         self.state_manager = StateManager()
         self.orchestrator_client = None  # Will hold ACP client to Orchestrator
         
+    async def initialize_app(self):
+        """
+        Initialize the Streamlit review application.
+        
+        Sets up the UI components and connects to the orchestrator.
+        """
+        # PSEUDOCODE: Initialize Streamlit UI following chat interface pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-chat/app.py
+        # - Setup Streamlit page configuration with appropriate title and layout
+        # - Initialize session state for pipeline tracking and user interactions
+        # - Configure UI theme and styling for professional appearance
+        
+        # PSEUDOCODE: Setup ACP client connections following client pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/simple.py
+        # - Initialize ACP client connection to orchestrator agent
+        # - Setup StateManager client for pipeline data retrieval
+        # - Configure authentication and session management
+        
+        # PSEUDOCODE: Initialize UI components following canvas pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-canvas/app.py
+        # - Create sidebar for pipeline navigation and filtering
+        # - Setup main content area for pipeline details and review forms
+        # - Initialize status indicators and progress visualization components
+        pass
+    
     async def initialize(self):
         """Initialize state and connections."""
         # Load state from file
@@ -64,6 +89,35 @@ class ReviewApp:
         
         # Add new pipeline button
         st.button("+ New Pipeline", key="new_pipeline")
+    
+    async def submit_feedback(self, pipeline_id: str, stage: str, feedback: str, approved: bool):
+        """
+        Submit human feedback for a pipeline stage.
+        
+        Args:
+            pipeline_id: ID of the pipeline being reviewed
+            stage: Stage being reviewed
+            feedback: Human feedback text
+            approved: Whether the stage is approved
+        """
+        # PSEUDOCODE: Submit feedback following client communication pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/simple.py
+        # - Validate feedback input and pipeline/stage existence
+        # - Format feedback message with timestamp and reviewer information
+        # - Send feedback to StateManager for persistence and tracking
+        
+        # PSEUDOCODE: Communicate with orchestrator following handoff pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-handoff/agent.py
+        # - Send approval/rejection decision to orchestrator agent
+        # - Include detailed feedback for agent consumption and improvement
+        # - Trigger pipeline continuation or remediation based on approval status
+        
+        # PSEUDOCODE: Update UI state following session management from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/session.py
+        # - Update Streamlit session state with submission status
+        # - Show confirmation message and redirect to pipeline list
+        # - Log feedback submission for audit trail and analytics
+        pass
     
     def render_pipeline_detail(self, pipeline_id: str):
         """

@@ -34,19 +34,46 @@ class SpecificationAgent(BaseAgent):
         
         Sets up the agent's server endpoint and configures specification tools.
         """
-        # Placeholder for initialization code
+        # PSEUDOCODE: Initialize specification agent following basic server pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/llm.py
+        # - Setup Server() instance with LLM integration
+        # - Load specification templates from centralized config
+        # - Initialize chat model with appropriate parameters for detailed analysis
+        
+        # PSEUDOCODE: Setup RAG capabilities following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/llama-index-rag/agent.py
+        # - Initialize document retrieval for similar specifications
+        # - Setup knowledge base of common specification patterns
+        # - Configure context-aware specification generation
         pass
     
     async def create_specification(self, input: list[Message], context: Context) -> AsyncGenerator:
         """
-        Create a detailed specification for a feature set.
+        Create detailed specifications based on orchestrator input.
         
         Args:
-            input: List of input messages containing the feature requirements
+            input: List of input messages containing feature requirements
             context: Context for the current request
             
         Returns:
-            An async generator yielding specification documents
+            An async generator yielding detailed specifications
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Parse feature requirements following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/gpt-researcher/agent.py
+        # - Extract feature description and context from orchestrator
+        # - Research similar features and specification patterns
+        # - Gather relevant technical constraints and requirements
+        
+        # PSEUDOCODE: Generate detailed specification using LLM following:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/openai-story-writer/agent.py
+        # - Use structured prompts for specification generation
+        # - Include functional requirements, non-functional requirements
+        # - Define acceptance criteria and testing scenarios
+        # - Generate API specifications and data models if applicable
+        
+        # PSEUDOCODE: Stream specification sections following:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/stream.py
+        # - Yield specification sections incrementally
+        # - Format output for design agent consumption
+        # - Include cross-references and dependencies
         pass

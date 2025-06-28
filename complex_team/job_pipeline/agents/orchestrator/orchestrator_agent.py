@@ -32,23 +32,57 @@ class OrchestratorAgent(BaseAgent):
         """
         Initialize the orchestrator agent with its endpoint and tools.
         
-        Sets up the agent's server endpoint and configures pipeline tools.
+        Sets up the agent's server endpoint and configures orchestration tools.
         """
-        # Placeholder for initialization code
+        # PSEUDOCODE: Initialize orchestrator following SessionManager pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/acp-agent-generator/agent.py
+        # - Create SessionManager with AsyncExitStack for resource management
+        # - Initialize MCP client connections to Git tools server
+        # - Load environment settings using BaseSettings pattern
+        
+        # PSEUDOCODE: Setup agent coordination following pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-orchestrator/agent.py
+        # - Initialize connections to all pipeline agents (spec, design, code, review, test)
+        # - Setup agent routing and communication channels
+        # - Configure parallel execution capabilities
+        
+        # PSEUDOCODE: Initialize state management and Git integration:
+        # - Connect to StateManager for pipeline tracking
+        # - Setup MCP tools for Git operations (branch, commit, PR creation)
+        # - Configure milestone checkpoint system
         pass
     
     async def orchestrate_pipeline(self, input: list[Message], context: Context) -> AsyncGenerator:
         """
-        Orchestrate the development workflow based on a job plan.
+        Orchestrate the development pipeline for a job plan.
         
         Args:
             input: List of input messages containing the job plan
             context: Context for the current request
             
         Returns:
-            An async generator yielding response message parts
+            An async generator yielding pipeline progress updates
         """
-        # Placeholder for implementation
+        # PSEUDOCODE: Parse job plan and initialize pipeline state following:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/store.py
+        # - Extract feature sets from planning agent output
+        # - Create new pipeline state using StateManager
+        # - Initialize Git branch for feature development
+        
+        # PSEUDOCODE: Execute pipeline stages using parallel pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-parallelization/agent.py
+        # - Route specification work to SpecificationAgent
+        # - Route design work to DesignAgent (after spec completion)
+        # - Route coding work to CodeAgent (after design completion)
+        # - Route review work to ReviewAgent (after coding completion)
+        # - Route testing work to TestAgent (after review completion)
+        
+        # PSEUDOCODE: Handle milestone checkpoints following handoff pattern from:
+        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/beeai-handoff/agent.py
+        # - Create Git commits at each stage completion
+        # - Generate pull requests for human review at milestones
+        # - Wait for human approval before continuing
+        # - Stream progress updates to client throughout process
         pass
         
     async def create_feature_pipelines(self, job_plan):

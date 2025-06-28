@@ -3,6 +3,9 @@ import sys
 from acp_sdk.client import Client
 from acp_sdk.models import Message, MessagePart
 
+# Import configuration
+from config import CLIENT_CONFIG
+
 async def main():
     if len(sys.argv) < 2:
         print("Usage: python client.py 'your code description'")
@@ -12,7 +15,7 @@ async def main():
     print(f"Generating code for: {code_description}")
     
     # Step 1: Call planner agent
-    async with Client(base_url="http://localhost:8100") as planner_client:
+    async with Client(base_url=CLIENT_CONFIG["planner_url"]) as planner_client:
         print("Calling planner agent...")
         planner_response = await planner_client.run_sync(
             agent="planner",
@@ -24,7 +27,7 @@ async def main():
         print(plan)
     
     # Step 2: Call coder agent with plan
-    async with Client(base_url="http://localhost:8200") as coder_client:
+    async with Client(base_url=CLIENT_CONFIG["coder_url"]) as coder_client:
         print("\nCalling coder agent...")
         coder_response = await coder_client.run_sync(
             agent="coder",

@@ -6,6 +6,9 @@ from acp_sdk.server import Context, RunYield, RunYieldResume, Server
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
+# Import configuration
+from config import MODEL_CONFIG, PROMPTS, SERVER_CONFIG, FALLBACKS
+
 # Load environment variables
 load_dotenv()
 
@@ -28,16 +31,16 @@ async def coder(input: list[Message], context: Context) -> AsyncGenerator[RunYie
     
     yield {"thought": "Analyzing the plan and generating code using OpenAI..."}
     
-    # Generate code using OpenAI
+    # Generate code using OpenAI with config settings
     try:
         response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=MODEL_CONFIG["coder"]["model"],
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that generates Python code based on plans. Generate only code, no explanations."}, 
-                {"role": "user", "content": f"Generate Python code based on this plan: {plan}"}
+                {"role": "system", "content": PROMPTS["coder"]["system"]}, 
+                {"role": "user", "content": PROMPTS["coder"]["user"].format(plan=plan)}
             ],
-            temperature=0.2,
-            max_tokens=500
+            temperature=MODEL_CONFIG["coder"]["temperature"],
+            max_tokens=MODEL_CONFIG["coder"]["max_tokens"]
         )
         
         # Extract the generated code
@@ -47,18 +50,7 @@ async def coder(input: list[Message], context: Context) -> AsyncGenerator[RunYie
 {response.choices[0].message.content}"""
     except Exception as e:
         # Fallback if API call fails
-        code = f"""# Implementation based on plan: 
-# {plan.strip()}
-
-# Error occurred: {str(e)}
-
-def main():
-    print("This is a fallback implementation due to API error")
-    return "Error occurred during code generation"
-
-if __name__ == "__main__":
-    main()
-"""
+        code = FALLBACKS["coder"].format(plan=plan.strip(), error=str(e))
     
     # Return the code
     yield {"thought": "Generating code from plan"}
@@ -66,4 +58,4 @@ if __name__ == "__main__":
     yield code
 
 if __name__ == "__main__":
-    server.run(port=8200)
+    server.run(port=SERVER_CONFIG["coder"]["port"], host=SERVER_CONFIG["coder"]["host"])

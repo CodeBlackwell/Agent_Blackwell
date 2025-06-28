@@ -6,6 +6,9 @@ from acp_sdk.server import Context, RunYield, RunYieldResume, Server
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
+# Import configuration
+from config import MODEL_CONFIG, PROMPTS, SERVER_CONFIG, FALLBACKS
+
 # Load environment variables
 load_dotenv()
 
@@ -28,16 +31,16 @@ async def planner(input: list[Message], context: Context) -> AsyncGenerator[RunY
     
     yield {"thought": "Analyzing request and creating implementation plan..."}
     
-    # Generate plan using OpenAI
+    # Generate plan using OpenAI with config settings
     try:
         response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=MODEL_CONFIG["planner"]["model"],
             messages=[
-                {"role": "system", "content": "You are a planning assistant that creates programming plans. Return only steps for implementation in a numbered list format. Be concise and direct."}, 
-                {"role": "user", "content": f"Create a step-by-step plan for implementing: {request}. Keep it under 5 steps."}
+                {"role": "system", "content": PROMPTS["planner"]["system"]}, 
+                {"role": "user", "content": PROMPTS["planner"]["user"].format(request=request)}
             ],
-            temperature=0.2,
-            max_tokens=250
+            temperature=MODEL_CONFIG["planner"]["temperature"],
+            max_tokens=MODEL_CONFIG["planner"]["max_tokens"]
         )
         
         # Extract the plan
@@ -47,16 +50,7 @@ async def planner(input: list[Message], context: Context) -> AsyncGenerator[RunY
 {generated_plan}"""
     except Exception as e:
         # Fallback if API call fails
-        plan = f"""
-        PLAN FOR: {request}
-        
-        1. Define the main function
-        2. Implement core logic
-        3. Add basic error handling
-        4. Return results
-        
-        Note: Error occurred during plan generation: {str(e)}
-        """
+        plan = FALLBACKS["planner"].format(request=request, error=str(e))
     
     # Return the plan
     yield {"thought": "Creating a simple plan"}
@@ -64,4 +58,4 @@ async def planner(input: list[Message], context: Context) -> AsyncGenerator[RunY
     yield plan
 
 if __name__ == "__main__":
-    server.run(port=8100)
+    server.run(port=SERVER_CONFIG["planner"]["port"], host=SERVER_CONFIG["planner"]["host"])

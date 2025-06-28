@@ -26,7 +26,19 @@ PROMPTS = {
     },
     "coder": {
         "system": "You are a helpful assistant that generates Python code based on plans. Generate only code, no explanations.",
-        "user": "Generate Python code based on this plan: {plan}"
+        "user": "Generate Python code based on this plan: {plan}",
+        "user_multifile": """Generate Python code based on this plan: {plan}
+
+Format your response to clearly indicate each file that should be created.
+For each file, specify both the filename and the content using this format:
+
+```filename: example.py
+def main():
+    print("Hello world")
+```
+
+You can include multiple files if needed. Be sure each filename is specified
+with the format ```filename: [name]``` so I can clearly identify where each file begins."""
     }
 }
 
@@ -46,6 +58,18 @@ SERVER_CONFIG = {
 CLIENT_CONFIG = {
     "planner_url": "http://localhost:8100",
     "coder_url": "http://localhost:8200"
+}
+
+# ===== OUTPUT CONFIGURATIONS =====
+OUTPUT_CONFIG = {
+    "base_dir": "generated_code",
+    "create_timestamp_dirs": True,   # Create timestamped subdirectories
+    "include_project_name": True,    # Add project name to directory
+    "project_name_first": False,     # If True: project_name/timestamp, else: timestamp/project_name
+    "include_readme": True,         # Generate a README.md with the plan
+    "multi_file_support": True,     # Allow multiple files to be generated
+    "parse_filenames": True,        # Allow LLM to determine filenames
+    "default_extension": ".py"      # Default extension if filename parsing fails
 }
 
 # ===== FALLBACK TEMPLATES =====

@@ -58,4 +58,16 @@ async def planner(input: list[Message], context: Context) -> AsyncGenerator[RunY
     yield plan
 
 if __name__ == "__main__":
-    server.run(port=SERVER_CONFIG["planner"]["port"], host=SERVER_CONFIG["planner"]["host"])
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Run the planner agent server")
+    parser.add_argument("--reload", action="store_true", help="Enable hot reloading for development")
+    args = parser.parse_args()
+    
+    # Start the server with optional hot reloading
+    server.run(
+        port=SERVER_CONFIG["planner"]["port"], 
+        host=SERVER_CONFIG["planner"]["host"],
+        reload=args.reload
+    )

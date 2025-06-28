@@ -7,12 +7,12 @@ Redis Streams for task queuing, and Pinecone for vector storage.
 
 import asyncio
 import json
-import logging
 import os
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import logging
 import redis.asyncio as aioredis
 
 # LangChain imports
@@ -35,12 +35,14 @@ from src.orchestrator.agent_registry import AgentRegistry
 from .agent_health import AgentHealthMonitor, AgentStatus
 from .agent_discovery import AgentDiscoveryService, AgentRegistration
 from .agent_router import AgentRouter, RoutingRequest, TaskPriority, RoutingStrategy
+# Document persistence
+from src.services.document_writer import DocumentWriter
 
 # Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG for more verbose logging
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+from src.utils.logging_config import configure_logging
+from src.utils.stream_naming import get_stream_name, normalize_agent_type
+configure_logging()
+
 logger = logging.getLogger(__name__)
 
 # Global orchestrator instance
@@ -118,22 +120,17 @@ class Orchestrator:
                 redis_url, decode_responses=False
             )
 
-            # Define Redis streams
-            self.task_stream = task_stream
-            self.result_stream = result_stream
+            # Store environment mode
             self.is_test_mode = is_test_mode
+            mode_emoji = "🧪" if self.is_test_mode else "🚀"
+            logger.info(f"{mode_emoji} Initializing orchestrator in {'TEST' if is_test_mode else 'PRODUCTION'} mode")
 
-            # If we're in test mode, prepend "test_" to stream names if not already prefixed
-            if is_test_mode and not task_stream.startswith("test_"):
-                self.task_stream = f"test_{task_stream}"
-                logger.debug(
-                    f"Test mode enabled, using task stream: {self.task_stream}"
-                )
-            if is_test_mode and not result_stream.startswith("test_"):
-                self.result_stream = f"test_{result_stream}"
-                logger.debug(
-                    f"Test mode enabled, using result stream: {self.result_stream}"
-                )
+            # Define standard stream naming convention via shared utility
+            self.task_stream = get_stream_name(task_stream, self.is_test_mode)
+            self.result_stream = get_stream_name(result_stream, self.is_test_mode)
+            
+            logger.debug(f"{mode_emoji} Using task stream: {self.task_stream}")
+            logger.debug(f"{mode_emoji} Using result stream: {self.result_stream}")
                 
             # Initialize agent coordination components
             self.health_monitor = AgentHealthMonitor(
@@ -162,37 +159,36 @@ class Orchestrator:
             logger.error(f"Failed to initialize orchestrator: {e}")
             raise
 
+        # Define standard agent types (without suffix)
+        self.standard_agent_types = ["spec", "design", "coding", "review", "test"]
+        
         # Agent type mapping to handle both naming formats (with/without _agent suffix)
-        self.agent_type_mapping = {
-            # Standard agent type format
-            "spec": ["spec", "spec_agent"],
-            "design": ["design", "design_agent"],
-            "coding": ["coding", "coding_agent"],
-            "review": ["review", "review_agent"],
-            "test": ["test", "test_agent"],
-            # Support for agent type with suffix
-            "spec_agent": ["spec", "spec_agent"],
-            "design_agent": ["design", "design_agent"],
-            "coding_agent": ["coding", "coding_agent"],
-            "review_agent": ["review", "review_agent"],
-            "test_agent": ["test", "test_agent"],
-        }
-
-        # Agent-specific stream name mapping
-        self.agent_stream_mapping = {
-            # Map task type to potential agent stream names
-            "spec": ["agent:spec:input", "agent:spec_agent:input"],
-            "design": ["agent:design:input", "agent:design_agent:input"],
-            "coding": ["agent:coding:input", "agent:coding_agent:input"],
-            "review": ["agent:review:input", "agent:review_agent:input"],
-            "test": ["agent:test:input", "agent:test_agent:input"],
-            # Support for agent type with suffix
-            "spec_agent": ["agent:spec:input", "agent:spec_agent:input"],
-            "design_agent": ["agent:design:input", "agent:design_agent:input"],
-            "coding_agent": ["agent:coding:input", "agent:coding_agent:input"],
-            "review_agent": ["agent:review:input", "agent:review_agent:input"],
-            "test_agent": ["agent:test:input", "agent:test_agent:input"],
-        }
+        self.agent_type_mapping = {}
+        
+        # Build the mapping dynamically
+        for agent_type in self.standard_agent_types:
+            # Standard format maps to both versions
+            self.agent_type_mapping[agent_type] = [agent_type, f"{agent_type}_agent"]
+            # Suffixed format also maps to both versions
+            self.agent_type_mapping[f"{agent_type}_agent"] = [agent_type, f"{agent_type}_agent"]
+        
+        # Agent-specific stream name mapping using the standardized format
+        self.agent_stream_mapping = {}
+        
+        # Build the stream mapping dynamically
+        for agent_type in self.standard_agent_types:
+            # Use the canonical stream name format for all agent types
+            canonical_stream = f"agent:{agent_type}:input"
+            legacy_stream = f"agent:{agent_type}_agent:input"
+            
+            # Both standard and suffixed agent types map to the same streams
+            self.agent_stream_mapping[agent_type] = [canonical_stream]
+            self.agent_stream_mapping[f"{agent_type}_agent"] = [canonical_stream]
+            
+            # Include legacy stream format for backward compatibility
+            if not self.is_test_mode:  # Only in production mode we use agent-specific streams
+                self.agent_stream_mapping[agent_type].append(legacy_stream)
+                self.agent_stream_mapping[f"{agent_type}_agent"].append(legacy_stream)
 
         # Initialize Pinecone if configured
         self.pinecone_client = None
@@ -218,6 +214,10 @@ class Orchestrator:
         self.agent_registry = None
 
         logger.info("Orchestrator initialized successfully")
+        
+    def _get_stream_name(self, stream_name: str) -> str:
+        """Wrapper for utils.stream_naming.get_stream_name (kept for backward-compatibility)."""
+        return get_stream_name(stream_name, self.is_test_mode)
 
     def initialize_agents(self) -> None:
         """
@@ -384,6 +384,12 @@ class Orchestrator:
         logger.debug(f"Task Stream: {self.task_stream}")
         logger.debug(f"Result Stream: {self.result_stream}")
 
+        # Normalize agent type (remove _agent suffix if present)
+        normalized_agent_type = task_type
+        if normalized_agent_type.endswith("_agent"):
+            normalized_agent_type = normalized_agent_type[:-6]
+            logger.debug(f"Normalized agent type: '{normalized_agent_type}'")
+
         # Check agent type mapping for this task type
         if task_type in self.agent_type_mapping:
             logger.debug(
@@ -392,11 +398,34 @@ class Orchestrator:
         else:
             logger.warning(f"No agent type mapping found for '{task_type}'")
 
+        # Determine expected streams based on environment
+        if self.is_test_mode:
+            expected_streams = [self.task_stream]
+            logger.debug(f"Test mode: Using generic test stream: {self.task_stream}")
+        else:
+            # In production, use canonical format + legacy formats
+            canonical_stream = f"agent:{normalized_agent_type}:input"
+            expected_streams = [canonical_stream]
+            
+            # Add legacy format for backward compatibility
+            legacy_stream = f"agent:{normalized_agent_type}_agent:input"
+            expected_streams.append(legacy_stream)
+            
+            logger.debug(f"Production mode: Using canonical stream: {canonical_stream}")
+            logger.debug(f"Also supporting legacy stream: {legacy_stream}")
+
         # Check stream mapping for this task type
         if task_type in self.agent_stream_mapping:
             logger.debug(
                 f"Stream mapping for '{task_type}': {self.agent_stream_mapping[task_type]}"
             )
+            
+            # Verify mapping matches expected streams
+            for expected_stream in expected_streams:
+                if expected_stream in self.agent_stream_mapping[task_type]:
+                    logger.debug(f"✅ Expected stream '{expected_stream}' is in mapping")
+                else:
+                    logger.warning(f"⚠️ Expected stream '{expected_stream}' is NOT in mapping")
         else:
             logger.warning(f"No stream mapping found for '{task_type}'")
 
@@ -405,6 +434,18 @@ class Orchestrator:
             ping_result = self.redis_client.ping()
             logger.debug(f"Redis ping result: {ping_result}")
             logger.debug("✅ Redis connection: OK")
+            
+            # Check if streams exist in Redis
+            for stream in expected_streams:
+                if self.redis_client.exists(stream):
+                    logger.debug(f"✅ Stream '{stream}' exists in Redis")
+                    # Get stream length
+                    length = self.redis_client.xlen(stream)
+                    logger.debug(f"Stream length: {length} messages")
+                else:
+                    logger.debug(f"ℹ️ Stream '{stream}' does NOT exist in Redis yet")
+                    logger.debug(f"Will be created when first message is sent")
+                    
         except Exception as e:
             logger.error(f"❌ Redis connection FAILED: {e}")
 
@@ -460,14 +501,34 @@ class Orchestrator:
                     task.task_id
                 )
 
-                # Determine target stream based on mode and routing result
+                # Determine target stream based on environment mode and agent type
                 if self.is_test_mode:
-                    # In test mode, use generic test stream
+                    # In test mode, always use the generic task stream
+                    # This ensures all test tasks go to a single predictable stream
                     target_stream = self.task_stream
+                    logger.debug(f"{mode_emoji} Using test mode stream: {target_stream}")
                 else:
-                    # In production, use agent-specific stream
+                    # In production, use the standardized agent-specific stream
+                    # Get the normalized agent type (without _agent suffix if present)
+                    normalized_agent_type = task.task_type
+                    if normalized_agent_type.endswith("_agent"):
+                        normalized_agent_type = normalized_agent_type[:-6]  # Remove _agent suffix
+                    
+                    # Use the canonical stream name format
+                    canonical_stream = f"agent:{normalized_agent_type}:input"
+                    
+                    # Fallback to agent streams mapping if available
                     agent_streams = self.agent_stream_mapping.get(task.task_type, [])
-                    target_stream = agent_streams[0] if agent_streams else self.task_stream
+                    target_stream = canonical_stream if canonical_stream else \
+                                   (agent_streams[0] if agent_streams else self.task_stream)
+                    
+                    logger.debug(f"{mode_emoji} Using production stream: {target_stream}")
+                    
+                    # For diagnostics, log all potential streams for this agent type
+                    if logger.isEnabledFor(logging.DEBUG):
+                        all_streams = [canonical_stream] + agent_streams
+                        logger.debug(f"{mode_emoji} All potential streams for {task.task_type}: {all_streams}")
+
 
                 # Prepare task message
                 task_message = {
@@ -833,6 +894,18 @@ class Orchestrator:
         else:
             # Execute real agent
             result = await agent.ainvoke(task)
+
+        # Persist generated files if present
+        try:
+            if isinstance(result, dict) and "files" in result:
+                output_dir = os.getenv("AGENT_OUTPUT_DIR", "/tmp/agent_outputs")
+                writer = DocumentWriter(output_dir)
+                persistence_result = writer.persist(result)
+                # Attach persistence summary
+                result["persistence"] = persistence_result.dict()
+        except Exception as persist_exc:  # noqa: B902
+            logger.error("Error persisting generated artefacts: %s", persist_exc)
+
 
         # Store result in Redis stream
         result_data = {

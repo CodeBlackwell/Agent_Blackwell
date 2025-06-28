@@ -441,8 +441,8 @@ class TestTestAgentIntegration(BaseAgentIntegrationTest):
             "timestamp": "2025-06-26T02:55:00Z",
         }
 
-        # Manually publish to output stream to simulate agent output
-        output_stream = "agent:test:output"
+        # Manually publish to output stream to simulate agent output with test prefix
+        output_stream = "test_agent:test:output"
 
         # Serialize dictionary fields to JSON strings
         serialized_message = {}
@@ -497,8 +497,8 @@ class TestTestAgentIntegration(BaseAgentIntegrationTest):
             "timestamp": "2025-06-26T03:00:00Z",
         }
 
-        # Publish review output to review output stream
-        review_output_stream = "agent:review:output"
+        # Publish review output to review output stream with test prefix
+        review_output_stream = "test_agent:review:output"
 
         # Serialize dictionary fields to JSON strings
         serialized_review_message = {}
@@ -520,8 +520,8 @@ class TestTestAgentIntegration(BaseAgentIntegrationTest):
             "previous_message_id": review_message_id,
         }
 
-        # Publish to test input stream
-        test_input_stream = "agent:test:input"
+        # Publish to test input stream with test prefix
+        test_input_stream = "test_agent:test:input"
 
         # Serialize dictionary fields to JSON strings
         serialized_test_message = {}

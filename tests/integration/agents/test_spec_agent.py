@@ -323,7 +323,8 @@ class TestSpecAgentIntegration(BaseAgentIntegrationTest):
         }
 
         # Manually publish to output stream to simulate agent output
-        output_stream = "agent:spec_agent:output"
+        # Use test-prefixed stream name since we're in a test environment
+        output_stream = "test_agent:spec:output"
 
         # Serialize complex fields for Redis stream storage
         # Redis streams can only store string values

@@ -378,10 +378,8 @@ class TestReviewAgentIntegration(BaseAgentIntegrationTest):
             "timestamp": "2025-06-26T02:15:00Z",
         }
 
-        # Manually publish to output stream to simulate agent output
-        output_stream = (
-            "agent:review_agent:output"  # Use correct stream name with agent_type
-        )
+        # Manually publish to output stream to simulate agent output with test prefix
+        output_stream = "test_agent:review:output"  # Use standardized test-prefixed stream name
 
         # Serialize complex fields for Redis stream storage
         serialized_message = {}

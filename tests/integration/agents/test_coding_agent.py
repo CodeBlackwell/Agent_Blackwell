@@ -279,8 +279,8 @@ class TestCodingAgentIntegration(BaseAgentIntegrationTest):
             "timestamp": "2025-06-26T01:40:00Z",
         }
 
-        # Manually publish to output stream to simulate agent output
-        output_stream = "agent:coding:output"
+        # Manually publish to output stream to simulate agent output with test prefix
+        output_stream = "test_agent:coding:output"
 
         # Serialize complex fields for Redis stream storage
         serialized_output = {}
@@ -331,8 +331,8 @@ class TestCodingAgentIntegration(BaseAgentIntegrationTest):
             "timestamp": "2025-06-26T01:45:00Z",
         }
 
-        # Publish design output to design output stream
-        design_output_stream = "agent:design:output"
+        # Publish design output to design output stream with test prefix
+        design_output_stream = "test_agent:design:output"
 
         # Serialize dictionaries to JSON strings before storing in Redis
         serialized_design_output = {}
@@ -354,8 +354,8 @@ class TestCodingAgentIntegration(BaseAgentIntegrationTest):
             "previous_message_id": design_message_id,
         }
 
-        # Publish to coding input stream
-        coding_input_stream = "agent:coding:input"
+        # Publish to coding input stream with test prefix
+        coding_input_stream = "test_agent:coding:input"
 
         # Serialize dictionaries to JSON strings before storing in Redis
         serialized_coding_input = {}

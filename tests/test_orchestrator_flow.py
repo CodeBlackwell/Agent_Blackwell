@@ -11,12 +11,14 @@ import os
 import sys
 from pathlib import Path
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add project root to PYTHONPATH so we can import 'src.*'
+PROJECT_ROOT = Path(__file__).resolve().parent.parent  # tests/
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from redis import Redis
 
-from orchestrator.main import Orchestrator
+from src.orchestrator.main import Orchestrator
 
 # Configure logging
 logging.basicConfig(

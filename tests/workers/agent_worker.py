@@ -8,7 +8,6 @@ using the appropriate agents, then publishes results to output streams.
 
 import asyncio
 import json
-import logging
 import os
 import sys
 from typing import Any, Dict, Optional
@@ -19,25 +18,33 @@ import redis.asyncio as redis
 sys.path.insert(0, "/app")
 
 from src.orchestrator.agent_registry import AgentRegistry
+from src.utils.logging_config import configure_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+configure_logging()
+
+# After configure_logging we can safely import logging and obtain a module logger
+import logging
 logger = logging.getLogger(__name__)
 
 
 class AgentWorker:
-    """Worker that processes agent tasks from Redis streams."""
+    """Agent worker that processes messages from Redis streams."""
 
-    def __init__(self, redis_host: str = "redis-test", redis_port: int = 6379):
-        """Initialize the agent worker."""
+    def __init__(self, redis_host: str = "redis-test", redis_port: int = 6379, is_test_mode: bool = False):
+        """Initialize the agent worker.
+
+        Args:
+            redis_host: Redis host
+            redis_port: Redis port
+            is_test_mode: Whether to use test mode stream naming (default: False)
+        """
         self.redis_host = redis_host
         self.redis_port = redis_port
         self.redis_client: Optional[redis.Redis] = None
         self.agent_registry: Optional[AgentRegistry] = None
         self.running = False
+        self.is_test_mode = is_test_mode
+        logger.info(f"Initializing agent worker in {'test' if is_test_mode else 'production'} mode")
 
     async def connect_redis(self):
         """Connect to Redis."""
@@ -273,6 +280,40 @@ class AgentWorker:
             }
 
         # Normal processing for successful requests
+
+        def _flatten_code(tree: Dict[str, Any], base_path: str = "") -> Dict[str, str]:
+            """Flatten nested source_code dict into {path: content}."""
+            flat: Dict[str, str] = {}
+            for name, value in tree.items():
+                current_path = f"{base_path}/{name}" if base_path else name
+                if isinstance(value, dict):
+                    flat.update(_flatten_code(value, current_path))
+                else:
+                    flat[current_path] = value
+            return flat
+
+        # Build source code (nested) structure
+        nested_code: Dict[str, Any] = {
+            "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/')\ndef read_root():\n    return {'Hello': 'World'}",
+            "api/users.py": "from fastapi import APIRouter\n\nrouter = APIRouter()\n\n@router.get('/users')\ndef get_users():\n    return []",
+            "user-service": {
+                "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/users')\ndef get_users():\n    return []\n\n@app.get('/users/{user_id}')\ndef get_user(user_id: int):\n    return {'id': user_id, 'name': 'Test User'}",
+                "models.py": "from sqlalchemy import Column, Integer, String\nfrom sqlalchemy.ext.declarative import declarative_base\n\nBase = declarative_base()\n\nclass User(Base):\n    __tablename__ = 'users'\n    id = Column(Integer, primary_key=True)\n    email = Column(String, unique=True)\n    name = Column(String)\n",
+            },
+            "order-service": {
+                "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/orders')\ndef get_orders():\n    return []\n\n@app.get('/orders/{order_id}')\ndef get_order(order_id: int):\n    return {'id': order_id, 'status': 'pending'}",
+            },
+            "payment-service": {
+                "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/payments')\ndef get_payments():\n    return []\n\n@app.post('/payments')\ndef create_payment():\n    return {'id': 1, 'status': 'completed'}",
+            },
+        }
+
+        flat_code = _flatten_code(nested_code)
+        files_list = [
+            {"path": p, "content": c, "binary": False} for p, c in flat_code.items()
+        ]
+        directories_set = {os.path.dirname(f["path"]) for f in files_list if os.path.dirname(f["path"])}
+
         return {
             "request_id": message_data.get("request_id", "unknown"),
             "source_code": {
@@ -289,6 +330,8 @@ class AgentWorker:
                     "main.py": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/payments')\ndef get_payments():\n    return []\n\n@app.post('/payments')\ndef create_payment():\n    return {'id': 1, 'status': 'completed'}"
                 },
             },
+            "files": files_list,
+            "directories": sorted(list(directories_set)),
             "file_structure": [
                 {"path": "main.py", "type": "file"},
                 {"path": "api", "type": "directory"},
@@ -808,27 +851,57 @@ class AgentWorker:
 
     async def run_worker_loop(self):
         """Main worker loop that processes messages from Redis streams."""
-        logger.info("Starting agent worker loop")
+        logger.info(f"Starting agent worker loop in {'test' if self.is_test_mode else 'production'} mode")
         self.running = True
 
-        # Define agent types and their stream names
-        agent_types = [
-            "spec_agent",
-            "design_agent",
-            "coding_agent",
-            "review_agent",
-            "test_agent",
+        # Define base agent types (without _agent suffix)
+        base_agent_types = [
+            "spec",
+            "design",
+            "coding",
+            "review",
+            "test",
         ]
-        stream_mapping = {
-            agent_type: {
-                "input": f"agent:{agent_type}:input",
-                "output": f"agent:{agent_type}:output",
-            }
-            for agent_type in agent_types
-        }
+        
+        # Create stream mapping based on mode
+        stream_mapping = {}
+        
+        for base_type in base_agent_types:
+            # Always use canonical agent type with _agent suffix for internal processing
+            canonical_agent_type = f"{base_type}_agent" if not base_type.endswith("_agent") else base_type
 
-        # Track last message IDs for each stream
-        last_ids = {mapping["input"]: "0-0" for mapping in stream_mapping.values()}
+            if self.is_test_mode:
+                # In test mode, use test_agent:<type>:input format
+                stream_mapping[canonical_agent_type] = {
+                    "input": f"test_agent:{base_type}:input",
+                    "output": f"test_agent:{base_type}:output",
+                }
+            else:
+                # In production, use agent:<type>:input format (canonical)
+                stream_mapping[canonical_agent_type] = {
+                    "input": f"agent:{base_type}:input",
+                    "output": f"agent:{base_type}:output",
+                }
+                    
+        # Build reverse lookup from input stream name to canonical agent type, including legacy aliases
+        input_to_agent_type = {}
+        for canonical_type, mapping in stream_mapping.items():
+            input_to_agent_type[mapping["input"]] = canonical_type
+            # Add legacy alias (with _agent suffix in stream path) for backward compatibility
+            base_type = canonical_type.replace("_agent", "")
+            if self.is_test_mode:
+                legacy_input_stream = f"test_agent:{base_type}_agent:input"
+            else:
+                legacy_input_stream = f"agent:{base_type}_agent:input"
+            input_to_agent_type[legacy_input_stream] = canonical_type
+
+        # Log mappings for debugging
+        logger.info(f"Canonical stream mapping: {stream_mapping}")
+        logger.info(f"Input→agent mapping with aliases: {input_to_agent_type}")
+
+        # Track last message IDs for each stream (include aliases)
+        last_ids = {stream: "0-0" for stream in input_to_agent_type.keys()}
+        logger.info(f"Monitoring streams: {list(last_ids.keys())}")
 
         while self.running:
             try:
@@ -861,6 +934,8 @@ class AgentWorker:
                         if not agent_type:
                             logger.warning(f"Unknown stream: {stream_name}")
                             continue
+                            
+                        logger.info(f"Processing message from stream {stream_name} for agent type {agent_type}")
 
                         # Parse message data
                         try:
@@ -923,13 +998,16 @@ class AgentWorker:
                         # Publish result to output stream
                         output_stream = stream_mapping[agent_type]["output"]
                         await self.redis_client.xadd(output_stream, serialized_result)
+                        
+                        logger.info(f"Published result to stream {output_stream} for agent type {agent_type}")
+                        logger.debug(f"Result data: {serialized_result}")
 
                         logger.info(
                             f"Processed {agent_type} message and published result"
                         )
 
             except Exception as e:
-                logger.error(f"Error in worker loop: {e}")
+                logger.error(f"Error in worker loop: {e}", exc_info=True)
                 await asyncio.sleep(1)  # Brief pause before retrying
 
     async def start(self):

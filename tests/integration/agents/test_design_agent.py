@@ -240,7 +240,8 @@ class TestDesignAgentIntegration(BaseAgentIntegrationTest):
         }
 
         # Manually publish to output stream to simulate agent output
-        output_stream = "agent:design:output"
+        # Use test-prefixed stream name since we're in a test environment
+        output_stream = "test_agent:design:output"
 
         # Serialize complex fields for Redis stream storage
         # Redis streams can only store string values
@@ -308,7 +309,8 @@ class TestDesignAgentIntegration(BaseAgentIntegrationTest):
         }
 
         # Publish spec output to spec output stream
-        spec_output_stream = "agent:spec:output"
+        # Use test-prefixed stream name since we're in a test environment
+        spec_output_stream = "test_agent:spec:output"
 
         # Serialize complex fields for Redis stream storage
         serialized_spec_message = {}
@@ -331,7 +333,8 @@ class TestDesignAgentIntegration(BaseAgentIntegrationTest):
         }
 
         # Publish to design input stream
-        design_input_stream = "agent:design:input"
+        # Use test-prefixed stream name since we're in a test environment
+        design_input_stream = "test_agent:design:input"
 
         # Serialize design input message
         serialized_design_message = {}

@@ -31,7 +31,7 @@ AGENT_CONFIGS = {
     "orchestrator": {
         "name": "orchestrator",
         "port": AGENT_PORTS["orchestrator"],
-        "sample_request": None  # Will use a job plan from the planning agent
+        "sample_request": "Create a web application with user authentication, REST API, and database integration" # Will use a job plan from the planning agent
     },
     "code": {
         "name": "simple_code_agent",  # Match the actual function name in code_agent.py

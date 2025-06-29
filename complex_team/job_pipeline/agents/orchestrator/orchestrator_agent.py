@@ -16,6 +16,7 @@ from acp_sdk.server import Context, Server, RunYield, RunYieldResume
 from beeai_framework.agents.react import ReActAgent
 from beeai_framework.backend.chat import ChatModel
 from beeai_framework.memory import TokenMemory
+from beeai_framework.backend import UserMessage, SystemMessage
 from beeai_framework.template import PromptTemplate, PromptTemplateInput
 
 

@@ -13,6 +13,7 @@ from acp_sdk.server import Context, Server, RunYield, RunYieldResume
 from beeai_framework.agents.react import ReActAgent
 from beeai_framework.backend.chat import ChatModel
 from beeai_framework.memory import TokenMemory
+from beeai_framework.backend import UserMessage
 from mcp import StdioServerParameters
 
 import sys
@@ -86,7 +87,7 @@ async def code_agent(inputs: List[Message], context: Context) -> AsyncGenerator[
             )
             
             # Add coding request to memory
-            await memory.add_user_message(coding_request)
+            await memory.add(UserMessage(coding_request))
             
             # Generate code and perform file operations
             yield MessagePart(content="🔧 Generating code with tool integration...")
@@ -135,7 +136,7 @@ async def simple_code_agent(inputs: List[Message], context: Context) -> AsyncGen
             memory=memory,
         )
         
-        await memory.add_user_message(coding_request)
+        await memory.add(UserMessage(coding_request))
         response = await agent.run()
         
         yield MessagePart(content=f"✅ Code generated successfully:\n\n```\n{response.result.text}\n```")

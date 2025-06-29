@@ -57,7 +57,22 @@ This project uses state-of-the-art technologies for agent-based development:
 
 ## Setup and Installation
 
-### Prerequisites
+### Option 1: Docker Setup (Recommended)
+
+For the easiest setup experience, we've provided a Docker configuration that runs all services in containers:
+
+```bash
+cd job_pipeline
+chmod +x run-docker.sh
+./run-docker.sh
+```
+
+This will start all agent servers, the MCP Git Tools, and the UI in separate containers. 
+See `job_pipeline/README-DOCKER.md` for detailed instructions and troubleshooting.
+
+### Option 2: Manual Setup
+
+#### Prerequisites
 
 - Python 3.13+
 - Git
@@ -139,27 +154,6 @@ This project uses state-of-the-art technologies for agent-based development:
    - Use the provided client to interact with the planning agent
    - Or access the UI at http://localhost:8501 (if enabled)
 
-### Example Workflow
-
-1. Submit a job request to the planning agent:
-   ```python
-   from acp_sdk.client import Client
-   from acp_sdk.models import Message, MessagePart
-   
-   async with Client(base_url="http://localhost:8001") as client:
-       async for event in client.run_stream(
-           agent="planner",
-           input=[Message(parts=[MessagePart(content="Create a simple Flask API with endpoints for user management")])]
-       ):
-           if hasattr(event, "content"):
-               print(event.content, end="", flush=True)
-   ```
-
-2. The planning agent will process the request and create a job plan
-3. The orchestrator will break down the job into feature sets
-4. Pipeline agents will execute each phase (spec, design, code, review, test)
-5. At milestone completion, a Git PR will be created for human review
-6. After approval, the next phase will begin
 
 ## Testing
 
@@ -184,17 +178,149 @@ pytest --cov=agents tests/
 - **Integration Tests**: Test communication between agents
 - **End-to-End Tests**: Test complete workflows
 
-### Mock Testing
+## Testing Individual Servers with curl
 
-For testing without a real LLM:
+For debugging or API exploration, you can test each agent server individually using curl. Below are examples for each server:
+
+### Planning Agent (Port 8001)
 
 ```bash
-# Set mock LLM in .env
-LLM_MODEL=mock
-
-# Run tests with mock responses
-pytest tests/test_with_mock.py
+curl -X POST http://localhost:8001/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "planner",
+    "input": [
+      {
+        "parts": [
+          {
+            "content": "Create a web application for a small e-commerce shop"
+          }
+        ]
+      }
+    ]
+  }'
 ```
+
+### Orchestrator Agent (Port 8002)
+
+```bash
+curl -X POST http://localhost:8002/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "orchestrator",
+    "input": [
+      {
+        "parts": [
+          {
+            "content": "{\"title\": \"E-commerce Application\", \"description\": \"Web application for a small e-commerce shop\", \"features\": [{\"name\": \"User Authentication\", \"priority\": \"high\"}]}"
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+### Specification Agent (Port 8005)
+
+```bash
+curl -X POST http://localhost:8005/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "specification",
+    "input": [
+      {
+        "parts": [
+          {
+            "content": "Create detailed specifications for a User Authentication feature"
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+### Design Agent (Port 8003)
+
+```bash
+curl -X POST http://localhost:8003/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "design",
+    "input": [
+      {
+        "parts": [
+          {
+            "content": "Design the architecture for a User Authentication system with login, signup, and password reset"
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+### Code Agent (Port 8004)
+
+```bash
+curl -X POST http://localhost:8004/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "code",
+    "input": [
+      {
+        "parts": [
+          {
+            "content": "Implement a User class with authentication methods based on Flask-Login"
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+### Review Agent (Port 8006)
+
+```bash
+curl -X POST http://localhost:8006/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "review",
+    "input": [
+      {
+        "parts": [
+          {
+            "content": "class User:\n    def __init__(self, username, email):\n        self.username = username\n        self.email = email\n        self.is_active = False\n\n    def verify_password(self, password):\n        # Dummy implementation\n        return True"
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+### Testing Agent (Port 8007)
+
+```bash
+curl -X POST http://localhost:8007/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "testing",
+    "input": [
+      {
+        "parts": [
+          {
+            "content": "Create unit tests for a User class with authentication methods"
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+### Notes on Using curl with ACP SDK Servers
+
+- The format follows the ACP protocol structure with inputs as an array of message objects
+- For streaming responses, add `"stream": true` to the JSON payload
+- For session-based interactions, include a session ID using the `"session_id": "your-session-id"` field
+- To view the full response, pipe the output to `jq`: `curl ... | jq`
 
 ## Project Structure
 

@@ -2,25 +2,23 @@
 """
 Planning Agent Server
 
-Standalone server script for the Planning Agent.
-Run this to start the Planning Agent on its configured port.
+This script starts the Planning Agent server on port 8001.
 """
 
-import sys
 import os
+import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add parent directories to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from agents.planning.planning_agent import server
 from config.config import AGENT_PORTS
 
-def main():
-    """Start the Planning Agent server."""
-    # Import the server from the agent module
-    from agents.planning.planning_agent import server
-    
-    print(f"Starting Planning Agent on port {AGENT_PORTS['planner']}...")
-    server.run(port=AGENT_PORTS["planner"])
-
 if __name__ == "__main__":
-    main()
+    port = AGENT_PORTS.get("planning", 8001)
+    print(f"Starting Planning Agent server on port {port}...")
+    server.run(port=port)

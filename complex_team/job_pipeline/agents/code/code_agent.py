@@ -14,91 +14,91 @@ from beeai_framework.agents.react import ReActAgent
 from beeai_framework.backend.chat import ChatModel
 from beeai_framework.memory import TokenMemory
 from beeai_framework.backend import UserMessage
-from mcp import StdioServerParameters
+# from mcp import StdioServerParameters
 
 import sys
 import os
 # Add parent directories to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config.config import LLM_CONFIG, BEEAI_CONFIG, MCP_CONFIG, PROMPT_TEMPLATES
+from config.config import LLM_CONFIG, BEEAI_CONFIG, MCP_CONFIG, PROMPT_TEMPLATES, AGENT_PORTS
 
 server = Server()
 
-@server.agent()
-async def code_agent(inputs: List[Message], context: Context) -> AsyncGenerator[RunYield, RunYieldResume]:
-    """
-    Code Agent that generates and manages code files using MCP tools.
+# @server.agent()
+# async def code_agent(inputs: List[Message], context: Context) -> AsyncGenerator[RunYield, RunYieldResume]:
+#     """
+#     Code Agent that generates and manages code files using MCP tools.
     
-    This agent implements code generation, file operations, and Git integration
-    through MCP (Model Context Protocol) servers.
-    """
-    try:
-        # Extract the coding request
-        if not inputs or not inputs[0].parts:
-            yield MessagePart(content="Error: No coding request provided")
-            return
+#     This agent implements code generation, file operations, and Git integration
+#     through MCP (Model Context Protocol) servers.
+#     """
+#     try:
+#         # Extract the coding request
+#         if not inputs or not inputs[0].parts:
+#             yield MessagePart(content="Error: No coding request provided")
+#             return
             
-        coding_request = inputs[0].parts[0].content
+#         coding_request = inputs[0].parts[0].content
         
-        # Yield initial processing message
-        yield MessagePart(content="💻 Starting code generation and file operations...")
+#         # Yield initial processing message
+#         yield MessagePart(content="💻 Starting code generation and file operations...")
         
-        # Initialize LLM for code generation
-        llm = ChatModel.from_name(LLM_CONFIG["model_id"])
-        memory = TokenMemory(llm)
+#         # Initialize LLM for code generation
+#         llm = ChatModel.from_name(LLM_CONFIG["model_id"])
+#         memory = TokenMemory(llm)
         
-        # Setup MCP server for file operations
-        filesystem_server_params = StdioServerParameters(
-            command=MCP_CONFIG["filesystem_server"]["command"],
-            args=MCP_CONFIG["filesystem_server"]["args"],
-            env=MCP_CONFIG["filesystem_server"]["env"],
-        )
+#         # Setup MCP server for file operations
+#         filesystem_server_params = StdioServerParameters(
+#             command=MCP_CONFIG["filesystem_server"]["command"],
+#             args=MCP_CONFIG["filesystem_server"]["args"],
+#             env=MCP_CONFIG["filesystem_server"]["env"],
+#         )
         
-        # Setup MCP server for Git operations
-        git_server_params = StdioServerParameters(
-            command=MCP_CONFIG["git_server"]["command"],
-            args=MCP_CONFIG["git_server"]["args"], 
-            env=MCP_CONFIG["git_server"]["env"],
-        )
+#         # Setup MCP server for Git operations
+#         git_server_params = StdioServerParameters(
+#             command=MCP_CONFIG["git_server"]["command"],
+#             args=MCP_CONFIG["git_server"]["args"], 
+#             env=MCP_CONFIG["git_server"]["env"],
+#         )
         
-        # Create agent with MCP tools (following ACPxMCP pattern)
-        from smolagents import ToolCallingAgent, ToolCollection
+#         # Create agent with MCP tools (following ACPxMCP pattern)
+#         from smolagents import ToolCallingAgent, ToolCollection
         
-        # Combine multiple MCP tool collections
-        with ToolCollection.from_mcp(filesystem_server_params, trust_remote_code=True) as fs_tools, \
-             ToolCollection.from_mcp(git_server_params, trust_remote_code=True) as git_tools:
+#         # Combine multiple MCP tool collections
+#         with ToolCollection.from_mcp(filesystem_server_params, trust_remote_code=True) as fs_tools, \
+#              ToolCollection.from_mcp(git_server_params, trust_remote_code=True) as git_tools:
             
-            # Combine all tools
-            all_tools = [*fs_tools.tools, *git_tools.tools]
+#             # Combine all tools
+#             all_tools = [*fs_tools.tools, *git_tools.tools]
             
-            # Create ReAct agent with combined tools
-            agent = ReActAgent(
-                llm=llm,
-                tools=all_tools,
-                templates={
-                    "system": lambda template: template.update(
-                        defaults={
-                            "instructions": PROMPT_TEMPLATES.get("code", {}).get("system", "You are a code generation agent."),
-                            "role": "system",
-                        }
-                    )
-                },
-                memory=memory,
-            )
+#             # Create ReAct agent with combined tools
+#             agent = ReActAgent(
+#                 llm=llm,
+#                 tools=all_tools,
+#                 templates={
+#                     "system": lambda template: template.update(
+#                         defaults={
+#                             "instructions": PROMPT_TEMPLATES.get("code", {}).get("system", "You are a code generation agent."),
+#                             "role": "system",
+#                         }
+#                     )
+#                 },
+#                 memory=memory,
+#             )
             
-            # Add coding request to memory
-            await memory.add(UserMessage(coding_request))
+#             # Add coding request to memory
+#             await memory.add(UserMessage(coding_request))
             
-            # Generate code and perform file operations
-            yield MessagePart(content="🔧 Generating code with tool integration...")
+#             # Generate code and perform file operations
+#             yield MessagePart(content="🔧 Generating code with tool integration...")
             
-            response = await agent.run()
+#             response = await agent.run()
             
-            # Yield the code generation result
-            yield MessagePart(content=f"✅ Code generation completed:\n\n{response.result.text}")
+#             # Yield the code generation result
+#             yield MessagePart(content=f"✅ Code generation completed:\n\n{response.result.text}")
         
-    except Exception as e:
-        yield MessagePart(content=f"❌ Error in code generation: {str(e)}")
+#     except Exception as e:
+#         yield MessagePart(content=f"❌ Error in code generation: {str(e)}")
 
 # Alternative implementation using BeeAI Framework directly
 @server.agent()
@@ -118,7 +118,11 @@ async def simple_code_agent(inputs: List[Message], context: Context) -> AsyncGen
         yield MessagePart(content="💻 Generating code using LLM...")
         
         # Simple BeeAI Framework integration
-        llm = ChatModel.from_name(LLM_CONFIG["model_id"])
+        llm = ChatModel.from_name(
+            BEEAI_CONFIG["chat_model"]["model"],
+            api_base=BEEAI_CONFIG["chat_model"]["base_url"],
+            api_key=BEEAI_CONFIG["chat_model"]["api_key"]
+        )
         memory = TokenMemory(llm)
         
         agent = ReActAgent(
@@ -128,7 +132,7 @@ async def simple_code_agent(inputs: List[Message], context: Context) -> AsyncGen
                 "system": lambda template: template.update(
                     defaults={
                         "instructions": """You are a code generation agent. Generate clean, well-documented code based on user requests. 
-                        Include appropriate imports, error handling, and follow best practices for the requested language.""",
+                        Include appropriate imports, error handling, and follow best practices for the requested language. Provide an appropriate Filename.""",
                         "role": "system",
                     }
                 )

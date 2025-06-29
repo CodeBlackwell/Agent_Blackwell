@@ -344,3 +344,17 @@ def _assess_risks(user_request: str, features: List[Dict[str, Any]]) -> Dict[str
         risks["mitigation"].append("Conduct detailed requirements gathering session")
         
     return risks
+
+# Server startup code - consolidated from separate server.py file
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    
+    # Load environment variables from .env file
+    load_dotenv()
+    
+    # Get port from config or use default
+    port = AGENT_PORTS.get("planning", 8001)
+    print(f"Starting Planning Agent on port {port}...")
+    
+    # Run the server - this must be in the same file as the agent definition
+    server.run(port=port)

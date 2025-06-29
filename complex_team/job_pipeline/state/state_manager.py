@@ -12,6 +12,8 @@ import json
 import asyncio
 from typing import Dict, List, Any
 from enum import Enum
+import time
+import uuid
 
 
 class PipelineStage(Enum):
@@ -145,8 +147,22 @@ class StateManager:
         Returns:
             The created pipeline state
         """
-        # Placeholder for implementation
-        pass
+        
+        
+        # Generate unique pipeline ID
+        pipeline_id = str(uuid.uuid4())
+        
+        # Create new pipeline state
+        pipeline_state = PipelineState(pipeline_id, feature_name, repo_name)
+        pipeline_state.created_at = time.time()
+        pipeline_state.updated_at = time.time()
+        
+        # Store in memory and save to file
+        async with self.lock:
+            self.pipelines[pipeline_id] = pipeline_state
+            await self.save_state()
+        
+        return pipeline_state
     
     async def update_pipeline_stage(self, pipeline_id: str, stage: PipelineStage):
         """
@@ -156,8 +172,17 @@ class StateManager:
             pipeline_id: ID of the pipeline to update
             stage: New stage for the pipeline
         """
-        # Placeholder for implementation
-        pass
+        
+        async with self.lock:
+            if pipeline_id not in self.pipelines:
+                raise ValueError(f"Pipeline {pipeline_id} not found")
+            
+            pipeline = self.pipelines[pipeline_id]
+            pipeline.current_stage = stage
+            pipeline.updated_at = time.time()
+            
+            # Save updated state
+            await self.save_state()
     
     async def update_stage_status(self, pipeline_id: str, stage: PipelineStage, status: str):
         """
@@ -168,24 +193,32 @@ class StateManager:
             stage: The pipeline stage to update
             status: New status for the stage
         """
-        # PSEUDOCODE: Update pipeline state following store pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/store.py
-        # - Retrieve current pipeline state with thread-safe access
-        # - Update stage status with timestamp and metadata
-        # - Persist updated state to storage with atomic operations
         
-        # PSEUDOCODE: Handle concurrent updates following session pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/session.py
-        # - Implement optimistic locking to prevent race conditions
-        # - Validate status transitions (e.g., can't go from completed to pending)
-        # - Log status changes for audit trail and debugging
-        
-        # PSEUDOCODE: Notify orchestrator following telemetry pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/telemetry.py
-        # - Send status update notification to orchestrator
-        # - Include pipeline progress metrics and next stage readiness
-        # - Trigger milestone checkpoints if stage completion detected
-        pass
+        async with self.lock:
+            if pipeline_id not in self.pipelines:
+                raise ValueError(f"Pipeline {pipeline_id} not found")
+            
+            pipeline = self.pipelines[pipeline_id]
+            
+            # Update stage status with metadata
+            stage_key = f"{stage.value}_status"
+            if not hasattr(pipeline, 'stage_statuses'):
+                pipeline.stage_statuses = {}
+            
+            pipeline.stage_statuses[stage_key] = {
+                "status": status,
+                "timestamp": time.time(),
+                "stage": stage.value
+            }
+            
+            # Update current stage if this is a progression
+            if status == "running":
+                pipeline.current_stage = stage
+            
+            pipeline.updated_at = time.time()
+            
+            # Save updated state
+            await self.save_state()
     
     async def add_artifact(self, pipeline_id: str, stage: PipelineStage, artifact: Any):
         """
@@ -196,17 +229,30 @@ class StateManager:
             stage: Stage the artifact belongs to
             artifact: The artifact (specification, design doc, code, etc.)
         """
-        # PSEUDOCODE: Update pipeline state following append pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/append.py
-        # - Retrieve current pipeline state
-        # - Append artifact to stage-specific artifact list
-        # - Save updated pipeline state to persistent storage
         
-        # PSEUDOCODE: Notify orchestrator of artifact addition following notify pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/notify.py
-        # - Format notification message with pipeline ID, stage, and artifact
-        # - Send notification to orchestrator
-        pass
+        async with self.lock:
+            if pipeline_id not in self.pipelines:
+                raise ValueError(f"Pipeline {pipeline_id} not found")
+            
+            pipeline = self.pipelines[pipeline_id]
+            
+            # Add artifact to stage
+            stage_key = stage.value
+            if stage_key not in pipeline.artifacts:
+                pipeline.artifacts[stage_key] = []
+            
+            # Add artifact with metadata
+            artifact_entry = {
+                "content": artifact,
+                "timestamp": time.time(),
+                "stage": stage.value
+            }
+            
+            pipeline.artifacts[stage_key].append(artifact_entry)
+            pipeline.updated_at = time.time()
+            
+            # Save updated state
+            await self.save_state()
     
     async def get_pipeline(self, pipeline_id: str) -> PipelineState:
         """
@@ -218,11 +264,11 @@ class StateManager:
         Returns:
             The pipeline state
         """
-        # PSEUDOCODE: Retrieve pipeline state following retrieve pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/retrieve.py
-        # - Retrieve pipeline state from persistent storage
-        # - Return pipeline state
-        pass
+        async with self.lock:
+            if pipeline_id not in self.pipelines:
+                raise ValueError(f"Pipeline {pipeline_id} not found")
+            
+            return self.pipelines[pipeline_id]
     
     async def add_human_feedback(self, pipeline_id: str, stage: PipelineStage, feedback: str):
         """
@@ -233,21 +279,27 @@ class StateManager:
             stage: The stage the feedback applies to
             feedback: Human feedback text
         """
-        # PSEUDOCODE: Store feedback following store pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/store.py
-        # - Retrieve pipeline state with thread-safe access
-        # - Add timestamped feedback entry to stage-specific feedback list
-        # - Include reviewer metadata and feedback classification
         
-        # PSEUDOCODE: Notify orchestrator following telemetry pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/telemetry.py
-        # - Log feedback addition for audit trail and analytics
-        # - Send notification to orchestrator about human review completion
-        # - Trigger pipeline continuation or remediation workflow
-        
-        # PSEUDOCODE: Update pipeline state following session pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/session.py
-        # - Update stage status to reflect human review completion
-        # - Persist updated state with atomic operations
-        # - Return feedback confirmation for UI consumption
-        pass
+        async with self.lock:
+            if pipeline_id not in self.pipelines:
+                raise ValueError(f"Pipeline {pipeline_id} not found")
+            
+            pipeline = self.pipelines[pipeline_id]
+            
+            # Add feedback with metadata
+            feedback_entry = {
+                "feedback": feedback,
+                "timestamp": time.time(),
+                "stage": stage.value,
+                "reviewer": "human"  # In a real system, this would be the actual reviewer ID
+            }
+            
+            stage_key = stage.value
+            if stage_key not in pipeline.human_feedback:
+                pipeline.human_feedback[stage_key] = []
+            
+            pipeline.human_feedback[stage_key].append(feedback_entry)
+            pipeline.updated_at = time.time()
+            
+            # Save updated state
+            await self.save_state()

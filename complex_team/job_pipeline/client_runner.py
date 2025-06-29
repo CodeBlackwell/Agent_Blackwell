@@ -9,6 +9,7 @@ error handling, endpoint validation, and both streaming and sync client options.
 import asyncio
 import json
 import os
+import sys
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
@@ -18,22 +19,27 @@ from acp_sdk.models import Message, MessagePart
 # Load environment variables
 load_dotenv()
 
-# Agent server configurations
+# Agent configurations
 AGENT_CONFIGS = {
     "planning": {
-        "port": 8001,
         "name": "planner",
+        "port": 8001,
         "sample_request": "Create a web application with user authentication, REST API, and database integration"
     },
     "orchestrator": {
+        "name": "orchestrator",
         "port": 8002,
-        "name": "orchestrator", 
-        "sample_request": None  # Uses structured job plan
+        "sample_request": None  # Will use a job plan from the planning agent
+    },
+    "coder": {
+        "name": "coder",
+        "port": 8003,
+        "sample_request": "Create a React login component with form validation and API integration"
     }
 }
 
 async def test_agent_sync(agent_type: str, custom_request: Optional[str] = None) -> None:
-    """Test an agent using the synchronous client API (cleaner output for debugging)"""
+    """Test an agent using the synchronous client API (no streaming)"""
     
     config = AGENT_CONFIGS.get(agent_type)
     if not config:
@@ -73,29 +79,19 @@ async def test_agent_sync(agent_type: str, custom_request: Optional[str] = None)
                 input=[Message(parts=[MessagePart(content=request_content)])]
             )
             
-            if run.output:
-                print(f"\nResponse from {agent_type.capitalize()} Agent:")
-                print("-" * 50)
-                print(run.output[0].parts[0].content)
-            else:
-                print(f"\nNo content in response from {agent_type.capitalize()} Agent")
-    
+            print(f"Response from {agent_type.capitalize()} Agent:")
+            print("-" * 50)
+            
+            # Extract and display the message content
+            for message in run.output:
+                for part in message.parts:
+                    print(part.content)
+                    
     except Exception as e:
         print(f"\nError connecting to {agent_type.capitalize()} Agent: {str(e)}")
         print(f"\nDebug information:")
         print(f"- Server URL: {base_url}")
         print(f"- Agent name: {agent_name}")
-        print(f"- Expected endpoint: {base_url}/api/v1/agents/{agent_name}/run")
-        
-        # Display common ACP SDK debugging tips
-        print("\nCommon issues:")
-        print("1. Is the agent server running?")
-        print(f"2. Does the agent name '{agent_name}' match the function name in the agent file?")
-        print("3. Is the server.run() call in the same file as the agent definition?")
-        print("4. Are all required LLM configuration parameters provided?")
-        
-        import traceback
-        traceback.print_exc()
 
 async def test_agent_stream(agent_type: str, custom_request: Optional[str] = None) -> None:
     """Test an agent using the streaming client API (shows incremental outputs)"""
@@ -139,11 +135,19 @@ async def test_agent_stream(agent_type: str, custom_request: Optional[str] = Non
                 agent=agent_name,
                 input=[Message(parts=[MessagePart(content=request_content)])]
             ):
-                if hasattr(event, "content"):
-                    print(event.content, end="", flush=True)
+                # Extract content from message.part events
+                if event.type == "message.part":
+                    # Access the content directly from the part attribute
+                    if hasattr(event, "part") and hasattr(event.part, "content"):
+                        print(event.part.content, end="", flush=True)
+                    # Fallback in case structure changes
+                    elif hasattr(event, "data") and hasattr(event.data, "content"):
+                        print(event.data.content, end="", flush=True)
+                # Show minimal event info for other event types (can be turned off in production)
                 else:
-                    # Show event type for debugging
-                    print(f"\n[Event: {event.type}]", end="", flush=True)
+                    print(f"\n[Event: {event.type}]", flush=True)
+            
+            print("\n\n✅ Agent run completed")
     
     except Exception as e:
         print(f"\nError connecting to {agent_type.capitalize()} Agent: {str(e)}")
@@ -158,33 +162,33 @@ async def test_agent_stream(agent_type: str, custom_request: Optional[str] = Non
         print(f"2. Does the agent name '{agent_name}' match the function name in the agent file?")
         print("3. Is the server.run() call in the same file as the agent definition?")
         print("4. Are all required LLM configuration parameters provided?")
-        
-        import traceback
-        traceback.print_exc()
 
 async def main():
-    """Main function to run the test client"""
-    import argparse
+    """Main function to parse arguments and run the appropriate test"""
     
-    parser = argparse.ArgumentParser(description="Test ACP SDK agent servers")
-    parser.add_argument("agent", choices=["planning", "orchestrator"], 
-                        help="The agent to test")
-    parser.add_argument("--sync", action="store_true", 
-                        help="Use synchronous client instead of streaming")
-    parser.add_argument("--request", type=str, 
-                        help="Custom request to send to the agent")
+    if len(sys.argv) < 2:
+        print("Usage: python client_runner.py <agent_type> [custom_request] [--sync]")
+        print("\nAvailable agent types:")
+        for agent_type, config in AGENT_CONFIGS.items():
+            print(f"  - {agent_type} (port {config['port']}, agent name '{config['name']}')")
+        return
     
-    args = parser.parse_args()
+    agent_type = sys.argv[1]
     
-    try:
-        if args.sync:
-            await test_agent_sync(args.agent, args.request)
-        else:
-            await test_agent_stream(args.agent, args.request)
-    except Exception as e:
-        print(f"\nERROR: {e}")
-        print("\nMake sure the agent servers are running and properly configured.")
-        print("Check that your virtual environment is activated and all dependencies are installed.")
+    # Check for sync flag
+    use_sync = "--sync" in sys.argv
+    if use_sync:
+        sys.argv.remove("--sync")
+    
+    # Check for custom request (everything after agent_type but before --sync)
+    custom_request = None
+    if len(sys.argv) > 2:
+        custom_request = sys.argv[2]
+    
+    if use_sync:
+        await test_agent_sync(agent_type, custom_request)
+    else:
+        await test_agent_stream(agent_type, custom_request)
 
 if __name__ == "__main__":
     asyncio.run(main())

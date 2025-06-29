@@ -14,12 +14,13 @@ from acp_sdk.server import Context, Server, RunYield, RunYieldResume
 from beeai_framework.agents.react import ReActAgent
 from beeai_framework.backend.chat import ChatModel
 from beeai_framework.memory import TokenMemory
+from beeai_framework.backend import UserMessage
 
 import sys
 import os
 # Add parent directories to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config.config import LLM_CONFIG, AGENT_PORTS, PROMPT_TEMPLATES
+from config.config import LLM_CONFIG, AGENT_PORTS, PROMPT_TEMPLATES, BEEAI_CONFIG
 
 server = Server()
 
@@ -43,7 +44,11 @@ async def planner(inputs: List[Message], context: Context) -> AsyncGenerator[Run
         yield MessagePart(content="🔍 Analyzing user request and creating structured job plan...")
         
         # Initialize LLM for planning
-        llm = ChatModel.from_name(LLM_CONFIG["model_id"])
+        llm = ChatModel.from_name(
+            BEEAI_CONFIG["chat_model"]["model"],
+            api_base=BEEAI_CONFIG["chat_model"]["base_url"],
+            api_key=BEEAI_CONFIG["chat_model"]["api_key"]
+        )
         memory = TokenMemory(llm)
         
         # Create ReAct agent with planning-specific configuration
@@ -62,7 +67,7 @@ async def planner(inputs: List[Message], context: Context) -> AsyncGenerator[Run
         )
         
         # Add user request to memory
-        await memory.add_user_message(user_request)
+        await memory.add(UserMessage(user_request))
         
         # Generate structured plan using LLM
         response = await agent.run()

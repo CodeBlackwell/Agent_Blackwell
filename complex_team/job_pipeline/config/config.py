@@ -20,9 +20,41 @@ load_dotenv(dotenv_path=env_path)
 
 # LLM Configuration - centralized as per requirements
 LLM_CONFIG = {
-    "model_id": os.getenv("LLM_MODEL", "ollama_chat/qwen2:7b"),
+    "model_id": os.getenv("LLM_MODEL", "ollama:qwen2.5:7b"),  # Updated for BeeAI Framework compatibility
     "api_base": os.getenv("LLM_API_BASE", "http://localhost:11434"),
     "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "4096")),
+    "temperature": float(os.getenv("LLM_TEMPERATURE", "0.7")),
+    "provider": "ollama",  # For BeeAI Framework
+}
+
+# BeeAI Framework Configuration
+BEEAI_CONFIG = {
+    "chat_model": {
+        "provider": "openai",
+        "model": "openai:gpt-4o",  # Format includes provider for BeeAI compatibility
+        "base_url": os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
+        "api_key": os.getenv("OPENAI_API_KEY", "")  # Uses OpenAI key from env
+    },
+    "embedding_model": {
+        "provider": "openai", 
+        "model": "openai:text-embedding-3-large",
+        "base_url": os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
+        "api_key": os.getenv("OPENAI_API_KEY", "")
+    }
+}
+
+# MCP Server Configuration for Tool Integration
+MCP_CONFIG = {
+    "git_server": {
+        "command": "uv",
+        "args": ["run", "mcp_git_server.py"],
+        "env": None,
+    },
+    "filesystem_server": {
+        "command": "uv", 
+        "args": ["run", "mcp_filesystem_server.py"],
+        "env": None,
+    }
 }
 
 # Agent port configuration
@@ -68,20 +100,26 @@ PROMPT_TEMPLATES = {
         "system": """You are the Orchestrator Agent, the conductor of the autonomous development symphony.
         
         CORE RESPONSIBILITIES:
-        • Coordinate multi-agent pipeline execution across specification, design, code, review, and test phases
-        • Manage dynamic agent session creation and resource allocation
-        • Route work packages to appropriate specialized agents based on cognitive load and capacity
-        • Handle milestone checkpoints, human review integration, and pipeline state management
-        • Coordinate Git operations via MCP tools for branch management and pull request workflows
+        • Coordinate the execution of multi-agent development pipelines
+        • Manage state transitions between pipeline stages
+        • Handle milestone checkpoints and human review integration
+        • Provide real-time status updates on pipeline progress
+        • Optimize resource allocation across parallel feature development
         
-        DECISION FRAMEWORK:
-        • Prioritize parallel execution over sequential when dependencies allow
-        • Escalate to human review at critical milestones (design approval, code review, test validation)
-        • Implement graceful degradation when agents encounter errors or constraints
-        • Maintain audit trail of all pipeline decisions and agent handoffs
+        PIPELINE MANAGEMENT:
+        • Track feature pipeline state using StateManager
+        • Coordinate agent handoffs between pipeline stages
+        • Manage dependencies between parallel feature pipelines
+        • Handle exceptions and recovery strategies
         
-        INTEGRATION PATTERNS:
-        • Use SessionManager for dynamic agent lifecycle management
+        MILESTONE COORDINATION:
+        • Integrate with Git operations at milestone checkpoints
+        • Prepare work products for human review
+        • Process feedback and approval signals
+        • Coordinate branch management and merge operations
+        
+        COMMUNICATION PATTERNS:
+        • Provide structured progress updates with stage completion status
         • Stream progress updates incrementally for real-time pipeline visibility
         • Coordinate with StateManager for persistent pipeline tracking
         

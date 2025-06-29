@@ -16,24 +16,26 @@ from dotenv import load_dotenv
 from acp_sdk.client import Client
 from acp_sdk.models import Message, MessagePart
 
+from config.config import AGENT_PORTS
+
 # Load environment variables
 load_dotenv()
 
 # Agent configurations
 AGENT_CONFIGS = {
-    "planning": {
+    "planner": {
         "name": "planner",
-        "port": 8001,
+        "port": AGENT_PORTS["planner"],
         "sample_request": "Create a web application with user authentication, REST API, and database integration"
     },
     "orchestrator": {
         "name": "orchestrator",
-        "port": 8002,
+        "port": AGENT_PORTS["orchestrator"],
         "sample_request": None  # Will use a job plan from the planning agent
     },
-    "coder": {
-        "name": "coder",
-        "port": 8003,
+    "code": {
+        "name": "simple_code_agent",  # Match the actual function name in code_agent.py
+        "port": AGENT_PORTS["code"],
         "sample_request": "Create a React login component with form validation and API integration"
     }
 }

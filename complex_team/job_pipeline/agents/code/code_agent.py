@@ -1,116 +1,150 @@
 """
-Code Agent for implementing software based on designs.
+Code Agent that implements code generation and file operations.
 
-This agent takes technical designs from the Design Agent and produces
-actual code implementations that fulfill the requirements.
-
-References the Chained Agents pattern from /Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/5. Chained Agents.py
+Based on ACP MCP integration patterns from ACPxMCP.py and smolagents integration.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
+from typing import Dict, List, Any
+
 from acp_sdk.models import Message, MessagePart
-from acp_sdk.server import Context, Server
+from acp_sdk.server import Context, Server, RunYield, RunYieldResume
+from beeai_framework.agents.react import ReActAgent
+from beeai_framework.backend.chat import ChatModel
+from beeai_framework.memory import TokenMemory
+from mcp import StdioServerParameters
 
 import sys
 import os
 # Add parent directories to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from agents.base_agent import BaseAgent
-from config.config import LLM_CONFIG, AGENT_PORTS, PROMPT_TEMPLATES
+from config.config import LLM_CONFIG, BEEAI_CONFIG, MCP_CONFIG, PROMPT_TEMPLATES
 
+server = Server()
 
-class CodeAgent(BaseAgent):
+@server.agent()
+async def code_agent(inputs: List[Message], context: Context) -> AsyncGenerator[RunYield, RunYieldResume]:
     """
-    Agent responsible for implementing code based on technical designs.
+    Code Agent that generates and manages code files using MCP tools.
     
-    This agent develops the actual code implementation following the 
-    architecture and interface definitions from the Design Agent.
-    It also integrates with MCP for Git operations to commit code.
+    This agent implements code generation, file operations, and Git integration
+    through MCP (Model Context Protocol) servers.
     """
-    
-    def initialize_agent(self):
-        """
-        Initialize the code agent with its endpoint and tools.
-        
-        Sets up the agent's server endpoint and configures coding tools
-        including MCP Git integration.
-        """
-        # PSEUDOCODE: Initialize code generation agent following LLM server pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/llm.py
-        # - Setup Server() with code-optimized LLM model (higher temperature for creativity)
-        # - Load coding templates and best practices from centralized config
-        # - Configure model parameters for code generation and refactoring
-        
-        # PSEUDOCODE: Setup MCP integration for Git operations following pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/7. ACPxMCP.py
-        # - Initialize MCP client connection to Git tools server
-        # - Setup tool bindings for commit operations
-        # - Configure file manipulation and code organization tools
-        
-        # PSEUDOCODE: Initialize code analysis tools following research pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/gpt-researcher/agent.py
-        # - Setup code pattern recognition and best practices retrieval
-        # - Initialize code quality assessment capabilities
-        # - Configure integration testing and validation tools
-        pass
-    
-    async def implement_code(self, input: list[Message], context: Context) -> AsyncGenerator:
-        """
-        Implement code based on a technical design.
-        
-        Args:
-            input: List of input messages containing the design
-            context: Context for the current request
+    try:
+        # Extract the coding request
+        if not inputs or not inputs[0].parts:
+            yield MessagePart(content="Error: No coding request provided")
+            return
             
-        Returns:
-            An async generator yielding code implementations
-        """
-        # PSEUDOCODE: Parse technical design following pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/openai-story-writer/agent.py
-        # - Extract design specifications and requirements from input
-        # - Break down design into implementable code modules
-        # - Plan code structure and file organization
+        coding_request = inputs[0].parts[0].content
         
-        # PSEUDOCODE: Generate code using chained approach following:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/5. Chained Agents.py
-        # - Generate base code structure first
-        # - Implement core functionality with proper error handling
-        # - Add comprehensive docstrings and type hints
-        # - Generate unit tests for implemented functionality
+        # Yield initial processing message
+        yield MessagePart(content="💻 Starting code generation and file operations...")
         
-        # PSEUDOCODE: Stream code implementation following:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/stream.py
-        # - Yield code files incrementally as they're generated
-        # - Include file paths, content, and implementation notes
-        # - Format output for review agent consumption and Git operations
-        pass
+        # Initialize LLM for code generation
+        llm = ChatModel.from_name(LLM_CONFIG["model_id"])
+        memory = TokenMemory(llm)
         
-    async def commit_code(self, files, message):
-        """
-        Commit code changes to the Git repository via MCP.
+        # Setup MCP server for file operations
+        filesystem_server_params = StdioServerParameters(
+            command=MCP_CONFIG["filesystem_server"]["command"],
+            args=MCP_CONFIG["filesystem_server"]["args"],
+            env=MCP_CONFIG["filesystem_server"]["env"],
+        )
         
-        Args:
-            files: List of files to commit
-            message: Commit message
+        # Setup MCP server for Git operations
+        git_server_params = StdioServerParameters(
+            command=MCP_CONFIG["git_server"]["command"],
+            args=MCP_CONFIG["git_server"]["args"], 
+            env=MCP_CONFIG["git_server"]["env"],
+        )
+        
+        # Create agent with MCP tools (following ACPxMCP pattern)
+        from smolagents import ToolCallingAgent, ToolCollection
+        
+        # Combine multiple MCP tool collections
+        with ToolCollection.from_mcp(filesystem_server_params, trust_remote_code=True) as fs_tools, \
+             ToolCollection.from_mcp(git_server_params, trust_remote_code=True) as git_tools:
             
-        Returns:
-            Status of the Git operation
-        """
-        # PSEUDOCODE: Use MCP Git tools following integration pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/ACPWalkthrough/7. ACPxMCP.py
-        # - Call MCP Git tools server to commit file changes
-        # - Format files with proper paths and content for Git operations
-        # - Generate structured commit message with implementation details
+            # Combine all tools
+            all_tools = [*fs_tools.tools, *git_tools.tools]
+            
+            # Create ReAct agent with combined tools
+            agent = ReActAgent(
+                llm=llm,
+                tools=all_tools,
+                templates={
+                    "system": lambda template: template.update(
+                        defaults={
+                            "instructions": PROMPT_TEMPLATES.get("code", {}).get("system", "You are a code generation agent."),
+                            "role": "system",
+                        }
+                    )
+                },
+                memory=memory,
+            )
+            
+            # Add coding request to memory
+            await memory.add_user_message(coding_request)
+            
+            # Generate code and perform file operations
+            yield MessagePart(content="🔧 Generating code with tool integration...")
+            
+            response = await agent.run()
+            
+            # Yield the code generation result
+            yield MessagePart(content=f"✅ Code generation completed:\n\n{response.result.text}")
         
-        # PSEUDOCODE: Handle Git operations following client pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/clients/simple.py
-        # - Send commit request to MCP Git tools server
-        # - Handle response and error cases gracefully
-        # - Return status for orchestrator pipeline tracking
+    except Exception as e:
+        yield MessagePart(content=f"❌ Error in code generation: {str(e)}")
+
+# Alternative implementation using BeeAI Framework directly
+@server.agent()
+async def simple_code_agent(inputs: List[Message], context: Context) -> AsyncGenerator[RunYield, RunYieldResume]:
+    """
+    Simplified code agent using BeeAI Framework without MCP tools.
+    
+    This is a fallback implementation that works without external MCP servers.
+    """
+    try:
+        if not inputs or not inputs[0].parts:
+            yield MessagePart(content="Error: No coding request provided")
+            return
+            
+        coding_request = inputs[0].parts[0].content
         
-        # PSEUDOCODE: Update pipeline state following store pattern from:
-        # /Users/lechristopherblackwell/Desktop/Ground_up/acp_examples/examples/python/basic/servers/store.py
-        # - Update StateManager with commit information
-        # - Track code artifacts and Git references
-        # - Prepare for next pipeline stage (review)
-        pass
+        yield MessagePart(content="💻 Generating code using LLM...")
+        
+        # Simple BeeAI Framework integration
+        llm = ChatModel.from_name(LLM_CONFIG["model_id"])
+        memory = TokenMemory(llm)
+        
+        agent = ReActAgent(
+            llm=llm,
+            tools=[],  # No external tools in simple version
+            templates={
+                "system": lambda template: template.update(
+                    defaults={
+                        "instructions": """You are a code generation agent. Generate clean, well-documented code based on user requests. 
+                        Include appropriate imports, error handling, and follow best practices for the requested language.""",
+                        "role": "system",
+                    }
+                )
+            },
+            memory=memory,
+        )
+        
+        await memory.add_user_message(coding_request)
+        response = await agent.run()
+        
+        yield MessagePart(content=f"✅ Code generated successfully:\n\n```\n{response.result.text}\n```")
+        
+    except Exception as e:
+        yield MessagePart(content=f"❌ Error generating code: {str(e)}")
+
+# Add server runner for standalone execution
+if __name__ == "__main__":
+    from config.config import AGENT_PORTS
+    print(f"Starting Code Agent on port {AGENT_PORTS['code']}...")
+    server.run(port=AGENT_PORTS["code"])

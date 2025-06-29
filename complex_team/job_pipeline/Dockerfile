@@ -9,17 +9,19 @@ RUN pip install uv
 # Create a virtual environment
 RUN uv venv /app/.venv
 
-# Install dotenv for environment variable management
-RUN uv pip install python-dotenv
+# Ensure the virtualenv's binaries are in PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install core dependencies into the virtual environment
+RUN uv pip -E /app/.venv install python-dotenv
 
 # Copy the entire application first
 COPY . .
 
 # Install dependencies using uv (without touching the global environment)
-RUN uv pip install -e .
+RUN uv pip -E /app/.venv install -e .
 
 # Set environment variables
-ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app:$PYTHONPATH"
 ENV PYTHONUNBUFFERED=1
 

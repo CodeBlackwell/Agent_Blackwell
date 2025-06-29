@@ -8,7 +8,7 @@ requires-python = ">=3.13"
 # Main dependencies
 dependencies = [
     # Core ACP SDK and related frameworks
-    "acp-sdk>=0.13.0",
+    "acp_sdk>=0.13.0",
     "beeai-framework>=0.1.0",
     
     # Environment management
@@ -58,3 +58,7 @@ select = ["E", "F", "I"]
 [tool.black]
 line-length = 100
 target-version = ["py313"]
+
+# dotenv
+
+

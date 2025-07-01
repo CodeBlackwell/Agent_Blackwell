@@ -21,6 +21,9 @@ from beeai_framework.tools.types import ToolRunOptions
 from beeai_framework.utils.strings import to_json
 from pydantic import BaseModel, Field
 
+# Import the modular planner agent
+from planner_agent import planner_agent
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -32,42 +35,12 @@ server = Server()
 # INDIVIDUAL TEAM MEMBER AGENTS
 # ============================================================================
 
+# Register the imported planner agent
 @server.agent()
-async def planner_agent(input: list[Message]) -> AsyncGenerator:
-    """Agent responsible for creating project plans and breaking down requirements"""
-    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
-    
-    agent = ReActAgent(
-        llm=llm, 
-        tools=[], 
-        templates={
-            "system": lambda template: template.update(
-                defaults=exclude_none({
-                    "instructions": """
-                    You are a senior software planner. Your role is to:
-                    1. Analyze project requirements and break them down into clear, actionable tasks
-                    2. Create a structured project plan with phases and milestones
-                    3. Identify potential risks, dependencies, and technical considerations
-                    4. Suggest appropriate technologies, frameworks, and architectural patterns
-                    5. Provide time estimates and priority levels for each task
-                    
-                    Always provide a detailed, structured plan that other team members can follow.
-                    Format your response as a clear project plan with sections for:
-                    - Project Overview
-                    - Technical Requirements
-                    - Task Breakdown
-                    - Architecture Recommendations
-                    - Risk Assessment
-                    """,
-                    "role": "system",
-                })
-            )
-        },
-        memory=TokenMemory(llm)
-    )
-    
-    response = await agent.run(prompt="Create a detailed project plan for: " + str(input))
-    yield MessagePart(content=response.result.text)
+async def planner_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    """Wrapper to register the modular planner agent with the server"""
+    async for part in planner_agent(input):
+        yield part
 
 
 @server.agent()
@@ -480,15 +453,34 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
     Returns:
         The agent's response messages
     """
-    async with Client(base_url="http://localhost:8080") as client:
+    # Map agent names to their respective ports
+    agent_ports = {
+        "planner_agent": 8080,
+        "designer_agent": 8080,
+        "coder_agent": 8080,
+        "test_writer_agent": 8080,
+        "reviewer_agent": 8080,
+    }
+    
+    # Map external agent names to internal registered names
+    agent_name_mapping = {
+        "planner_agent": "planner_agent_wrapper"
+    }
+    
+    # Get the internal agent name (use mapping if available, otherwise use original name)
+    internal_agent_name = agent_name_mapping.get(agent, agent)
+    port = agent_ports.get(agent, 8080)
+    base_url = f"http://localhost:{port}"
+    
+    async with Client(base_url=base_url) as client:
         try:
             run = await client.run_sync(
-                agent=agent, 
+                agent=internal_agent_name,  # Use mapped internal name
                 input=[Message(parts=[MessagePart(content=input, content_type="text/plain")])]
             )
             return run.output
         except Exception as e:
-            print(f"❌ Error calling {agent}: {e}")
+            print(f"❌ Error calling {agent} on {base_url}: {e}")
             return [Message(parts=[MessagePart(content=f"Error from {agent}: {e}", content_type="text/plain")])]
 
 

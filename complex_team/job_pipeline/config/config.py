@@ -59,7 +59,7 @@ MCP_CONFIG = {
 
 # Agent port configuration
 AGENT_PORTS = {
-    "planner": int(os.getenv("PLANNER_PORT", "8001")),
+    "planning": int(os.getenv("PLANNER_PORT", "8001")),
     "orchestrator": int(os.getenv("ORCHESTRATOR_PORT", "8002")),
     "specification": int(os.getenv("SPECIFICATION_PORT", "8003")),
     "design": int(os.getenv("DESIGN_PORT", "8004")),

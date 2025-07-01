@@ -7,15 +7,19 @@ from acp_sdk.models import MessagePart
 
 def ensure_logs_dir():
     """Create logs directory if it doesn't exist"""
-    if not os.path.exists("./logs"):
-        os.makedirs("./logs")
-        print("📁 Created ./logs directory")
-
-def write_log(filename: str, content: str):
-    """Write content to a log file"""
-    ensure_logs_dir()
+    # Create session-specific log directory with user-friendly timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = f"./logs/{timestamp}_{filename}"
+    session_dir = f"./logs/{timestamp}"
+    
+    if not os.path.exists(session_dir):
+        os.makedirs(session_dir, exist_ok=True)
+        print(f"📁 Created session log directory: {session_dir}")
+    
+    return session_dir
+
+def write_log(session_dir: str, filename: str, content: str):
+    """Write content to a log file in the session directory"""
+    log_file = os.path.join(session_dir, filename)
     
     with open(log_file, 'w', encoding='utf-8') as f:
         f.write(f"Test Run: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -26,6 +30,13 @@ def write_log(filename: str, content: str):
 
 async def test_coding_team():
     """Test the coding team system with different workflow specifications"""
+    
+    # Create session-specific log directory
+    session_dir = ensure_logs_dir()
+    session_name = os.path.basename(session_dir)
+    print(f"🗂️  Test session: {session_name}")
+    print(f"📁 All logs for this session will be saved to: {session_dir}")
+    print("-" * 80)
     
     async with Client(base_url="http://localhost:8080") as client:
         
@@ -48,12 +59,12 @@ async def test_coding_team():
                 for part in message.parts:
                     full_output += part.content + "\n\n"
             
-            write_log("tdd_workflow_todo_api.log", full_output)
+            write_log(session_dir, "tdd_workflow_todo_api.log", full_output)
             print("✅ TDD Workflow completed - full output logged")
                     
         except Exception as e:
             print(f"❌ Error in TDD workflow: {e}")
-            write_log("tdd_workflow_error.log", str(e))
+            write_log(session_dir, "tdd_workflow_error.log", str(e))
         
         # Test 2: Explicit full workflow
         print("\n🔄 Test 2: Explicit Full Workflow")
@@ -74,12 +85,12 @@ async def test_coding_team():
                 for part in message.parts:
                     full_output += part.content + "\n\n"
             
-            write_log("full_workflow_user_registration.log", full_output)
+            write_log(session_dir, "full_workflow_user_registration.log", full_output)
             print("✅ Full Workflow completed - full output logged")
                     
         except Exception as e:
             print(f"❌ Error in full workflow: {e}")
-            write_log("full_workflow_error.log", str(e))
+            write_log(session_dir, "full_workflow_error.log", str(e))
             
         # Test 3: Individual step - just planning
         print("\n📋 Test 3: Just Planning")
@@ -100,12 +111,12 @@ async def test_coding_team():
                 for part in message.parts:
                     full_output += part.content + "\n\n"
             
-            write_log("planning_only_chat_app.log", full_output)
+            write_log(session_dir, "planning_only_chat_app.log", full_output)
             print("✅ Planning completed - full output logged")
                     
         except Exception as e:
             print(f"❌ Error in planning: {e}")
-            write_log("planning_error.log", str(e))
+            write_log(session_dir, "planning_error.log", str(e))
             
         # Test 4: Just test writing
         print("\n🧪 Test 4: Just Test Writing")
@@ -126,12 +137,12 @@ async def test_coding_team():
                 for part in message.parts:
                     full_output += part.content + "\n\n"
             
-            write_log("test_writing_auth_system.log", full_output)
+            write_log(session_dir, "test_writing_auth_system.log", full_output)
             print("✅ Test Writing completed - full output logged")
                     
         except Exception as e:
             print(f"❌ Error in test writing: {e}")
-            write_log("test_writing_error.log", str(e))
+            write_log(session_dir, "test_writing_error.log", str(e))
 
         # Test 5: Default behavior (should default to TDD for new project)
         print("\n🎯 Test 5: Default Behavior")
@@ -152,15 +163,16 @@ async def test_coding_team():
                 for part in message.parts:
                     full_output += part.content + "\n\n"
             
-            write_log("default_behavior_blog_api.log", full_output)
+            write_log(session_dir, "default_behavior_blog_api.log", full_output)
             print("✅ Default Behavior completed - full output logged")
                     
         except Exception as e:
             print(f"❌ Error in default behavior: {e}")
-            write_log("default_behavior_error.log", str(e))
+            write_log(session_dir, "default_behavior_error.log", str(e))
 
-        print(f"\n📁 All test outputs have been saved to ./logs/ directory")
-        print(f"📊 Check the log files for complete agent responses")
+        print(f"\n📁 All test outputs have been saved to session directory: {session_dir}")
+        print(f"📊 Session: {session_name}")
+        print(f"🔗 Full path: {os.path.abspath(session_dir)}")
 
 
 def show_usage_examples():
@@ -206,33 +218,60 @@ def show_usage_examples():
     print("   • Use 'skip X' or 'without X' to exclude team members")
     print("   • Default behavior tries to be smart about what you need")
     print("   • TDD workflow is recommended for new features")
-    print("   • All full outputs are logged to ./logs/ directory")
+    print("   • All full outputs are logged to session directories in ./logs/")
+    print("   • Each test run creates a new timestamped session")
     print()
 
 def list_recent_logs():
-    """List recent log files"""
-    ensure_logs_dir()
+    """List recent log sessions"""
+    base_logs_dir = "./logs"
+    
+    if not os.path.exists(base_logs_dir):
+        print("📁 No logs directory found")
+        return
     
     try:
-        log_files = [f for f in os.listdir("./logs") if f.endswith('.log')]
-        if not log_files:
-            print("📁 No log files found in ./logs directory")
+        # Get all session directories
+        session_dirs = [d for d in os.listdir(base_logs_dir) 
+                       if os.path.isdir(os.path.join(base_logs_dir, d))]
+        
+        if not session_dirs:
+            print("📁 No log sessions found in ./logs directory")
             return
         
         # Sort by modification time (newest first)
-        log_files.sort(key=lambda x: os.path.getmtime(f"./logs/{x}"), reverse=True)
+        session_dirs.sort(key=lambda x: os.path.getmtime(os.path.join(base_logs_dir, x)), reverse=True)
         
-        print(f"📊 Recent log files in ./logs/:")
-        print("-" * 40)
-        for i, log_file in enumerate(log_files[:10]):  # Show last 10
-            file_path = f"./logs/{log_file}"
-            mod_time = datetime.fromtimestamp(os.path.getmtime(file_path))
-            file_size = os.path.getsize(file_path)
-            print(f"{i+1:2d}. {log_file}")
-            print(f"    📅 {mod_time.strftime('%Y-%m-%d %H:%M:%S')} | 📏 {file_size:,} bytes")
+        print(f"📊 Recent test sessions in ./logs/:")
+        print("-" * 50)
         
-        if len(log_files) > 10:
-            print(f"    ... and {len(log_files) - 10} more files")
+        for i, session_dir in enumerate(session_dirs[:10]):  # Show last 10 sessions
+            session_path = os.path.join(base_logs_dir, session_dir)
+            mod_time = datetime.fromtimestamp(os.path.getmtime(session_path))
+            
+            # Count log files in session
+            log_files = [f for f in os.listdir(session_path) if f.endswith('.log')]
+            
+            # Calculate total size of session
+            total_size = sum(os.path.getsize(os.path.join(session_path, f)) 
+                           for f in log_files)
+            
+            print(f"{i+1:2d}. Session: {session_dir}")
+            print(f"    📅 {mod_time.strftime('%Y-%m-%d %H:%M:%S')} | 📄 {len(log_files)} files | 📏 {total_size:,} bytes")
+            
+            # Show individual log files for recent sessions
+            if i < 3:  # Show file details for 3 most recent sessions
+                for log_file in sorted(log_files):
+                    file_size = os.path.getsize(os.path.join(session_path, log_file))
+                    print(f"      • {log_file} ({file_size:,} bytes)")
+                if log_files:
+                    print()
+        
+        if len(session_dirs) > 10:
+            print(f"    ... and {len(session_dirs) - 10} more sessions")
+            
+        print(f"\n💡 Each session contains all logs from a single test run")
+        print(f"🔗 Full path: {os.path.abspath(base_logs_dir)}")
             
     except Exception as e:
         print(f"❌ Error reading logs directory: {e}")
@@ -257,8 +296,7 @@ def simple_test():
     choice = input("\nEnter choice (1-4): ").strip()
     
     if choice == "1":
-        ensure_logs_dir()
-        print(f"📁 All test outputs will be saved to ./logs/ directory")
+        print(f"📁 All test outputs will be saved to a new session directory in ./logs/")
         print("🔄 Starting tests...")
         try:
             asyncio.run(test_coding_team())
@@ -266,7 +304,9 @@ def simple_test():
             print("\n👋 Tests interrupted by user")
         except Exception as e:
             print(f"❌ Test failed: {e}")
-            write_log("test_runner_error.log", str(e))
+            # Create emergency log for test runner errors
+            emergency_session = ensure_logs_dir()
+            write_log(emergency_session, "test_runner_error.log", str(e))
             print("Make sure:")
             print("1. The server is running (python coding_team.py)")
             print("2. Your .env file has OPENAI_API_KEY set")

@@ -24,7 +24,7 @@ from config.config import LLM_CONFIG, AGENT_PORTS, PROMPT_TEMPLATES, BEEAI_CONFI
 
 server = Server()
 
-@server.agent()
+@server.agent(name="planning")
 async def planner(inputs: List[Message], context: Context) -> AsyncGenerator[RunYield, RunYieldResume]:
     """
     Planning agent that analyzes user requests and creates structured job plans.

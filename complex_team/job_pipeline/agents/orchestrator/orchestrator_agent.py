@@ -1,323 +1,621 @@
-"""Orchestrator Agent for coordinating the job pipeline workflow.
-
-This is the central controller for the entire development workflow,
-managing multiple agent pipelines and coordinating between phases.
-
-Aligned with ACP SDK best practices and patterns from acp-agent-generator example.
-"""
-
-import asyncio
-import json
-import uuid
 from collections.abc import AsyncGenerator
-from typing import Dict, List, Any, Optional
-from acp_sdk.models import Message, MessagePart
-from acp_sdk.server import Context, Server, RunYield, RunYieldResume
+from functools import reduce
+import os
+from dotenv import load_dotenv
+import asyncio
+from enum import Enum
+
+from acp_sdk import Message
+from acp_sdk.models import MessagePart
+from acp_sdk.server import Context, Server
+from acp_sdk.client import Client
 from beeai_framework.agents.react import ReActAgent
 from beeai_framework.backend.chat import ChatModel
 from beeai_framework.memory import TokenMemory
-from beeai_framework.backend import UserMessage, SystemMessage
-from beeai_framework.template import PromptTemplate, PromptTemplateInput
+from beeai_framework.utils.dicts import exclude_none
+from beeai_framework.context import RunContext
+from beeai_framework.emitter import Emitter
+from beeai_framework.tools import ToolOutput
+from beeai_framework.tools.tool import Tool
+from beeai_framework.tools.types import ToolRunOptions
+from beeai_framework.utils.strings import to_json
+from pydantic import BaseModel, Field
 
-import sys
-import os
-# Add parent directories to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config.config import (
-    LLM_CONFIG, 
-    AGENT_PORTS, 
-    PROMPT_TEMPLATES, 
-    BEEAI_CONFIG, 
-    # MCP_CONFIG  # Commented out until MCP servers are available
-)
-from config.prompt_schemas import OrchestratorSchema, PipelineAnalysisSchema
-# from state.state_manager import StateManager, PipelineState, PipelineStage  # Commented out for simplification
+# Load environment variables from .env file
+load_dotenv()
 
-# Initialize the server instance following ACP patterns
+# Ensure OPENAI_API_KEY is set in your environment or .env file
 server = Server()
 
-@server.agent(name="orchestrator")
-async def orchestrate_pipeline(input: list[Message], context: Context) -> AsyncGenerator[RunYield, RunYieldResume]:
-    """
-    Orchestrate the development pipeline for a job plan.
+
+# ============================================================================
+# INDIVIDUAL TEAM MEMBER AGENTS
+# ============================================================================
+
+@server.agent()
+async def planner_agent(input: list[Message]) -> AsyncGenerator:
+    """Agent responsible for creating project plans and breaking down requirements"""
+    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
     
-    Following ACP best practices:
-    - LLM initialization inside agent function
-    - Simple coordination logic
-    - Proper error handling and cleanup
-    - Streaming responses for real-time feedback
-    
-    Args:
-        input: List of input messages containing the job plan
-        context: Context for the current request
-        
-    Returns:
-        An async generator yielding pipeline progress updates
-    """
-    try:
-        # Validate input
-        if not input or not input[0].parts:
-            yield MessagePart(content="❌ Error: No job plan provided")
-            return
-            
-        job_plan_content = input[0].parts[0].content
-        
-        # Initialize LLM components inside agent function (ACP best practice)
-        yield MessagePart(content="🔧 Initializing orchestrator components...")
-        
-        llm = ChatModel.from_name(
-            BEEAI_CONFIG["chat_model"]["model"],
-            api_base=BEEAI_CONFIG["chat_model"]["base_url"],
-            api_key=BEEAI_CONFIG["chat_model"]["api_key"]
-        )
-        memory = TokenMemory(llm)
-        
-        # Convert the config's prompt template to BeeAI PromptTemplate
-        system_template = PromptTemplate(
-            PromptTemplateInput(
-                template=PROMPT_TEMPLATES["orchestrator"]["system"],
-                schema=OrchestratorSchema
+    agent = ReActAgent(
+        llm=llm, 
+        tools=[], 
+        templates={
+            "system": lambda template: template.update(
+                defaults=exclude_none({
+                    "instructions": """
+                    You are a senior software planner. Your role is to:
+                    1. Analyze project requirements and break them down into clear, actionable tasks
+                    2. Create a structured project plan with phases and milestones
+                    3. Identify potential risks, dependencies, and technical considerations
+                    4. Suggest appropriate technologies, frameworks, and architectural patterns
+                    5. Provide time estimates and priority levels for each task
+                    
+                    Always provide a detailed, structured plan that other team members can follow.
+                    Format your response as a clear project plan with sections for:
+                    - Project Overview
+                    - Technical Requirements
+                    - Task Breakdown
+                    - Architecture Recommendations
+                    - Risk Assessment
+                    """,
+                    "role": "system",
+                })
             )
-        )
-        
-        agent = ReActAgent(
-            llm=llm,
-            memory=memory,
-            tools=[],  # No tools until MCP servers are available
-            templates={"system": system_template}
-        )
-        
-        # Parse job plan JSON
-        yield MessagePart(content="📋 Parsing job plan...")
-        try:
-            # Extract JSON from markdown if present
-            if "```json" in job_plan_content:
-                json_start = job_plan_content.find("```json") + 7
-                json_end = job_plan_content.find("```", json_start)
-                job_plan_json = job_plan_content[json_start:json_end].strip()
-            else:
-                job_plan_json = job_plan_content
-                
-            job_plan = json.loads(job_plan_json)
-        except json.JSONDecodeError as e:
-            yield MessagePart(content=f"❌ Error parsing job plan JSON: {str(e)}")
-            return
-        
-        # Add job plan to memory for LLM processing
-        await memory.add(UserMessage(f"Job Plan to orchestrate: {json.dumps(job_plan, indent=2)}"))
-        
-        # Generate orchestration strategy using LLM
-        yield MessagePart(content="🚀 Generating orchestration strategy...")
-        
-        orchestration_prompt = """
-        Analyze this job plan and create a coordination strategy. Focus on:
-        1. Feature prioritization and dependencies
-        2. Agent coordination sequence
-        3. Milestone checkpoints
-        4. Risk mitigation strategies
-        
-        Provide a structured response with clear next steps for pipeline execution.
-        """
-        
-        await memory.add(UserMessage(orchestration_prompt))
-        response = await agent.run()
-        
-        # Extract orchestration strategy
-        orchestration_strategy = response.result.text
-        
-        yield MessagePart(content="� Orchestration Strategy Generated:")
-        yield MessagePart(content=f"```\n{orchestration_strategy}\n```")
-        
-        # Execute the orchestration strategy with real agent coordination
-        yield MessagePart(content="\n🚀 **EXECUTING ORCHESTRATION STRATEGY**")
-        
-        # Extract features from job plan for coordination
-        features = job_plan.get("features", [])
-        if not features:
-            # Fallback: create features from job plan structure
-            features = [{
-                "name": job_plan.get("title", "Main Feature"),
-                "description": job_plan.get("description", ""),
-                "priority": "high"
-            }]
-        
-        yield MessagePart(content=f"\n🔄 Coordinating {len(features)} feature(s):")
-        
-        # Coordinate each feature through the pipeline
-        for i, feature in enumerate(features):
-            feature_name = feature.get('name', f'Feature {i+1}')
-            yield MessagePart(content=f"\n� **Feature {i+1}: {feature_name}**")
-            yield MessagePart(content=f"   Description: {feature.get('description', 'No description')}")
-            yield MessagePart(content=f"   Priority: {feature.get('priority', 'Normal')}")
-            
-            # Step 1: Coordinate with Planning Agent for detailed planning
-            yield MessagePart(content=f"\n   📋 **Step 1: Detailed Planning for {feature_name}**")
-            try:
-                from acp_sdk.client import Client
-                from acp_sdk.models import Message, MessagePart as ClientMessagePart
-                
-                planning_request = f"""
-                Create a detailed implementation plan for this feature:
-                
-                Feature: {feature_name}
-                Description: {feature.get('description', '')}
-                Priority: {feature.get('priority', 'normal')}
-                
-                Focus on:
-                1. Technical requirements
-                2. Implementation steps
-                3. Dependencies
-                4. Testing approach
-                """
-                
-                async with Client(base_url="http://localhost:8001") as planning_client:
-                    planning_response = await planning_client.run_sync(
-                        agent="planner",
-                        input=[Message(parts=[ClientMessagePart(content=planning_request)])]
-                    )
-                    
-                    planning_result = planning_response.output[0].parts[0].content
-                    yield MessagePart(content=f"   ✅ Planning completed for {feature_name}")
-                    yield MessagePart(content=f"   📄 Plan summary: {planning_result[:200]}...")
-                    
-            except Exception as e:
-                yield MessagePart(content=f"   ⚠️ Planning Agent unavailable: {str(e)}")
-                yield MessagePart(content=f"   🔄 Continuing with basic coordination...")
-            
-            # Step 2: Coordinate with Code Agent for implementation
-            yield MessagePart(content=f"\n   💻 **Step 2: Code Generation for {feature_name}**")
-            try:
-                code_request = f"""
-                Generate code for this feature:
-                
-                Feature: {feature_name}
-                Description: {feature.get('description', '')}
-                
-                Requirements:
-                - Create functional, production-ready code
-                - Include proper error handling
-                - Add comments and documentation
-                - Follow best practices
-                """
-                
-                async with Client(base_url="http://localhost:8003") as code_client:
-                    code_response = await code_client.run_sync(
-                        agent="simple_code_agent",
-                        input=[Message(parts=[ClientMessagePart(content=code_request)])]
-                    )
-                    
-                    code_result = code_response.output[0].parts[0].content
-                    yield MessagePart(content=f"   ✅ Code generation completed for {feature_name}")
-                    yield MessagePart(content=f"   📁 Code output: {code_result[:200]}...")
-                    
-            except Exception as e:
-                yield MessagePart(content=f"   ⚠️ Code Agent unavailable: {str(e)}")
-                yield MessagePart(content=f"   🔄 Continuing with coordination...")
-            
-            # Step 3: Milestone checkpoint
-            yield MessagePart(content=f"\n   🎯 **Step 3: Milestone Checkpoint for {feature_name}**")
-            yield MessagePart(content=f"   ✓ Feature planning completed")
-            yield MessagePart(content=f"   ✓ Code generation attempted")
-            yield MessagePart(content=f"   ✓ Ready for integration testing")
-            
-            await asyncio.sleep(0.5)  # Brief pause between features
-        
-        # Final orchestration summary
-        yield MessagePart(content=f"\n🎉 **ORCHESTRATION COMPLETED**")
-        yield MessagePart(content=f"✅ Coordinated {len(features)} feature(s) through the pipeline")
-        yield MessagePart(content="✅ Planning and Code agents engaged successfully")
-        yield MessagePart(content="🚀 Ready for integration and testing phase")
-        
-    except Exception as e:
-        yield MessagePart(content=f"❌ Error during pipeline orchestration: {str(e)}")
-        # In production, you might want to log the full traceback
-        import traceback
-        yield MessagePart(content=f"Debug info: {traceback.format_exc()}")
+        },
+        memory=TokenMemory(llm)
+    )
+    
+    response = await agent.run(prompt="Create a detailed project plan for: " + str(input))
+    yield MessagePart(content=response.result.text)
 
-# Simplified helper functions (commented out complex state management)
 
-async def create_feature_coordination_plan(job_plan: Dict[str, Any]) -> List[Dict[str, Any]]:
+@server.agent()
+async def designer_agent(input: list[Message]) -> AsyncGenerator:
+    """Agent responsible for system design and architecture"""
+    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
+    
+    agent = ReActAgent(
+        llm=llm, 
+        tools=[], 
+        templates={
+            "system": lambda template: template.update(
+                defaults=exclude_none({
+                    "instructions": """
+                    You are a senior software architect and designer. Your role is to:
+                    1. Create detailed system architecture and design specifications
+                    2. Design database schemas, API interfaces, and system components
+                    3. Create class diagrams, sequence diagrams, and system flow charts
+                    4. Define data models, interfaces, and integration points
+                    5. Specify design patterns and architectural principles to follow
+                    6. Consider scalability, performance, and maintainability
+                    
+                    IMPORTANT: Always create concrete technical designs based on the provided plan.
+                    Never ask for more details - work with what you have and make reasonable assumptions.
+                    If a plan is provided, extract the technical requirements and build upon them.
+                    
+                    Provide comprehensive technical designs that developers can implement.
+                    Include:
+                    - System Architecture Overview
+                    - Component Design
+                    - Data Models and Schemas
+                    - API Specifications
+                    - Interface Definitions
+                    - Design Patterns and Guidelines
+                    """,
+                    "role": "system",
+                })
+            )
+        },
+        memory=TokenMemory(llm)
+    )
+    
+    response = await agent.run(prompt="Create a detailed technical design for: " + str(input))
+    yield MessagePart(content=response.result.text)
+
+
+@server.agent()
+async def coder_agent(input: list[Message]) -> AsyncGenerator:
+    """Agent responsible for writing code implementations"""
+    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
+    
+    agent = ReActAgent(
+        llm=llm, 
+        tools=[], 
+        templates={
+            "system": lambda template: template.update(
+                defaults=exclude_none({
+                    "instructions": """
+                    You are a senior software developer. Your role is to:
+                    1. Write clean, efficient, and well-documented code
+                    2. Follow best practices and coding standards
+                    3. Implement the designs and specifications provided
+                    4. Include proper error handling and edge case management
+                    5. Write unit tests and integration tests
+                    6. Optimize for performance and maintainability
+                    
+                    IMPORTANT: Always create working code implementations based on the provided specifications.
+                    Never ask for more details - work with what you have and make reasonable assumptions.
+                    Extract requirements from the plan, design, and tests provided to create complete implementations.
+                    
+                    Always provide:
+                    - Complete, working code implementations
+                    - Proper documentation and comments
+                    - Unit tests where applicable
+                    - Setup and usage instructions
+                    - Dependencies and requirements
+                    """,
+                    "role": "system",
+                })
+            )
+        },
+        memory=TokenMemory(llm)
+    )
+    
+    response = await agent.run(prompt="Implement the following requirements: " + str(input))
+    yield MessagePart(content=response.result.text)
+
+
+@server.agent()
+async def test_writer_agent(input: list[Message]) -> AsyncGenerator:
+    """Agent responsible for writing business-value focused tests for TDD"""
+    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
+    
+    agent = ReActAgent(
+        llm=llm, 
+        tools=[], 
+        templates={
+            "system": lambda template: template.update(
+                defaults=exclude_none({
+                    "instructions": """
+                    You are a senior test engineer specializing in Test-Driven Development (TDD) with a focus on business value.
+                    Your role is to:
+                    1. Write tests that validate business requirements and user stories
+                    2. Create acceptance criteria that define "done" from a business perspective
+                    3. Focus on behavior and outcomes rather than implementation details
+                    4. Write tests that guide development by defining what success looks like
+                    5. Ensure tests capture the WHY (business purpose) not just the WHAT (technical details)
+                    6. Create tests that remain valuable even when implementation changes
+                    
+                    IMPORTANT: Always create concrete test scenarios based on the provided plan and design.
+                    Never ask for more details - work with what you have and make reasonable assumptions.
+                    Extract business requirements from the plan and create comprehensive test scenarios.
+                    
+                    Write tests that:
+                    - Validate end-to-end user workflows and business processes
+                    - Test integration points and system behavior
+                    - Focus on user outcomes and business value delivery
+                    - Are readable by non-technical stakeholders
+                    - Guide implementation rather than constrain it
+                    - Test the contract/interface, not internal mechanics
+                    
+                    Provide:
+                    - Business-focused test scenarios
+                    - Acceptance criteria in Given-When-Then format
+                    - Integration and end-to-end tests
+                    - User story validation tests
+                    - Performance/scalability tests where business-critical
+                    - Clear test descriptions explaining business value
+                    """,
+                    "role": "system",
+                })
+            )
+        },
+        memory=TokenMemory(llm)
+    )
+    
+    response = await agent.run(prompt="Write business-value focused tests for TDD approach: " + str(input))
+    yield MessagePart(content=response.result.text)
+
+
+@server.agent()
+async def reviewer_agent(input: list[Message]) -> AsyncGenerator:
+    """Agent responsible for code review and quality assurance"""
+    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
+    
+    agent = ReActAgent(
+        llm=llm, 
+        tools=[], 
+        templates={
+            "system": lambda template: template.update(
+                defaults=exclude_none({
+                    "instructions": """
+                    You are a senior code reviewer and quality assurance engineer. Your role is to:
+                    1. Review code for bugs, security issues, and performance problems
+                    2. Check adherence to coding standards and best practices
+                    3. Verify that implementations match the design specifications
+                    4. Identify potential improvements and optimizations
+                    5. Ensure proper testing coverage and documentation
+                    6. Provide constructive feedback and suggestions
+                    
+                    Provide comprehensive review feedback including:
+                    - Code Quality Assessment
+                    - Security Analysis
+                    - Performance Considerations
+                    - Best Practice Compliance
+                    - Improvement Suggestions
+                    - Test Coverage Analysis
+                    - Final Approval/Rejection with reasoning
+                    """,
+                    "role": "system",
+                })
+            )
+        },
+        memory=TokenMemory(llm)
+    )
+    
+    response = await agent.run(prompt="Review the following work: " + str(input))
+    yield MessagePart(content=response.result.text)
+
+
+# ============================================================================
+# CODING TEAM COORDINATION TOOL
+# ============================================================================
+
+async def run_team_member(agent: str, input: str) -> list[Message]:
     """
-    Create a simplified coordination plan for features.
+    Calls a team member agent using ACP protocol
     
     Args:
-        job_plan: The structured job plan from the planning agent
+        agent: The agent name to call (planner_agent, designer_agent, etc.)
+        input: The input to send to the agent
         
     Returns:
-        List of coordination plans for each feature
+        The agent's response messages
     """
-    coordination_plans = []
-    
-    feature_sets = job_plan.get("feature_sets", [])
-    dependencies = job_plan.get("dependencies", {})
-    
-    for feature in feature_sets:
-        plan = {
-            "feature_name": feature.get("name", "Unnamed"),
-            "description": feature.get("description", ""),
-            "priority": feature.get("priority", "Normal"),
-            "estimated_effort": feature.get("estimated_effort", "Unknown"),
-            "dependencies": dependencies.get(feature.get("name", ""), []),
-            "coordination_sequence": [
-                {"agent": "planning", "status": "pending"},
-                # {"agent": "design", "status": "pending"},
-                {"agent": "code", "status": "pending"},
-                # {"agent": "review", "status": "pending"},
-                # {"agent": "test", "status": "pending"}
-            ]
-        }
-        coordination_plans.append(plan)
-    
-    return coordination_plans
+    async with Client(base_url="http://localhost:8080") as client:
+        try:
+            run = await client.run_sync(
+                agent=agent, 
+                input=[Message(parts=[MessagePart(content=input, content_type="text/plain")])]
+            )
+            return run.output
+        except Exception as e:
+            print(f"❌ Error calling {agent}: {e}")
+            return [Message(parts=[MessagePart(content=f"Error from {agent}: {e}", content_type="text/plain")])]
 
-# MCP-related functions commented out until MCP servers are available
-# async def coordinate_git_operations(feature_name: str) -> Dict[str, Any]:
-#     """
-#     Coordinate Git operations via MCP for a feature.
-#     
-#     Args:
-#         feature_name: Name of the feature being developed
-#         
-#     Returns:
-#         Status of Git operations
-#     """
-#     # This would use MCP Git server when available
-#     git_operations = {
-#         "branch_created": f"feature/{feature_name}",
-#         "commits": [],
-#         "pull_request": None,
-#         "status": "pending"
-#     }
-#     return git_operations
 
-# async def manage_milestone_checkpoint(feature_name: str, milestone_type: str) -> Dict[str, Any]:
-#     """
-#     Handle milestone checkpoints with human review integration.
-#     
-#     Args:
-#         feature_name: Name of the feature reaching a milestone
-#         milestone_type: Type of milestone (e.g., "design_complete", "review_complete")
-#         
-#     Returns:
-#         Status of milestone handling
-#     """
-#     # This would integrate with human review interface when available
-#     milestone_status = {
-#         "feature_name": feature_name,
-#         "milestone_type": milestone_type,
-#         "status": "completed",
-#         "human_review_required": milestone_type in ["design_complete", "review_complete"],
-#         "timestamp": asyncio.get_event_loop().time()
-#     }
-#     return milestone_status
+class TeamMember(str, Enum):
+    """Team members available for the coding team"""
+    planner = "planner"
+    designer = "designer"
+    test_writer = "test_writer"
+    coder = "coder"
+    reviewer = "reviewer"
 
-# Server runner following ACP patterns
+
+class WorkflowStep(str, Enum):
+    """Workflow steps in the development process"""
+    planning = "planning"
+    design = "design"
+    test_writing = "test_writing"
+    implementation = "implementation"
+    review = "review"
+    tdd_workflow = "tdd_workflow"
+    full_workflow = "full_workflow"
+
+
+class CodingTeamInput(BaseModel):
+    """Input schema for the coding team tool"""
+    requirements: str = Field(description="The project requirements or task description")
+    workflow: WorkflowStep = Field(description="The workflow step to execute")
+    team_members: list[TeamMember] = Field(
+        default=[TeamMember.planner, TeamMember.designer, TeamMember.test_writer, TeamMember.coder, TeamMember.reviewer],
+        description="Team members to involve in the process"
+    )
+
+
+class TeamMemberResult(BaseModel):
+    """Result from a single team member"""
+    team_member: TeamMember = Field(description="The team member who produced this result")
+    output: str = Field(description="The output from the team member")
+
+
+class CodingTeamResult(BaseModel):
+    """Result schema containing all team member outputs"""
+    results: list[TeamMemberResult] = Field(description="Results from each team member")
+    final_summary: str = Field(description="Summary of the complete workflow")
+
+
+class CodingTeamOutput(ToolOutput):
+    """Output from the coding team tool"""
+    result: CodingTeamResult = Field(description="Coding team result")
+
+    def get_text_content(self) -> str:
+        return to_json(self.result)
+
+    def is_empty(self) -> bool:
+        return False
+
+    def __init__(self, result: CodingTeamResult) -> None:
+        super().__init__()
+        self.result = result
+
+
+class CodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOutput]):
+    """
+    Tool that coordinates a coding team workflow across specialized agents.
+    """
+    name = "CodingTeam"
+    description = "Coordinate a coding team to work on software development tasks"
+    input_schema = CodingTeamInput
+
+    def _create_emitter(self) -> Emitter:
+        return Emitter.root().child(
+            namespace=["tool", "coding_team"],
+            creator=self,
+        )
+
+    async def _run(
+        self, input: CodingTeamInput, options: ToolRunOptions | None, context: RunContext
+    ) -> CodingTeamOutput:
+        """
+        Run the coding team workflow
+        """
+        results = []
+        
+        if input.workflow == WorkflowStep.tdd_workflow:
+            # Run TDD workflow: planner -> designer -> test_writer -> coder -> reviewer
+            print(f"🧪 Starting TDD workflow for: {input.requirements[:50]}...")
+            
+            # Step 1: Planning
+            if TeamMember.planner in input.team_members:
+                print("📋 Planning phase...")
+                planning_result = await run_team_member("planner_agent", input.requirements)
+                plan_output = str(planning_result[0])
+                results.append(TeamMemberResult(team_member=TeamMember.planner, output=plan_output))
+                
+                # Step 2: Design (using plan as input)
+                if TeamMember.designer in input.team_members:
+                    print("🎨 Design phase...")
+                    design_input = f"""You are the designer for this project. Here is the detailed plan:
+
+{plan_output}
+
+Based on this plan, create a comprehensive technical design. Do NOT ask for more details - use the plan above to extract all technical requirements and create concrete designs.
+
+Original requirements: {input.requirements}
+
+Create the technical architecture, database schemas, API endpoints, and component designs."""
+                    design_result = await run_team_member("designer_agent", design_input)
+                    design_output = str(design_result[0])
+                    results.append(TeamMemberResult(team_member=TeamMember.designer, output=design_output))
+                    
+                    # Step 3: Test Writing (using plan and design as input)
+                    if TeamMember.test_writer in input.team_members:
+                        print("🧪 Test writing phase...")
+                        test_input = f"""You are the test writer for this project. Here is the plan and design:
+
+PLAN:
+{plan_output}
+
+DESIGN:
+{design_output}
+
+Based on this plan and design, write comprehensive business-value focused tests. Do NOT ask for more details - extract the business requirements from the above information and create test scenarios.
+
+Original requirements: {input.requirements}
+
+Write Given-When-Then test scenarios that validate business outcomes."""
+                        test_result = await run_team_member("test_writer_agent", test_input)
+                        test_output = str(test_result[0])
+                        results.append(TeamMemberResult(team_member=TeamMember.test_writer, output=test_output))
+                        
+                        # Step 4: Implementation (using tests to guide development)
+                        if TeamMember.coder in input.team_members:
+                            print("💻 Implementation phase (TDD-guided)...")
+                            code_input = f"""You are the developer for this project. Here are the specifications:
+
+PLAN:
+{plan_output}
+
+DESIGN:
+{design_output}
+
+TESTS TO SATISFY:
+{test_output}
+
+Based on these specifications, implement working code that satisfies the tests and follows the design. Do NOT ask for more details - use the above information to create a complete implementation.
+
+Original requirements: {input.requirements}
+
+Write complete, working code with proper documentation."""
+                            code_result = await run_team_member("coder_agent", code_input)
+                            code_output = str(code_result[0])
+                            results.append(TeamMemberResult(team_member=TeamMember.coder, output=code_output))
+                            
+                            # Step 5: Review (using implementation as input)
+                            if TeamMember.reviewer in input.team_members:
+                                print("🔍 Review phase...")
+                                review_input = f"""You are reviewing this TDD implementation. Here is the complete context:
+
+ORIGINAL REQUIREMENTS: {input.requirements}
+
+TESTS THAT SHOULD BE SATISFIED:
+{test_output}
+
+IMPLEMENTATION TO REVIEW:
+{code_output}
+
+Review this implementation for code quality, security, performance, and adherence to the tests. Provide specific feedback and recommendations."""
+                                review_result = await run_team_member("reviewer_agent", review_input)
+                                review_output = str(review_result[0])
+                                results.append(TeamMemberResult(team_member=TeamMember.reviewer, output=review_output))
+            
+        elif input.workflow == WorkflowStep.full_workflow:
+                # Step 2: Design (using plan as input)
+                if TeamMember.designer in input.team_members:
+                    print("🎨 Design phase...")
+                    design_input = f"""You are the designer for this project. Here is the detailed plan:
+
+{plan_output}
+
+Based on this plan, create a comprehensive technical design. Do NOT ask for more details - use the plan above to extract all technical requirements and create concrete designs.
+
+Original requirements: {input.requirements}
+
+Create the technical architecture, database schemas, API endpoints, and component designs."""
+                    design_result = await run_team_member("designer_agent", design_input)
+                    design_output = str(design_result[0])
+                    results.append(TeamMemberResult(team_member=TeamMember.designer, output=design_output))
+                    
+                    # Step 3: Implementation (using plan and design as input)
+                    if TeamMember.coder in input.team_members:
+                        print("💻 Implementation phase...")
+                        code_input = f"""You are the developer for this project. Here are the specifications:
+
+PLAN:
+{plan_output}
+
+DESIGN:
+{design_output}
+
+Based on these specifications, implement working code that follows the design. Do NOT ask for more details - use the above information to create a complete implementation.
+
+Original requirements: {input.requirements}
+
+Write complete, working code with proper documentation."""
+                        code_result = await run_team_member("coder_agent", code_input)
+                        code_output = str(code_result[0])
+                        results.append(TeamMemberResult(team_member=TeamMember.coder, output=code_output))
+                        
+                        # Step 4: Review (using implementation as input)
+                        if TeamMember.reviewer in input.team_members:
+                            print("🔍 Review phase...")
+                            review_input = f"""You are reviewing this implementation. Here is the complete context:
+
+ORIGINAL REQUIREMENTS: {input.requirements}
+
+PLAN:
+{plan_output}
+
+DESIGN:
+{design_output}
+
+IMPLEMENTATION TO REVIEW:
+{code_output}
+
+Review this implementation for code quality, security, performance, and adherence to the design. Provide specific feedback and recommendations."""
+                            review_result = await run_team_member("reviewer_agent", review_input)
+                            review_output = str(review_result[0])
+                            results.append(TeamMemberResult(team_member=TeamMember.reviewer, output=review_output))
+            
+        else:
+            # Run specific workflow step
+            agent_map = {
+                WorkflowStep.planning: "planner_agent",
+                WorkflowStep.design: "designer_agent",
+                WorkflowStep.test_writing: "test_writer_agent",
+                WorkflowStep.implementation: "coder_agent",
+                WorkflowStep.review: "reviewer_agent"
+            }
+            
+            if input.workflow in agent_map:
+                print(f"🔄 Running {input.workflow.value} phase...")
+                result = await run_team_member(agent_map[input.workflow], input.requirements)
+                output = str(result[0])
+                
+                # Map workflow steps to team members
+                step_to_member = {
+                    WorkflowStep.planning: TeamMember.planner,
+                    WorkflowStep.design: TeamMember.designer,
+                    WorkflowStep.test_writing: TeamMember.test_writer,
+                    WorkflowStep.implementation: TeamMember.coder,
+                    WorkflowStep.review: TeamMember.reviewer
+                }
+                
+                team_member = step_to_member[input.workflow]
+                results.append(TeamMemberResult(team_member=team_member, output=output))
+
+        print("✅ Coding team workflow completed")
+        
+        # Create final summary
+        summary = f"Coding team workflow completed with {len(results)} team members involved."
+        if results:
+            summary += f"\nTeam members: {', '.join([r.team_member.value for r in results])}"
+
+        return CodingTeamOutput(
+            result=CodingTeamResult(results=results, final_summary=summary)
+        )
+
+
+# ============================================================================
+# MAIN ORCHESTRATOR AGENT
+# ============================================================================
+
+@server.agent(name="orchestrator", metadata={"ui": {"type": "handsoff"}})
+async def main_orchestrator(input: list[Message], context: Context) -> AsyncGenerator:
+    """Main orchestrator that manages the coding team workflow"""
+    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
+
+    agent = ReActAgent(
+        llm=llm,
+        tools=[CodingTeamTool()],
+        templates={
+            "system": lambda template: template.update(
+                defaults=exclude_none({
+                    "instructions": """
+                    You are the orchestrator of a coding team consisting of:
+                    - Planner: Creates project plans and breaks down requirements
+                    - Designer: Creates system architecture and technical designs
+                    - Test Writer: Creates business-value focused tests for TDD approach
+                    - Coder: Implements the code based on plans, designs, and tests
+                    - Reviewer: Reviews code for quality, security, and best practices
+                    
+                    Based on user requests, coordinate the appropriate team members using the CodingTeam tool.
+                    
+                    WORKFLOW SELECTION RULES:
+                    1. Look for explicit workflow keywords in user input:
+                       - "tdd workflow" or "test-driven" → use tdd_workflow
+                       - "full workflow" or "complete cycle" → use full_workflow
+                       - "just planning" or "only plan" → use planning
+                       - "just design" or "only design" → use design
+                       - "write tests" or "only tests" → use test_writing
+                       - "just code" or "only implement" → use implementation
+                       - "just review" or "only review" → use review
+                    
+                    2. Default behavior when no explicit workflow is specified:
+                       - For new features/projects → use tdd_workflow (recommended)
+                       - For code review requests → use review
+                       - For architectural questions → use design
+                       - For project planning → use planning
+                    
+                    3. Available workflows:
+                       - tdd_workflow: Full TDD cycle (planner → designer → test_writer → coder → reviewer)
+                       - full_workflow: Traditional cycle (planner → designer → coder → reviewer)
+                       - Individual steps: planning, design, test_writing, implementation, review
+                    
+                    4. Team member selection:
+                       - Default: include all relevant team members for the workflow
+                       - If user specifies "without X" or "skip X", exclude that team member
+                    
+                    Examples:
+                    - "Use TDD workflow to build a REST API" → tdd_workflow
+                    - "Just do planning for a mobile app" → planning only
+                    - "Full workflow but skip tests" → full_workflow, exclude test_writer
+                    - "Write tests for user authentication" → test_writing only
+                    
+                    Always use the CodingTeam tool to coordinate team members.
+                    Present results in a clear, organized manner.
+                    """,
+                    "role": "system",
+                })
+            )
+        },
+        memory=TokenMemory(llm),
+    )
+
+    prompt = reduce(lambda x, y: x + y, input)
+    response = await agent.run(str(prompt)).observe(
+        lambda emitter: emitter.on(
+            "update", lambda data, event: print(f"Orchestrator({data.update.key}) 🎯 : ", data.update.parsed_value)
+        )
+    )
+
+    yield MessagePart(content=response.result.text)
+
+
+# Run the server
 if __name__ == "__main__":
-    try:
-        print(f"Starting Orchestrator Agent on port {AGENT_PORTS['orchestrator']}...")
-        server.run(port=AGENT_PORTS["orchestrator"])
-    except KeyboardInterrupt:
-        print("\nShutting down gracefully...")
-    except Exception as e:
-        print(f"Error starting server: {e}")
-        raise
+    print("🚀 Starting Coding Team Agent System on port 8080...")
+    server.run(port=8080)

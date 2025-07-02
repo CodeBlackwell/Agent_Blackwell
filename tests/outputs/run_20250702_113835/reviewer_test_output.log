@@ -1,0 +1,37 @@
+TEST RESULTS: REVIEWER
+Test path: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/reviewer/test_reviewer_debug.py
+Status: PASSED
+Execution time: 5.08s
+
+=== STDOUT ===
+Testing imports...
+✅ dotenv imported successfully
+✅ Environment variables loaded
+✅ reviewer_agent imported successfully
+✅ ACP types imported successfully
+==================================================
+REVIEWER AGENT DEBUG TEST
+==================================================
+
+--- Testing Reviewer Agent Direct Call ---
+Input: [Message(role='user', parts=[MessagePart(name=None, content_type='text/plain', content="\n        Review this code:\n        ```python\n        def calculate_total(items):\n            total = 0\n            for item in items:\n                total += item['price']\n            return total\n        ```\n        ", content_encoding='plain', content_url=None, metadata=None)], created_at=datetime.datetime(2025, 7, 2, 15, 39, 8, 861357, tzinfo=datetime.timezone.utc), completed_at=datetime.datetime(2025, 7, 2, 15, 39, 8, 861570, tzinfo=datetime.timezone.utc))]
+Calling reviewer_agent...
+Received part: name=None content_type='text/plain' content='I will now review the provided Python code snippet for calculating the total price of items.' content_encoding='plain' content_url=None metadata=None
+✅ Direct call successful! Received 1 parts
+
+--- Testing Server Connection ---
+Calling reviewer_agent_wrapper through server...
+✅ Agent call successful!
+
+Agent response preview:
+I will now review the provided Python code snippet for calculating the total price of items....
+(truncated)
+
+==================================================
+TEST SUMMARY
+==================================================
+Direct call: ✅ PASS
+Server integration: ✅ PASS
+
+=== STDERR ===
+No errors

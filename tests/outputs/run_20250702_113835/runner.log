@@ -1,0 +1,7 @@
+2025-07-02 11:38:35 - INFO - Orchestrator server is already running
+2025-07-02 11:38:35 - INFO - Running tests for 5 agents
+2025-07-02 11:38:35 - INFO - Running test: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/planner/test_planner_debug.py
+2025-07-02 11:38:52 - INFO - Running test: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/designer/test_designer_debug.py
+2025-07-02 11:38:59 - INFO - Running test: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/coder/test_coder_debug.py
+2025-07-02 11:39:06 - INFO - Running test: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/test_writer/test_writer_agent.py
+2025-07-02 11:39:07 - INFO - Running test: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/reviewer/test_reviewer_debug.py

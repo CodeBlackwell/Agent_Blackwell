@@ -1,8 +1,14 @@
 from collections.abc import AsyncGenerator
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 import re
 from datetime import datetime
+
+# Add the project root to the Python path so we can import from the agents module
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from acp_sdk import Message
 from acp_sdk.models import MessagePart
@@ -11,13 +17,16 @@ from beeai_framework.backend.chat import ChatModel
 from beeai_framework.memory import TokenMemory
 from beeai_framework.utils.dicts import exclude_none
 
+# Import from agents package using absolute import
+from agents.agent_configs import coder_config
+
 # Load environment variables from .env file
 load_dotenv()
 
 
 async def coder_agent(input: list[Message]) -> AsyncGenerator:
     """Agent responsible for writing code implementations and creating project files"""
-    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
+    llm = ChatModel.from_name(coder_config["model"])
     
     agent = ReActAgent(
         llm=llm, 

@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 from agents.planner.planner_agent import planner_agent
 from agents.designer.designer_agent import designer_agent
 from agents.coder.coder_agent import coder_agent
+from agents.test_writer.test_writer_agent import test_writer_agent
 
 # Load environment variables from .env file
 load_dotenv()
@@ -66,55 +67,10 @@ async def coder_agent_wrapper(input: list[Message]) -> AsyncGenerator:
 
 
 @server.agent()
-async def test_writer_agent(input: list[Message]) -> AsyncGenerator:
-    """Agent responsible for writing business-value focused tests for TDD"""
-    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
-    
-    agent = ReActAgent(
-        llm=llm, 
-        tools=[], 
-        templates={
-            "system": lambda template: template.update(
-                defaults=exclude_none({
-                    "instructions": """
-                    You are a senior test engineer specializing in Test-Driven Development (TDD) with a focus on business value.
-                    Your role is to:
-                    1. Write tests that validate business requirements and user stories
-                    2. Create acceptance criteria that define "done" from a business perspective
-                    3. Focus on behavior and outcomes rather than implementation details
-                    4. Write tests that guide development by defining what success looks like
-                    5. Ensure tests capture the WHY (business purpose) not just the WHAT (technical details)
-                    6. Create tests that remain valuable even when implementation changes
-                    
-                    IMPORTANT: Always create concrete test scenarios based on the provided plan and design.
-                    Never ask for more details - work with what you have and make reasonable assumptions.
-                    Extract business requirements from the plan and create comprehensive test scenarios.
-                    
-                    Write tests that:
-                    - Validate end-to-end user workflows and business processes
-                    - Test integration points and system behavior
-                    - Focus on user outcomes and business value delivery
-                    - Are readable by non-technical stakeholders
-                    - Guide implementation rather than constrain it
-                    - Test the contract/interface, not internal mechanics
-                    
-                    Provide:
-                    - Business-focused test scenarios
-                    - Acceptance criteria in Given-When-Then format
-                    - Integration and end-to-end tests
-                    - User story validation tests
-                    - Performance/scalability tests where business-critical
-                    - Clear test descriptions explaining business value
-                    """,
-                    "role": "system",
-                })
-            )
-        },
-        memory=TokenMemory(llm)
-    )
-    
-    response = await agent.run(prompt="Write business-value focused tests for TDD approach: " + str(input))
-    yield MessagePart(content=response.result.text)
+async def test_writer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    """Wrapper to register the modular test_writer agent with the server"""
+    async for part in test_writer_agent(input):
+        yield part
 
 
 @server.agent()
@@ -185,7 +141,8 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
     agent_name_mapping = {
         "planner_agent": "planner_agent_wrapper",
         "designer_agent": "designer_agent_wrapper",
-        "coder_agent": "coder_agent_wrapper"
+        "coder_agent": "coder_agent_wrapper",
+        "test_writer_agent": "test_writer_agent_wrapper"
     }
     
     # Get the internal agent name (use mapping if available, otherwise use original name)

@@ -1,53 +1,27 @@
 [
-  {
-    "source": "input",
-    "target": "planner",
-    "schema": {
-      "requirements": "str",
-      "workflow": "WorkflowStep",
-      "team_members": "list",
-      "__doc__": "Input schema for the coding team tool"
-    },
-    "transformations": []
-  },
-  {
-    "source": "planner",
-    "target": "designer",
-    "schema": {
-      "team_member": "TeamMember",
-      "output": "str",
-      "__doc__": "Result from a single team member"
-    },
-    "transformations": []
-  },
-  {
-    "source": "designer",
-    "target": "test_writer",
-    "schema": {
-      "team_member": "TeamMember",
-      "output": "str",
-      "__doc__": "Result from a single team member"
-    },
-    "transformations": []
-  },
-  {
-    "source": "test_writer",
-    "target": "coder",
-    "schema": {
-      "team_member": "TeamMember",
-      "output": "str",
-      "__doc__": "Result from a single team member"
-    },
-    "transformations": []
-  },
-  {
-    "source": "coder",
-    "target": "reviewer",
-    "schema": {
-      "team_member": "TeamMember",
-      "output": "str",
-      "__doc__": "Result from a single team member"
-    },
-    "transformations": []
-  }
+  [
+    "input",
+    "planner",
+    "{}"
+  ],
+  [
+    "planner",
+    "designer",
+    "{}"
+  ],
+  [
+    "designer",
+    "test_writer",
+    "{}"
+  ],
+  [
+    "test_writer",
+    "coder",
+    "{}"
+  ],
+  [
+    "coder",
+    "reviewer",
+    "{}"
+  ]
 ]

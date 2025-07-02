@@ -1,54 +1,31 @@
-// Workflow System Overview
+// Workflow Overview
 digraph {
-	graph [fontname=Arial nodesep=0.8 rankdir=TD ranksep=1.2 splines=polyline]
-	subgraph cluster_input {
-		color=lightgrey label="User Input" style=filled
-		input [label="User Input" fillcolor=lightblue shape=ellipse style=filled]
-	}
-	subgraph cluster_manager {
-		color=lightgrey label="Workflow Management" style=filled
-		workflow_manager [label="Workflow Manager" fillcolor="#FFB6C1" shape=box style=filled]
-	}
-	subgraph cluster_workflows {
-		color=lightgrey label="Workflow Types" style=filled
-		tdd [label="TDD Workflow" fillcolor="#98FB98" shape=box style=filled]
-		full [label="Full Workflow" fillcolor="#98FB98" shape=box style=filled]
-		individual [label="Individual Workflow" fillcolor="#98FB98" shape=box style=filled]
-	}
-	subgraph cluster_agents {
-		color=lightgrey label="Agent System" style=filled
-		planner_agent [label=Planner fillcolor="#FFFACD" shape=box style=filled]
-		designer_agent [label=Designer fillcolor="#FFFACD" shape=box style=filled]
-		test_writer_agent [label="Test Writer" fillcolor="#FFFACD" shape=box style=filled]
-		coder_agent [label=Coder fillcolor="#FFFACD" shape=box style=filled]
-		reviewer_agent [label=Reviewer fillcolor="#FFFACD" shape=box style=filled]
-	}
-	input -> workflow_manager [label="CodingTeamInput
-(requirements, workflow, team_members)" fontsize=10]
-	workflow_manager -> tdd [label="if workflow=tdd_workflow" fontsize=10]
-	workflow_manager -> full [label="if workflow=full_workflow" fontsize=10]
-	workflow_manager -> individual [label="if workflow=individual step" fontsize=10]
-	tdd -> planner_agent [label="1: requirements" color=blue fontsize=9]
-	planner_agent -> designer_agent [label="2: plan" color=blue fontsize=9]
-	designer_agent -> test_writer_agent [label="3: design" color=blue fontsize=9]
-	test_writer_agent -> coder_agent [label="4: tests" color=blue fontsize=9]
-	coder_agent -> reviewer_agent [label="5: code" color=blue fontsize=9]
-	full -> planner_agent [label="1: requirements" color=green fontsize=9 style=dashed]
-	planner_agent -> designer_agent [label="2: plan" color=green fontsize=9 style=dashed]
-	designer_agent -> coder_agent [label="3: design" color=green fontsize=9 style=dashed]
-	coder_agent -> reviewer_agent [label="4: code" color=green fontsize=9 style=dashed]
-	individual -> planner_agent [label="if step=planning" color=red fontsize=9 style=dotted]
-	individual -> designer_agent [label="if step=design" color=red fontsize=9 style=dotted]
-	individual -> test_writer_agent [label="if step=testing" color=red fontsize=9 style=dotted]
-	individual -> coder_agent [label="if step=coding" color=red fontsize=9 style=dotted]
-	individual -> reviewer_agent [label="if step=review" color=red fontsize=9 style=dotted]
-	subgraph cluster_legend {
-		fontsize=12 label=Legend
-		l_tdd [label="TDD Workflow" fontcolor=blue shape=plaintext]
-		l_full [label="Full Workflow" fontcolor=green shape=plaintext]
-		l_ind [label="Individual Steps" fontcolor=red shape=plaintext]
-		rank=same
-		l_tdd -> l_full [style=invis]
-		l_full -> l_ind [style=invis]
-	}
+	input [label="User Input" fillcolor=lightblue shape=ellipse style=filled]
+	workflow_manager [label="Workflow Manager" fillcolor=lightpink shape=box style=filled]
+	tdd [label="TDD Workflow" fillcolor=lightgreen shape=box style=filled]
+	full [label="Full Workflow" fillcolor=lightgreen shape=box style=filled]
+	individual [label="Individual Workflow" fillcolor=lightgreen shape=box style=filled]
+	planner [label=Planner fillcolor=lightyellow shape=box style=filled]
+	designer [label=Designer fillcolor=lightyellow shape=box style=filled]
+	test_writer [label=Test_writer fillcolor=lightyellow shape=box style=filled]
+	coder [label=Coder fillcolor=lightyellow shape=box style=filled]
+	reviewer [label=Reviewer fillcolor=lightyellow shape=box style=filled]
+	input -> workflow_manager [label=CodingTeamInput]
+	workflow_manager -> tdd [label="if workflow=tdd_workflow"]
+	workflow_manager -> full [label="if workflow=full_workflow"]
+	workflow_manager -> individual [label="if workflow=individual step"]
+	tdd -> planner_agent [label=1]
+	planner_agent -> designer_agent [label=2]
+	designer_agent -> test_writer_agent [label=3]
+	test_writer_agent -> coder_agent [label=4]
+	coder_agent -> reviewer_agent [label=5]
+	full -> planner_agent [label=1 style=dashed]
+	planner_agent -> designer_agent [label=2 style=dashed]
+	designer_agent -> coder_agent [label=3 style=dashed]
+	coder_agent -> reviewer_agent [label=4 style=dashed]
+	individual -> planner_agent [label="if step=planning" style=dotted]
+	individual -> designer_agent [label="if step=design" style=dotted]
+	individual -> coder_agent [label="if step=coding" style=dotted]
+	individual -> test_writer_agent [label="if step=testing" style=dotted]
+	individual -> reviewer_agent [label="if step=review" style=dotted]
 }

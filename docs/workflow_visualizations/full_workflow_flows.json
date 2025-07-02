@@ -1,43 +1,22 @@
 [
-  {
-    "source": "input",
-    "target": "planner",
-    "schema": {
-      "requirements": "str",
-      "workflow": "WorkflowStep",
-      "team_members": "list",
-      "__doc__": "Input schema for the coding team tool"
-    },
-    "transformations": []
-  },
-  {
-    "source": "planner",
-    "target": "designer",
-    "schema": {
-      "team_member": "TeamMember",
-      "output": "str",
-      "__doc__": "Result from a single team member"
-    },
-    "transformations": []
-  },
-  {
-    "source": "designer",
-    "target": "coder",
-    "schema": {
-      "team_member": "TeamMember",
-      "output": "str",
-      "__doc__": "Result from a single team member"
-    },
-    "transformations": []
-  },
-  {
-    "source": "coder",
-    "target": "reviewer",
-    "schema": {
-      "team_member": "TeamMember",
-      "output": "str",
-      "__doc__": "Result from a single team member"
-    },
-    "transformations": []
-  }
+  [
+    "input",
+    "planner",
+    "{}"
+  ],
+  [
+    "planner",
+    "designer",
+    "{}"
+  ],
+  [
+    "designer",
+    "coder",
+    "{}"
+  ],
+  [
+    "coder",
+    "reviewer",
+    "{}"
+  ]
 ]

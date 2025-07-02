@@ -68,13 +68,13 @@ The system includes comprehensive test suites for each agent:
 
 ```bash
 # Run all agent tests
-python agents/run_agent_tests.py
+python tests/run_agent_tests.py
 
 # Run specific agent tests
-python agents/{agent_name}/test_{agent_name}.py
+python tests/run_agent_tests.py planner
 ```
 
-Each agent has both automated test cases and an interactive testing mode.
+Each agent has both automated test cases and an interactive testing mode. The test runner will automatically start the orchestrator server if one is not already running.
 
 ### Workflow Testing
 
@@ -127,6 +127,7 @@ Test results are saved to the `tests/outputs/` directory with timestamped filena
 │   └── workflow_visualizations/  # Generated workflow diagrams
 ├── tests/
 │   └── outputs/                  # Test output directory
+│   └── run_agent_tests.py        # Master agent test runner script
 ├── generated/                    # Output directory for generated code
 └── requirements.txt              # Project dependencies
 ```

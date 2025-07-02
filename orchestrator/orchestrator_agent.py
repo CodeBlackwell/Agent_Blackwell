@@ -85,6 +85,9 @@ async def reviewer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
 # CODING TEAM COORDINATION TOOL
 # ============================================================================
 
+# Global variable to track agent execution path
+agent_execution_path = []
+
 async def run_team_member(agent: str, input: str) -> list[Message]:
     """
     Calls a team member agent using ACP protocol
@@ -96,6 +99,11 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
     Returns:
         The agent's response messages
     """
+    # Track agent execution path
+    global agent_execution_path
+    # Convert agent name to readable format (remove _agent suffix if present)
+    readable_agent = agent.replace("_agent", "").capitalize()
+    agent_execution_path.append(readable_agent)
     # Map agent names to their respective ports
     agent_ports = {
         "planner_agent": 8080,
@@ -171,6 +179,7 @@ class CodingTeamResult(BaseModel):
     """Result schema containing all team member outputs"""
     results: list[TeamMemberResult] = Field(description="Results from each team member")
     final_summary: str = Field(description="Summary of the complete workflow")
+    agent_path: list[str] = Field(default_factory=list, description="Path of agents executed in sequence")
 
 
 class CodingTeamOutput(ToolOutput):
@@ -178,7 +187,25 @@ class CodingTeamOutput(ToolOutput):
     result: CodingTeamResult = Field(description="Coding team result")
 
     def get_text_content(self) -> str:
-        return to_json(self.result)
+        # Build a more readable text representation
+        output = []
+        
+        # Add each team member result
+        for idx, result in enumerate(self.result.results):
+            output.append(f"\n{idx+1}. {result.team_member.value.upper()} OUTPUT:")
+            output.append("="*50)
+            output.append(result.output)
+            output.append("\n" + "-"*50)
+            
+        # Add the final summary with agent path
+        output.append(f"\n📋 SUMMARY:\n{self.result.final_summary}")
+        
+        # Make sure agent path is visible in the output
+        if self.result.agent_path:
+            path_str = " → ".join(self.result.agent_path)
+            output.append(f"\n📊 EXECUTION PATH: {path_str}")
+        
+        return "\n".join(output)
 
     def is_empty(self) -> bool:
         return False
@@ -208,6 +235,7 @@ class CodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOutput]):
         """
         Run the coding team workflow
         """
+        global agent_execution_path
         results = []
         
         if input.workflow == WorkflowStep.tdd_workflow:
@@ -389,10 +417,22 @@ Review this implementation for code quality, security, performance, and adherenc
         summary = f"Coding team workflow completed with {len(results)} team members involved."
         if results:
             summary += f"\nTeam members: {', '.join([r.team_member.value for r in results])}"
+            
+        # Add agent execution path to summary
+        path_str = " → ".join(agent_execution_path)
+        summary += f"\n\n📊 Execution Path: {path_str}"
 
-        return CodingTeamOutput(
-            result=CodingTeamResult(results=results, final_summary=summary)
+        # Create result with execution path
+        result = CodingTeamResult(
+            results=results, 
+            final_summary=summary,
+            agent_path=agent_execution_path
         )
+        
+        # Reset the global execution path for next run
+        agent_execution_path = []
+        
+        return CodingTeamOutput(result=result)
 
 
 # ============================================================================
@@ -402,6 +442,9 @@ Review this implementation for code quality, security, performance, and adherenc
 @server.agent(name="orchestrator", metadata={"ui": {"type": "handsoff"}})
 async def main_orchestrator(input: list[Message], context: Context) -> AsyncGenerator:
     """Main orchestrator that manages the coding team workflow"""
+    global agent_execution_path
+    # Reset agent execution path at the start of each orchestration
+    agent_execution_path = []
     llm = ChatModel.from_name("openai:gpt-3.5-turbo")
 
     agent = ReActAgent(

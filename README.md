@@ -85,7 +85,7 @@ Workflows can be tested independently using the workflow test suite:
 source venv/bin/activate
 
 # Run workflow tests
-python workflows/test_workflows.py
+python tests/test_workflows.py
 ```
 
 Test options include:
@@ -119,7 +119,6 @@ Test results are saved to the `tests/outputs/` directory with timestamped filena
 │   ├── individual/               # Individual step workflow
 │   │   └── individual_workflow.py
 │   ├── workflow_manager.py       # Workflow dispatch system
-│   ├── test_workflows.py         # Workflow testing utilities
 │   ├── workflow_visualizer.py    # Basic workflow visualization tool
 │   └── enhanced_workflow_visualizer.py # Advanced workflow visualization
 ├── docs/
@@ -128,6 +127,7 @@ Test results are saved to the `tests/outputs/` directory with timestamped filena
 ├── tests/
 │   └── outputs/                  # Test output directory
 │   └── run_agent_tests.py        # Master agent test runner script
+│   └── test_workflows.py         # Workflow testing utilities
 ├── generated/                    # Output directory for generated code
 └── requirements.txt              # Project dependencies
 ```

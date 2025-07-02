@@ -22,7 +22,7 @@ from beeai_framework.utils.strings import to_json
 from pydantic import BaseModel, Field
 
 # Import the modular planner agent
-from planner_agent import planner_agent
+from agents.planner.planner_agent import planner_agent
 
 # Load environment variables from .env file
 load_dotenv()

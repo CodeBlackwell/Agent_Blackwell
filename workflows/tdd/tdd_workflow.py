@@ -65,45 +65,77 @@ Write Given-When-Then test scenarios that validate business outcomes."""
                 test_output = str(test_result[0])
                 results.append(TeamMemberResult(team_member=TeamMember.test_writer, output=test_output))
                 
-                # Step 4: Implementation (using tests to guide development)
-                if TeamMember.coder in team_members:
-                    print("💻 Implementation phase (TDD-guided)...")
-                    code_input = f"""You are the developer for this project. Here are the specifications:
+                # Step 4: Implementation (TDD-guided)
+    if TeamMember.coder in team_members:
+        print("💻 Implementation phase (TDD-guided)...")
+        code_result = await run_team_member("coder_agent", code_input)
+        code_output = str(code_result[0])
+        results.append(TeamMemberResult(team_member=TeamMember.coder, output=code_output))
+        
+        # Extract project path from coder output
+        project_path = extract_project_path(code_output)
+        
+        if project_path:
+            # Step 4.5: Test Execution
+            print("🧪 Running tests...")
+            from orchestrator.test_runner_tool import TestRunnerTool
+            
+            test_runner = TestRunnerTool()
+            test_result = await test_runner._run(
+                TestExecutionInput(project_path=project_path),
+                None,
+                None
+            )
+            
+            test_summary = f"""
+TEST EXECUTION RESULTS:
+{test_result.get_text_content()}
 
-PLAN:
-{plan_output}
+Project Path: {project_path}
+"""
+            results.append(TeamMemberResult(
+                team_member=TeamMember.coder,  # Or create a new "test_runner" member
+                output=test_summary
+            ))
+            
+            # If tests fail, could loop back to coder
+            if not test_result.result.success:
+                print("❌ Tests failed, sending feedback to coder...")
+                fix_input = f"""Tests failed. Please fix the implementation:
+                
+{test_summary}
 
-DESIGN:
-{design_output}
-
-TESTS TO SATISFY:
-{test_output}
-
-Based on these specifications, implement working code that satisfies the tests and follows the design. Do NOT ask for more details - use the above information to create a complete implementation.
-
-Original requirements: {requirements}
-
-Write complete, working code with proper documentation."""
-                    code_result = await run_team_member("coder_agent", code_input)
-                    code_output = str(code_result[0])
-                    results.append(TeamMemberResult(team_member=TeamMember.coder, output=code_output))
-                    
-                    # Step 5: Review (using implementation as input)
-                    if TeamMember.reviewer in team_members:
-                        print("🔍 Review phase...")
-                        review_input = f"""You are reviewing this TDD implementation. Here is the complete context:
-
-ORIGINAL REQUIREMENTS: {requirements}
-
-TESTS THAT SHOULD BE SATISFIED:
-{test_output}
-
-IMPLEMENTATION TO REVIEW:
+Previous implementation:
 {code_output}
 
-Review this implementation for code quality, security, performance, and adherence to the tests. Provide specific feedback and recommendations."""
-                        review_result = await run_team_member("reviewer_agent", review_input)
-                        review_output = str(review_result[0])
-                        results.append(TeamMemberResult(team_member=TeamMember.reviewer, output=review_output))
+Fix the code to make all tests pass."""
+                
+                fix_result = await run_team_member("coder_agent", fix_input)
+                fix_output = str(fix_result[0])
+                results.append(TeamMemberResult(
+                    team_member=TeamMember.coder,
+                    output=f"FIX ATTEMPT:\n{fix_output}"
+                ))
+        
+        # Step 5: Review (include test results)
+        if TeamMember.reviewer in team_members:
+            review_input = f"""{review_input}
+
+TEST RESULTS:
+{test_summary if project_path else "No tests were executed"}"""
+            # ... continue with review ...
+
+def extract_project_path(coder_output: str) -> Optional[str]:
+    """Extract project path from coder output"""
+    import re
+    # Look for path patterns in output
+    path_match = re.search(r'Location: (.+?)(?:\n|$)', coder_output)
+    if path_match:
+        return path_match.group(1).strip()
     
-    return results
+    # Fallback: look for generated directory pattern
+    gen_match = re.search(r'orchestrator/generated/(.+?)(?:\n|$)', coder_output)
+    if gen_match:
+        return f"orchestrator/generated/{gen_match.group(1)}"
+    
+    return None

@@ -27,12 +27,15 @@ from beeai_framework.tools.types import ToolRunOptions
 from beeai_framework.utils.strings import to_json
 from pydantic import BaseModel, Field
 
-# Import the modular planner agent
+# Import the modular agents
 from agents.planner.planner_agent import planner_agent
 from agents.designer.designer_agent import designer_agent
 from agents.coder.coder_agent import coder_agent
 from agents.test_writer.test_writer_agent import test_writer_agent
 from agents.reviewer.reviewer_agent import reviewer_agent
+
+# Import the modular tools
+from orchestrator.regression_test_runner_tool import TestRunnerTool
 
 # Load environment variables from .env file
 load_dotenv()
@@ -281,7 +284,7 @@ async def main_orchestrator(input: list[Message], context: Context) -> AsyncGene
 
     agent = ReActAgent(
         llm=llm,
-        tools=[CodingTeamTool()],
+        tools=[CodingTeamTool(), TestRunnerTool()],
         templates={
             "system": lambda template: template.update(
                 defaults=exclude_none({

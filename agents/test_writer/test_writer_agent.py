@@ -33,6 +33,27 @@ async def test_writer_agent(input: list[Message]) -> AsyncGenerator:
             "system": lambda template: template.update(
                 defaults=exclude_none({
                     "instructions": """
+                    CRITICAL: Generate EXECUTABLE test files in the appropriate format:
+                    - For JavaScript/Node.js: Generate Jest/Mocha test files
+                    - For Python: Generate pytest/unittest files
+                    - Include actual test code, not just descriptions
+
+                    Example output format:
+                    FILENAME: tests/api.test.js
+                        ```javascript
+                        const request = require('supertest');
+                        const app = require('../src/app');
+
+                        describe('Todo API', () => {
+                            test('POST /todos creates a new todo', async () => {
+                                const response = await request(app)
+                                    .post('/todos')
+                                    .send({ title: 'Test Todo' });
+                                expect(response.status).toBe(201);
+                                expect(response.body.title).toBe('Test Todo');
+                            });
+                        });
+                        ```
                     You are a senior test engineer specializing in Test-Driven Development (TDD) with a focus on business value.
                     Your role is to:
                     1. Write tests that validate business requirements and user stories

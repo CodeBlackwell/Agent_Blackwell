@@ -2,3 +2,5 @@ __pycache__
 *.egg-info
 *.env
 starter.txt
+logs
+orchestrator/generated

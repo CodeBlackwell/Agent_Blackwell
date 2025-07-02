@@ -155,6 +155,9 @@ def run_test(test_path: str) -> Dict:
     # Get the agent name from the path (updated to handle the new path structure)
     agent_name = Path(test_path).parent.name
     
+    # Extract test file name without extension for more descriptive logging
+    test_file_name = Path(test_path).stem
+    
     # Get Python from virtual environment
     venv_python = os.path.join(project_root, "venv", "bin", "python")
     if not os.path.exists(venv_python):
@@ -171,12 +174,25 @@ def run_test(test_path: str) -> Dict:
     # Default result structure
     result = {
         "agent": agent_name,
+        "test_name": test_file_name,
         "test_path": test_path,
         "success": process.returncode == 0,
         "execution_time": round(execution_time, 2),
         "output": process.stdout.strip(),
-        "error": process.stderr.strip() if process.stderr else None
+        "error": process.stderr.strip() if process.stderr else None,
+        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
+    
+    # Try to extract test description from the file
+    try:
+        with open(test_path, 'r') as f:
+            content = f.read(1000)  # Read first 1000 chars
+            if '"""' in content:
+                docstring = content.split('"""')[1].strip()
+                description = docstring.split('\n')[0].strip()
+                result["description"] = description
+    except Exception:
+        result["description"] = ""  # Default empty description if extraction fails
     
     # Try to parse JSON output if available
     try:
@@ -185,13 +201,16 @@ def run_test(test_path: str) -> Dict:
     except:
         pass
     
-    # Save test output to log file
-    log_file = RUN_LOG_DIR / f"{agent_name}_test_output.log"
+    # Save test output to log file with more descriptive name
+    log_file = RUN_LOG_DIR / f"{agent_name}_{test_file_name}_test_output.log"
     with open(log_file, 'w') as f:
-        f.write(f"TEST RESULTS: {agent_name.upper()}\n")
+        f.write(f"TEST RESULTS: {agent_name.upper()} - {test_file_name}\n")
         f.write(f"Test path: {test_path}\n")
+        if result.get('description'):
+            f.write(f"Description: {result['description']}\n")
         f.write(f"Status: {'PASSED' if result['success'] else 'FAILED'}\n")
         f.write(f"Execution time: {result['execution_time']:.2f}s\n")
+        f.write(f"Timestamp: {result['timestamp']}\n")
         f.write("\n=== STDOUT ===\n")
         f.write(result['output'] or "No output")
         f.write("\n\n=== STDERR ===\n")
@@ -200,11 +219,11 @@ def run_test(test_path: str) -> Dict:
     # If we have detailed output, save it separately
     try:
         if result.get('detailed_output'):
-            detail_file = RUN_LOG_DIR / f"{agent_name}_detailed_output.json"
+            detail_file = RUN_LOG_DIR / f"{agent_name}_{test_file_name}_detailed_output.json"
             with open(detail_file, 'w') as f:
                 json.dump(result['detailed_output'], f, indent=2)
     except Exception as e:
-        logger.warning(f"Failed to save detailed output for {agent_name}: {e}")
+        logger.warning(f"Failed to save detailed output for {agent_name} ({test_file_name}): {e}")
         
     return result
 
@@ -221,7 +240,10 @@ def print_results(results: List[Dict]) -> None:
         status = "✅ PASSED" if result["success"] else "❌ FAILED"
         time_taken = f"{result['execution_time']:.2f}s"
         
+        test_name = result.get("test_name", "")
+        description = result.get("description", "")
         print(f"\n{i}. {agent} TESTS: {status} ({time_taken})")
+        print(f"   Test: {test_name}{' - ' + description if description else ''}")
         
         if not result["success"]:
             print("\nERROR OUTPUT:")
@@ -229,12 +251,14 @@ def print_results(results: List[Dict]) -> None:
             print(result["error"] if result["error"] else "No error output")
             print("-" * 50)
             
-        # Print a preview of the output
+        # Print a more comprehensive output preview
         if result["output"]:
             lines = result["output"].split('\n')
-            preview = '\n'.join(lines[:5])
-            if len(lines) > 5:
-                preview += f"\n... ({len(lines) - 5} more lines)"
+            # Show more lines for better context
+            preview_lines = 10
+            preview = '\n'.join(lines[:preview_lines])
+            if len(lines) > preview_lines:
+                preview += f"\n... ({len(lines) - preview_lines} more lines)"
             print("\nOUTPUT PREVIEW:")
             print("-" * 50)
             print(preview)
@@ -261,9 +285,13 @@ def print_results(results: List[Dict]) -> None:
         
         for i, result in enumerate(results, 1):
             agent = result["agent"].upper()
+            test_name = result.get("test_name", "")
+            description = result.get("description", "")
             status = "PASSED" if result["success"] else "FAILED"
             time_taken = f"{result['execution_time']:.2f}s"
-            f.write(f"{i}. {agent}: {status} ({time_taken})\n")
+            f.write(f"{i}. {agent} ({test_name}): {status} ({time_taken})\n")
+            if description:
+                f.write(f"   Description: {description}\n")
 
 def list_available_tests() -> None:
     """List all available tests."""

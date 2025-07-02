@@ -1,0 +1,12 @@
+{
+  "name": "simple-todo-list-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "flask": "^2.0.1",
+    "flask-swagger-ui": "^3.36.0",
+    "flask_sqlalchemy": "^3.0.0"
+  },
+  "devDependencies": {
+    "pytest": "^7.0.0"
+  }
+}

@@ -1,22 +1,29 @@
 [
-  [
-    "input",
-    "planner",
-    "{}"
-  ],
-  [
-    "planner",
-    "designer",
-    "{}"
-  ],
-  [
-    "designer",
-    "coder",
-    "{}"
-  ],
-  [
-    "coder",
-    "reviewer",
-    "{}"
-  ]
+  {
+    "source": "input",
+    "target": "planner_agent",
+    "schema": {
+      "type": "initial_input"
+    },
+    "transformations": [],
+    "flow_type": null
+  },
+  {
+    "source": "planner_agent",
+    "target": "designer_agent",
+    "schema": {
+      "type": "sequential"
+    },
+    "transformations": [],
+    "flow_type": null
+  },
+  {
+    "source": "designer_agent",
+    "target": "coder_agent",
+    "schema": {
+      "type": "sequential"
+    },
+    "transformations": [],
+    "flow_type": null
+  }
 ]

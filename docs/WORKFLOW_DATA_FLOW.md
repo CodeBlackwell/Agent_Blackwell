@@ -10,69 +10,151 @@ This document provides detailed information about data flow between agents in di
 
 ### Data Flow Details
 
-#### input → planner
+#### input → planner_agent
 
 **Schema:**
 
 ```
-requirements: str
-workflow: WorkflowStep
-team_members: list
+type: initial_input
 ```
-
-**Description:** Input schema for the coding team tool
 
 ---
 
-#### planner → designer
+#### planner_agent → reviewer_agent
 
 **Schema:**
 
 ```
-team_member: TeamMember
-output: str
+stage: plan
+output: plan_output
 ```
-
-**Description:** Result from a single team member
 
 ---
 
-#### designer → test_writer
+#### reviewer_agent → workflow_continuation
 
 **Schema:**
 
 ```
-team_member: TeamMember
-output: str
+decision: approved
+stage: plan
 ```
-
-**Description:** Result from a single team member
 
 ---
 
-#### test_writer → coder
+#### designer_agent → reviewer_agent
 
 **Schema:**
 
 ```
-team_member: TeamMember
-output: str
+stage: design
+output: design_output
 ```
-
-**Description:** Result from a single team member
 
 ---
 
-#### coder → reviewer
+#### reviewer_agent → workflow_continuation
 
 **Schema:**
 
 ```
-team_member: TeamMember
-output: str
+decision: approved
+stage: design
 ```
 
-**Description:** Result from a single team member
+---
+
+#### reviewer_agent → designer_agent
+
+**Schema:**
+
+```
+decision: revision_needed
+stage: design
+```
+
+---
+
+#### test_writer_agent → reviewer_agent
+
+**Schema:**
+
+```
+stage: tests
+output: test_output
+```
+
+---
+
+#### reviewer_agent → workflow_continuation
+
+**Schema:**
+
+```
+decision: approved
+stage: tests
+```
+
+---
+
+#### reviewer_agent → test_writer_agent
+
+**Schema:**
+
+```
+decision: revision_needed
+stage: tests
+```
+
+---
+
+#### coder_agent → test_execution
+
+**Schema:**
+
+```
+type: test_validation
+```
+
+---
+
+#### test_execution → coder_agent
+
+**Schema:**
+
+```
+type: test_results
+```
+
+---
+
+#### planner_agent → designer_agent
+
+**Schema:**
+
+```
+type: sequential
+```
+
+---
+
+#### designer_agent → test_writer_agent
+
+**Schema:**
+
+```
+type: sequential
+```
+
+---
+
+#### test_writer_agent → coder_agent
+
+**Schema:**
+
+```
+type: sequential
+```
 
 ---
 
@@ -84,56 +166,33 @@ output: str
 
 ### Data Flow Details
 
-#### input → planner
+#### input → planner_agent
 
 **Schema:**
 
 ```
-requirements: str
-workflow: WorkflowStep
-team_members: list
+type: initial_input
 ```
-
-**Description:** Input schema for the coding team tool
 
 ---
 
-#### planner → designer
+#### planner_agent → designer_agent
 
 **Schema:**
 
 ```
-team_member: TeamMember
-output: str
+type: sequential
 ```
-
-**Description:** Result from a single team member
 
 ---
 
-#### designer → coder
+#### designer_agent → coder_agent
 
 **Schema:**
 
 ```
-team_member: TeamMember
-output: str
+type: sequential
 ```
-
-**Description:** Result from a single team member
-
----
-
-#### coder → reviewer
-
-**Schema:**
-
-```
-team_member: TeamMember
-output: str
-```
-
-**Description:** Result from a single team member
 
 ---
 

@@ -1,0 +1,4 @@
+DEBUG: Full LLM Response
+==================================================
+
+I will create the project files now.

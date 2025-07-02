@@ -1,0 +1,4 @@
+// Individual Workflow Workflow
+digraph {
+	graph [rankdir=LR splines=ortho]
+}

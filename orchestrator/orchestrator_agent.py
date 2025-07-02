@@ -32,6 +32,7 @@ from agents.planner.planner_agent import planner_agent
 from agents.designer.designer_agent import designer_agent
 from agents.coder.coder_agent import coder_agent
 from agents.test_writer.test_writer_agent import test_writer_agent
+from agents.reviewer.reviewer_agent import reviewer_agent
 
 # Load environment variables from .env file
 load_dotenv()
@@ -74,43 +75,10 @@ async def test_writer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
 
 
 @server.agent()
-async def reviewer_agent(input: list[Message]) -> AsyncGenerator:
-    """Agent responsible for code review and quality assurance"""
-    llm = ChatModel.from_name("openai:gpt-3.5-turbo")
-    
-    agent = ReActAgent(
-        llm=llm, 
-        tools=[], 
-        templates={
-            "system": lambda template: template.update(
-                defaults=exclude_none({
-                    "instructions": """
-                    You are a senior code reviewer and quality assurance engineer. Your role is to:
-                    1. Review code for bugs, security issues, and performance problems
-                    2. Check adherence to coding standards and best practices
-                    3. Verify that implementations match the design specifications
-                    4. Identify potential improvements and optimizations
-                    5. Ensure proper testing coverage and documentation
-                    6. Provide constructive feedback and suggestions
-                    
-                    Provide comprehensive review feedback including:
-                    - Code Quality Assessment
-                    - Security Analysis
-                    - Performance Considerations
-                    - Best Practice Compliance
-                    - Improvement Suggestions
-                    - Test Coverage Analysis
-                    - Final Approval/Rejection with reasoning
-                    """,
-                    "role": "system",
-                })
-            )
-        },
-        memory=TokenMemory(llm)
-    )
-    
-    response = await agent.run(prompt="Review the following work: " + str(input))
-    yield MessagePart(content=response.result.text)
+async def reviewer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    """Wrapper to register the modular reviewer agent with the server"""
+    async for part in reviewer_agent(input):
+        yield part
 
 
 # ============================================================================
@@ -142,7 +110,8 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "planner_agent": "planner_agent_wrapper",
         "designer_agent": "designer_agent_wrapper",
         "coder_agent": "coder_agent_wrapper",
-        "test_writer_agent": "test_writer_agent_wrapper"
+        "test_writer_agent": "test_writer_agent_wrapper",
+        "reviewer_agent": "reviewer_agent_wrapper"
     }
     
     # Get the internal agent name (use mapping if available, otherwise use original name)

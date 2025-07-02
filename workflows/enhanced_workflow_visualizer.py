@@ -49,7 +49,7 @@ def extract_schema_info(obj_type, include_types=True) -> Dict:
             if hasattr(field_type, "__name__"):
                 type_name = field_type.__name__
             elif hasattr(field_type, "_name"):
-                type_name = field_type._name
+                type_name = field_type._name_
             else:
                 type_name = str(field_type)
                 
@@ -88,10 +88,11 @@ def extract_data_transformations(func_source: str) -> List[Dict[str, Any]]:
     return transformations
 
 # Advanced agent data flow analyzer
-def analyze_workflow_data_flow(workflow_function) -> List[Tuple[str, str, Dict, List[Dict]]]:
+def analyze_workflow_data_flow(workflow_function) -> List[Tuple[str, str, Dict, List[Dict], Optional[str]]]:
     """
     Analyze a workflow function to determine the data flow between agents.
-    Returns a list of (source, target, data_schema, transformations) tuples.
+    Returns a list of (source, target, data_schema, transformations, flow_type) tuples.
+    flow_type can be: None (regular flow), 'review' (review feedback), 'approval' (approval path), or 'feedback' (revision needed).
     """
     flows = []
     source = "input"
@@ -108,91 +109,307 @@ def analyze_workflow_data_flow(workflow_function) -> List[Tuple[str, str, Dict, 
     # Split into lines for step-by-step analysis
     source_lines = source_code.split('\n')
     
-    # Find all occurrences of run_team_member
+    # Track agents and their outputs for review flow detection
+    agent_outputs = {}  # agent_name -> output_variable
+    review_flows = {}   # output_variable -> (source_agent, review_context)
+    
+    # First pass: Find all agent calls and their outputs
     for i, line in enumerate(source_lines):
         if "run_team_member" in line and "await" in line:
-            # Extract the agent name
-            for member in TeamMember:
-                if member.value in line:
-                    target = member.value
-                    break
+            # Extract agent name and result variable
+            agent_match = re.search(r'run_team_member\(["\']([^"\']+)["\']', line)
+            result_match = re.search(r'(\w+)\s*=\s*await\s+run_team_member', line)
             
-            # If target found, analyze data passed to this agent
-            if target:
-                # Look at context (5 lines before) to understand data flow
-                context_lines = source_lines[max(0, i-5):i]
-                context_text = "\n".join(context_lines)
+            if agent_match and result_match:
+                agent_name = agent_match.group(1)
+                result_var = result_match.group(1)
+                agent_outputs[result_var] = agent_name
                 
-                # Find transformations relevant to this agent call
-                agent_transformations = []
-                for t in all_transformations:
-                    if any(var in context_text for var in [t['target'], t['source']]):
-                        agent_transformations.append(t)
+                # Look for output extraction
+                for j in range(i+1, min(len(source_lines), i+10)):
+                    output_line = source_lines[j]
+                    if f"{result_var}[0]" in output_line or f"str({result_var}" in output_line:
+                        output_match = re.search(rf'(\w+)\s*=\s*str\({result_var}', output_line)
+                        if output_match:
+                            output_var = output_match.group(1)
+                            agent_outputs[output_var] = agent_name
+                        break
+    
+    # Second pass: Find review_output calls and approval/feedback flows
+    for i, line in enumerate(source_lines):
+        # Detect review_output calls
+        if "review_output(" in line:
+            # Extract what's being reviewed
+            review_match = re.search(r'review_output\(([^,]+),\s*["\']([^"\']+)["\']', line)
+            if review_match:
+                reviewed_var = review_match.group(1).strip()
+                stage = review_match.group(2)
                 
-                # Determine schema based on the source
-                if source == "input":
-                    data_schema = extract_schema_info(CodingTeamInput)
-                else:
-                    data_schema = extract_schema_info(TeamMemberResult)
+                # Find the source agent for this output
+                source_agent = agent_outputs.get(reviewed_var, "unknown")
+                if source_agent != "unknown":
+                    # Add review flow: source_agent -> reviewer
+                    flows.append((source_agent, "reviewer_agent", 
+                                {"stage": stage, "output": reviewed_var}, 
+                                [], "review"))
+                    
+                    # Look for approval/feedback handling after this review
+                    for j in range(i+1, min(len(source_lines), i+20)):
+                        approval_line = source_lines[j]
+                        
+                        # Look for approval handling
+                        if "if approved:" in approval_line:
+                            # Find what happens when approved
+                            for k in range(j+1, min(len(source_lines), j+15)):
+                                next_line = source_lines[k]
+                                if "results.append" in next_line:
+                                    # This indicates approval - workflow continues
+                                    flows.append(("reviewer_agent", "workflow_continuation",
+                                                {"decision": "approved", "stage": stage},
+                                                [], "approval"))
+                                    break
+                                elif "run_team_member" in next_line:
+                                    # Direct call to next agent after approval
+                                    next_agent_match = re.search(r'run_team_member\(["\']([^"\']+)["\']', next_line)
+                                    if next_agent_match:
+                                        next_agent = next_agent_match.group(1)
+                                        flows.append(("reviewer_agent", next_agent,
+                                                    {"decision": "approved", "stage": stage},
+                                                    [], "approval"))
+                                    break
+                        
+                        # Look for feedback handling (else block or revision logic)
+                        elif ("else:" in approval_line or "need revision" in approval_line.lower() or 
+                              "feedback" in approval_line):
+                            # Find feedback flow back to original agent
+                            for k in range(j+1, min(len(source_lines), j+15)):
+                                feedback_line = source_lines[k]
+                                if f"{reviewed_var.split('_')[0]}_input" in feedback_line:
+                                    # Feedback being added to input for retry
+                                    flows.append(("reviewer_agent", source_agent,
+                                                {"decision": "revision_needed", "stage": stage},
+                                                [], "feedback"))
+                                    break
+                            break
+    
+    # Third pass: Find retry loops and test execution flows
+    for i, line in enumerate(source_lines):
+        # Detect test execution retry loops
+        if "while not all_tests_passed" in line or "retry_state" in line:
+            # Look for test execution and feedback patterns
+            for j in range(i, min(len(source_lines), i+50)):
+                retry_line = source_lines[j]
                 
-                flows.append((source, target, data_schema, agent_transformations))
-                source = target
-                target = None
+                # Test execution
+                if "execute_tests(" in retry_line:
+                    flows.append(("coder_agent", "test_execution",
+                                {"type": "test_validation"}, [], "validation"))
+                    flows.append(("test_execution", "coder_agent",
+                                {"type": "test_results"}, [], "feedback"))
+                
+                # Reviewer feedback on test failures
+                elif "run_team_member" in retry_line and "reviewer_agent" in retry_line and "test failures" in retry_line:
+                    flows.append(("test_execution", "reviewer_agent",
+                                {"type": "test_failure_analysis"}, [], "review"))
+                    flows.append(("reviewer_agent", "coder_agent",
+                                {"type": "test_failure_feedback"}, [], "feedback"))
+    
+    # Fourth pass: Find regular sequential flows between agents
+    agent_sequence = []
+    for i, line in enumerate(source_lines):
+        if "run_team_member" in line and "await" in line:
+            agent_match = re.search(r'run_team_member\(["\']([^"\']+)["\']', line)
+            if agent_match:
+                agent_name = agent_match.group(1)
+                if agent_name != "reviewer_agent":  # Skip reviewer calls (handled above)
+                    agent_sequence.append(agent_name)
+    
+    # Add sequential flows between main agents
+    for i in range(len(agent_sequence) - 1):
+        source_agent = agent_sequence[i]
+        target_agent = agent_sequence[i + 1]
+        
+        # Check if this flow isn't already covered by review flows
+        existing_flow = any(flow[0] == source_agent and flow[1] == target_agent 
+                          for flow in flows)
+        if not existing_flow:
+            flows.append((source_agent, target_agent, 
+                        {"type": "sequential"}, [], None))
+    
+    # Add input flow to first agent
+    if agent_sequence:
+        flows.insert(0, ("input", agent_sequence[0], 
+                        {"type": "initial_input"}, [], None))
     
     return flows
 
 # Enhanced graph generation
-def generate_workflow_graph(workflow_name: str, data_flows: List[Tuple[str, str, Dict, List[Dict]]]) -> graphviz.Digraph:
+def generate_workflow_graph(workflow_name: str, data_flows: List[Tuple[str, str, Dict, List[Dict], Optional[str]]]) -> graphviz.Digraph:
     """Generate a detailed directed graph visualizing the workflow data flow."""
-    dot = graphviz.Digraph(comment=f'{workflow_name} Workflow', 
-                          graph_attr={'rankdir': 'LR', 'splines': 'ortho'})
+    dot = graphviz.Digraph(comment=f'{workflow_name} Data Flow')
+    dot.attr(rankdir='TB', size='12,16')
+    dot.attr('node', shape='box', style='rounded,filled', fontname='Arial')
+    dot.attr('edge', fontname='Arial', fontsize='10')
     
-    # Add nodes
+    # Define colors and styles for different flow types
+    flow_styles = {
+        None: {'color': 'blue', 'style': 'solid', 'penwidth': '2'},
+        'review': {'color': 'red', 'style': 'dashed', 'penwidth': '2'},
+        'feedback': {'color': '#FF6600', 'style': 'dotted', 'penwidth': '2'},
+        'approval': {'color': 'green', 'style': 'bold', 'penwidth': '3'},
+        'validation': {'color': 'purple', 'style': 'dashed', 'penwidth': '1.5'}
+    }
+    
+    # Define node colors for different agent types
+    node_colors = {
+        'input': '#E6F3FF',
+        'planner_agent': '#FFE6CC',
+        'designer_agent': '#E6FFE6', 
+        'test_writer_agent': '#FFCCFF',
+        'coder_agent': '#CCFFFF',
+        'reviewer_agent': '#FFCCCC',
+        'test_execution': '#F0E6FF',
+        'workflow_continuation': '#E6E6E6'
+    }
+    
+    # Collect all unique nodes
     nodes = set()
-    for source, target, _, _ in data_flows:
+    for source, target, _, _, _ in data_flows:
         nodes.add(source)
         nodes.add(target)
     
+    # Add nodes with appropriate styling
     for node in nodes:
-        if node == "input":
-            dot.node(node, shape='ellipse', style='filled', fillcolor='lightblue')
-        elif node == "output":
-            dot.node(node, shape='ellipse', style='filled', fillcolor='lightgreen')
+        color = node_colors.get(node, '#F0F0F0')
+        
+        # Special styling for different node types
+        if node == 'input':
+            dot.node(node, 'Input\n(Requirements)', fillcolor=color, shape='ellipse')
+        elif node == 'test_execution':
+            dot.node(node, 'Test\nExecution', fillcolor=color, shape='diamond')
+        elif node == 'workflow_continuation':
+            dot.node(node, 'Continue\nWorkflow', fillcolor=color, shape='ellipse')
+        elif '_agent' in node:
+            # Clean up agent names for display
+            display_name = node.replace('_agent', '').replace('_', ' ').title()
+            dot.node(node, display_name, fillcolor=color)
         else:
-            # Make agent nodes more informative
-            dot.node(node, f"{node.replace('_agent', '')}", 
-                    shape='box', style='filled', fillcolor='#FFFACD',  # Light yellow
-                    fontname="Arial", fontsize="12")
+            dot.node(node, node.replace('_', ' ').title(), fillcolor=color)
     
-    # Add edges with schema information
-    for source, target, schema, transformations in data_flows:
-        # Format schema info for edge label
-        if schema:
-            # Remove internal fields and keep only key data fields
-            visible_fields = {k: v for k, v in schema.items() 
-                            if not k.startswith('_') and k not in ['__doc__']}
-            
-            # Format as field: type pairs
-            schema_str = "\\n".join([f"{k}: {v}" for k, v in visible_fields.items()])
-            
-            # Add transformation info if available
-            if transformations:
-                trans_str = "\\n\\nTransformations:\\n" + "\\n".join([
-                    f"{t['target']} = {t['source'][:30]}..." if len(t['source']) > 30 
-                    else f"{t['target']} = {t['source']}" 
-                    for t in transformations[:3]
-                ])
-                if len(transformations) > 3:
-                    trans_str += f"\\n(+{len(transformations)-3} more)"
-                schema_str += trans_str
-            
-            # Truncate if too long
-            if len(schema_str) > 300:
-                schema_str = schema_str[:297] + "..."
+    # Add edges with flow-specific styling
+    edge_counts = {}  # Track multiple edges between same nodes
+    
+    for source, target, data_schema, transformations, flow_type in data_flows:
+        # Create unique edge identifier
+        edge_key = f"{source}->{target}"
+        edge_counts[edge_key] = edge_counts.get(edge_key, 0) + 1
+        
+        # Get style for this flow type
+        style = flow_styles.get(flow_type, flow_styles[None])
+        
+        # Create edge label based on flow type and data
+        label_parts = []
+        
+        if flow_type == 'review':
+            stage = data_schema.get('stage', 'output')
+            label_parts.append(f"Review {stage}")
+        elif flow_type == 'feedback':
+            decision = data_schema.get('decision', 'revision needed')
+            label_parts.append(f"Feedback: {decision}")
+        elif flow_type == 'approval':
+            decision = data_schema.get('decision', 'approved')
+            stage = data_schema.get('stage', '')
+            label_parts.append(f"Approved: {stage}")
+        elif flow_type == 'validation':
+            test_type = data_schema.get('type', 'test')
+            label_parts.append(f"Validate: {test_type}")
         else:
-            schema_str = "Unknown Schema"
-            
-        dot.edge(source, target, label=schema_str, fontsize='10', fontname="Arial", penwidth="1.5")
+            # Regular flow - show data type
+            if 'type' in data_schema:
+                label_parts.append(data_schema['type'])
+            elif 'stage' in data_schema:
+                label_parts.append(data_schema['stage'])
+        
+        # Add transformation info if available
+        if transformations:
+            transform_info = f"({len(transformations)} transforms)"
+            label_parts.append(transform_info)
+        
+        # Create final label
+        edge_label = '\\n'.join(label_parts) if label_parts else ''
+        
+        # Handle multiple edges between same nodes
+        if edge_counts[edge_key] > 1:
+            edge_label += f" ({edge_counts[edge_key]})"
+        
+        # Add the edge with appropriate styling
+        edge_attrs = {
+            'label': edge_label,
+            'color': style['color'],
+            'style': style['style'],
+            'penwidth': style['penwidth']
+        }
+        
+        # Add arrowhead styling for different flow types
+        if flow_type == 'review':
+            edge_attrs['arrowhead'] = 'diamond'
+        elif flow_type == 'feedback':
+            edge_attrs['arrowhead'] = 'curve'
+        elif flow_type == 'approval':
+            edge_attrs['arrowhead'] = 'normal'
+            edge_attrs['arrowsize'] = '1.5'
+        elif flow_type == 'validation':
+            edge_attrs['arrowhead'] = 'dot'
+        
+        dot.edge(source, target, **edge_attrs)
+    
+    # Add a comprehensive legend
+    with dot.subgraph(name='cluster_legend') as legend:
+        legend.attr(label='Flow Types Legend', fontsize='14', style='filled', fillcolor='#F5F5F5')
+        
+        # Create legend nodes
+        legend.node('legend_regular', 'Regular Flow', shape='plaintext', fontcolor='blue')
+        legend.node('legend_review', 'Review Flow', shape='plaintext', fontcolor='red')
+        legend.node('legend_feedback', 'Feedback Loop', shape='plaintext', fontcolor='#FF6600')
+        legend.node('legend_approval', 'Approval Path', shape='plaintext', fontcolor='green')
+        legend.node('legend_validation', 'Test Validation', shape='plaintext', fontcolor='purple')
+        
+        # Add legend edges showing the different styles
+        legend.edge('legend_regular', 'legend_review', 
+                   style='solid', color='blue', penwidth='2', label='sequential')
+        legend.edge('legend_review', 'legend_feedback', 
+                   style='dashed', color='red', penwidth='2', label='review', arrowhead='diamond')
+        legend.edge('legend_feedback', 'legend_approval', 
+                   style='dotted', color='#FF6600', penwidth='2', label='feedback', arrowhead='curve')
+        legend.edge('legend_approval', 'legend_validation', 
+                   style='bold', color='green', penwidth='3', label='approval', arrowhead='normal', arrowsize='1.5')
+        legend.edge('legend_validation', 'legend_regular', 
+                   style='dashed', color='purple', penwidth='1.5', label='validation', arrowhead='dot')
+        
+        # Position legend nodes
+        legend.attr(rank='same')
+    
+    # Save the graph
+    output_dir = Path(__file__).parent.parent / "docs" / "workflow_visualizations"
+    output_dir.mkdir(exist_ok=True, parents=True)
+    
+    filename = f"{workflow_name.lower().replace(' ', '_')}_enhanced_flow"
+    dot.save(str(output_dir / f"{filename}.dot"))
+    
+    try:
+        dot.render(str(output_dir / filename), format='pdf', cleanup=True)
+        dot.render(str(output_dir / filename), format='png', cleanup=True, 
+                  renderer='cairo', formatter='cairo')
+        print(f"Enhanced {workflow_name} visualization saved to {output_dir}/{filename}")
+    except Exception as e:
+        print(f"Warning: Could not render {workflow_name} graph with enhanced settings: {e}")
+        try:
+            # Fall back to standard rendering
+            dot.render(str(output_dir / filename), format='pdf', cleanup=True)
+            dot.render(str(output_dir / filename), format='png', cleanup=True)
+            print(f"{workflow_name} visualization saved to {output_dir}/{filename}")
+        except Exception as e2:
+            print(f"Warning: Could not render {workflow_name} graph: {e2}")
     
     return dot
 
@@ -227,6 +444,13 @@ def visualize_all_workflows():
         print(f"Analyzing {name}...")
         flows = analyze_workflow_data_flow(info["func"])
         
+        # Filter out duplicates (can happen with review analysis)
+        unique_flows = []
+        for flow in flows:
+            if flow not in unique_flows:
+                unique_flows.append(flow)
+        flows = unique_flows
+        
         print(f"Generating enhanced graph for {name}...")
         graph = generate_workflow_graph(name, flows)
         
@@ -242,12 +466,11 @@ def visualize_all_workflows():
             graph.render(str(output_dir / filename), format='pdf', cleanup=True)
             print(f"PDF saved to {pdf_path}")
             
-            # Render to PNG with higher DPI
-            graph.render(str(output_dir / filename), format='png', cleanup=True, 
-                        renderer='cairo', formatter='cairo', dpi=300)
+            # Render to PNG with higher quality
+            graph.render(str(output_dir / filename), format='png', cleanup=True)
             print(f"High-resolution PNG saved to {png_path}")
         except Exception as e:
-            print(f"Warning: Could not render graph to PDF/PNG with enhanced settings: {e}")
+            print(f"Warning: Could not render graph to PDF/PNG: {e}")
             try:
                 # Fall back to standard rendering
                 graph.render(str(output_dir / filename), format='pdf', cleanup=True)
@@ -269,9 +492,10 @@ def visualize_all_workflows():
                     "source": source, 
                     "target": target,
                     "schema": {k: str(v) for k, v in schema.items()},
-                    "transformations": trans
+                    "transformations": trans,
+                    "flow_type": flow_type
                 } 
-                for source, target, schema, trans in flows
+                for source, target, schema, trans, flow_type in flows
             ]
             json.dump(serializable_flows, f, indent=2)
         print(f"Detailed JSON flows saved to {json_path}")
@@ -282,7 +506,7 @@ def visualize_all_workflows():
         docs.append(f"![{name} Visualization](workflow_visualizations/{filename}.png)\n\n")
         docs.append("### Data Flow Details\n\n")
         
-        for source, target, schema, trans in flows:
+        for source, target, schema, trans, flow_type in flows:
             docs.append(f"#### {source} → {target}\n\n")
             
             # Add schema information
@@ -332,7 +556,7 @@ def visualize_all_workflows():
 def create_workflow_overview_visualization():
     """Create an enhanced overview visualization showing all workflow types."""
     dot = graphviz.Digraph(comment='Workflow System Overview', 
-                          graph_attr={'rankdir': 'TD', 'splines': 'polyline',
+                          graph_attr={'rankdir': 'TB', 'splines': 'polyline',
                                      'fontname': 'Arial', 'nodesep': '0.8',
                                      'ranksep': '1.2'})
     
@@ -394,6 +618,12 @@ def create_workflow_overview_visualization():
         legend.node('l_tdd', 'TDD Workflow', shape='plaintext', fontcolor='blue')
         legend.node('l_full', 'Full Workflow', shape='plaintext', fontcolor='green')
         legend.node('l_ind', 'Individual Steps', shape='plaintext', fontcolor='red')
+        legend.node('l_review', 'Review Path', shape='plaintext')
+        legend.node('l_feedback', 'Feedback Loop', shape='plaintext')
+        
+        # Add legend edges
+        legend.edge('l_review', 'l_feedback', style='dashed', color='darkred', label='review')
+        legend.edge('l_feedback', 'l_review', style='dotted', color='#DD4400', label='feedback')
         # Position the legend nodes horizontally
         legend.attr(rank='same')
         legend.edge('l_tdd', 'l_full', style='invis')
@@ -407,7 +637,7 @@ def create_workflow_overview_visualization():
     try:
         dot.render(str(output_dir / "workflow_overview"), format='pdf', cleanup=True)
         dot.render(str(output_dir / "workflow_overview"), format='png', cleanup=True,
-                  renderer='cairo', formatter='cairo', dpi=300)
+                  renderer='cairo', formatter='cairo')
     except Exception as e:
         print(f"Warning: Could not render overview graph with enhanced settings: {e}")
         try:

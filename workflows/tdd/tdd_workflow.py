@@ -9,10 +9,15 @@ from orchestrator.orchestrator_agent import (
     TeamMember, TeamMemberResult, WorkflowStep, run_team_member
 )
 from workflows.utils import review_output
+from workflows.workflow_config import (
+    MAX_REVIEW_RETRIES,
+    TDD_MAX_TOTAL_RETRIES,
+    TDD_MAX_RETRIES_WITHOUT_PROGRESS
+)
 
 # Configuration for retry logic
-MAX_TOTAL_RETRIES = 10
-MAX_RETRIES_WITHOUT_PROGRESS = 3
+MAX_TOTAL_RETRIES = TDD_MAX_TOTAL_RETRIES
+MAX_RETRIES_WITHOUT_PROGRESS = TDD_MAX_RETRIES_WITHOUT_PROGRESS
 
 @dataclass
 class TestExecutionResult:
@@ -111,13 +116,15 @@ async def run_tdd_workflow(requirements: str, team_members: List[TeamMember]) ->
         print("📋 Planning phase...")
         planning_approved = False
         plan_output = ""
+        planning_retries = 0
+        max_retries = MAX_REVIEW_RETRIES
         
         while not planning_approved:
             planning_result = await run_team_member("planner_agent", requirements)
             plan_output = str(planning_result[0])
             
             # Review the plan
-            approved, feedback = await review_output(plan_output, "plan")
+            approved, feedback = await review_output(plan_output, "plan", max_retries=max_retries, current_retry=planning_retries)
             if approved:
                 planning_approved = True
                 results.append(TeamMemberResult(team_member=TeamMember.planner, output=plan_output))
@@ -125,12 +132,14 @@ async def run_tdd_workflow(requirements: str, team_members: List[TeamMember]) ->
             else:
                 print(f"❌ Plan needs revision: {feedback}")
                 requirements = f"{requirements}\n\nReviewer feedback: {feedback}"
+                planning_retries += 1
     
     # Step 2: Design with review
     if TeamMember.designer in team_members and plan_output:
         print("🎨 Design phase...")
         design_approved = False
         design_output = ""
+        design_retries = 0
         
         while not design_approved:
             design_input = f"""Based on this plan, create a comprehensive technical design:
@@ -144,7 +153,7 @@ Original requirements: {requirements}"""
             design_output = str(design_result[0])
             
             # Review the design
-            approved, feedback = await review_output(design_output, "design", context=plan_output)
+            approved, feedback = await review_output(design_output, "design", context=plan_output, max_retries=max_retries, current_retry=design_retries)
             if approved:
                 design_approved = True
                 results.append(TeamMemberResult(team_member=TeamMember.designer, output=design_output))
@@ -152,12 +161,14 @@ Original requirements: {requirements}"""
             else:
                 print(f"❌ Design needs revision: {feedback}")
                 design_input = f"{design_input}\n\nReviewer feedback: {feedback}"
+                design_retries += 1
     
     # Step 3: Test Writing with review
     if TeamMember.test_writer in team_members and design_output:
         print("🧪 Test writing phase...")
         tests_approved = False
         test_output = ""
+        tests_retries = 0
         
         while not tests_approved:
             test_input = f"""Write comprehensive tests based on:
@@ -174,7 +185,7 @@ Original requirements: {requirements}"""
             test_output = str(test_result[0])
             
             # Review the tests
-            approved, feedback = await review_output(test_output, "tests", context=f"{plan_output}\n\n{design_output}")
+            approved, feedback = await review_output(test_output, "tests", context=f"{plan_output}\n\n{design_output}", max_retries=max_retries, current_retry=tests_retries)
             if approved:
                 tests_approved = True
                 results.append(TeamMemberResult(team_member=TeamMember.test_writer, output=test_output))
@@ -182,6 +193,7 @@ Original requirements: {requirements}"""
             else:
                 print(f"❌ Tests need revision: {feedback}")
                 test_input = f"{test_input}\n\nReviewer feedback: {feedback}"
+                tests_retries += 1
     
     # Step 4: Implementation with test-driven retry loop
     if TeamMember.coder in team_members and test_output:
@@ -189,8 +201,12 @@ Original requirements: {requirements}"""
         
         all_tests_passed = False
         code_output = ""
+        implementation_retries = 0
+        implementation_total_retries = 0
+        no_progress_retries = 0
+        previous_test_errors_count = 0
         
-        while not all_tests_passed and retry_state.total_retries <= MAX_TOTAL_RETRIES:
+        while not all_tests_passed and implementation_total_retries <= TDD_MAX_TOTAL_RETRIES:
             # Generate or update code
             code_input = f"""Implement code that passes these tests:
 
@@ -205,7 +221,7 @@ PLAN:
 
 Original requirements: {requirements}"""
             
-            if retry_state.total_retries > 0:
+            if implementation_total_retries > 0:
                 code_input += f"\n\nPrevious attempt passed {retry_state.current_tests_passed} tests. Fix the failing tests."
             
             code_result = await run_team_member("coder_agent", code_input)
@@ -240,6 +256,24 @@ Provide specific feedback on what needs to be fixed to pass the failing tests.""
                     
                     print(f"🔄 Retry {retry_state.total_retries}: {reviewer_feedback[:100]}...")
                     code_input += f"\n\nReviewer feedback on test failures: {reviewer_feedback}"
+                    
+                    # Cap the total retries to prevent infinite loops
+                    implementation_total_retries += 1
+                    if implementation_total_retries > TDD_MAX_TOTAL_RETRIES:
+                        print(f"⚠️ Exceeded maximum total retries ({TDD_MAX_TOTAL_RETRIES}). Moving forward with current implementation.")
+                        break
+                    
+                    # Cap the retries without progress
+                    test_errors_count = len(test_results.failed_tests)
+                    if test_errors_count >= previous_test_errors_count:
+                        no_progress_retries += 1
+                        if no_progress_retries > TDD_MAX_RETRIES_WITHOUT_PROGRESS:
+                            print(f"⚠️ No progress after {TDD_MAX_RETRIES_WITHOUT_PROGRESS} attempts. Moving forward with current implementation.")
+                            break
+                    else:
+                        no_progress_retries = 0
+                    
+                    previous_test_errors_count = test_errors_count
                 else:
                     # Cannot retry anymore
                     print(f"⚠️  Stopping: {'Total retry limit reached' if retry_state.total_retries >= MAX_TOTAL_RETRIES else 'No progress for too many iterations'}")

@@ -5,21 +5,32 @@ This module implements the Test-Driven Development workflow with comprehensive m
 """
 import asyncio
 import sys
+import importlib
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 
-# Add the project root to the Python path
+# Add the project root to the Python path FIRST before any local imports
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+# Now import shared data models
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, TeamMemberResult
 )
+
+# Import orchestrator function
 from orchestrator.orchestrator_agent import run_team_member
+
+# Import monitoring components
 from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport, StepStatus, ReviewDecision
-from workflows.utils import review_output
+
+# Import configuration
 from workflows.workflow_config import MAX_REVIEW_RETRIES
+
+# Ensure utils module is properly loaded and import review_output
+import workflows.utils as utils_module
+review_output = utils_module.review_output
 
 async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """
@@ -41,8 +52,6 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     
     # Initialize results list
     results = []
-    
-    # The tracer is already initialized, just start tracking steps
     
     try:
         # Planning phase

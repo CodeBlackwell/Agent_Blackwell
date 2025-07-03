@@ -4,3 +4,4 @@ __pycache__
 starter.txt
 logs
 orchestrator/generated
+*DS_Store

@@ -38,6 +38,7 @@ from agents.designer.designer_agent import designer_agent
 from agents.coder.coder_agent import coder_agent
 from agents.test_writer.test_writer_agent import test_writer_agent
 from agents.reviewer.reviewer_agent import reviewer_agent
+from agents.executor.executor_agent import executor_agent
 
 # Import the modular tools
 from orchestrator.regression_test_runner_tool import TestRunnerTool
@@ -279,7 +280,8 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "designer_agent": "designer_agent_wrapper",
         "coder_agent": "coder_agent_wrapper",
         "test_writer_agent": "test_writer_agent_wrapper",
-        "reviewer_agent": "reviewer_agent_wrapper"
+        "reviewer_agent": "reviewer_agent_wrapper",
+        "executor_agent": "executor_agent_wrapper"
     }
     
     internal_agent_name = agent_name_mapping.get(agent, agent)
@@ -323,6 +325,11 @@ async def reviewer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
     async for part in reviewer_agent(input):
         yield part
 
+@server.agent()
+async def executor_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    async for part in executor_agent(input):
+        yield part
+
 # ============================================================================
 # ENHANCED CODING TEAM COORDINATION TOOL
 # ============================================================================
@@ -333,6 +340,7 @@ class TeamMember(str, Enum):
     test_writer = "test_writer"
     coder = "coder"
     reviewer = "reviewer"
+    executor = "executor"
 
 class WorkflowStep(str, Enum):
     planning = "planning"
@@ -347,7 +355,7 @@ class CodingTeamInput(BaseModel):
     requirements: str = Field(description="The project requirements or task description")
     workflow: WorkflowStep = Field(description="The workflow step to execute")
     team_members: list[TeamMember] = Field(
-        default=[TeamMember.planner, TeamMember.designer, TeamMember.test_writer, TeamMember.coder, TeamMember.reviewer],
+        default=[TeamMember.planner, TeamMember.designer, TeamMember.test_writer, TeamMember.coder, TeamMember.reviewer, TeamMember.executor],
         description="Team members to involve in the process"
     )
 

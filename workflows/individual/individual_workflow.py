@@ -28,36 +28,39 @@ async def execute_individual_workflow(input_data: CodingTeamInput, tracer: Optio
         )
     
     # Extract workflow step from input data
-    workflow_step = WorkflowStep.planning  # Default to planning if not specified
-    if hasattr(input_data, 'workflow_step') and input_data.workflow_step:
-        workflow_step = input_data.workflow_step
+    workflow_step = input_data.step_type or input_data.workflow_type or "planning"
     
-    # Start workflow execution
-    tracer.start_execution(requirements=input_data.requirements)
+    # The tracer is already initialized by workflow_manager
     
     try:
         # Execute the workflow
         results = await run_individual_workflow(input_data.requirements, workflow_step, tracer)
         
         # Complete workflow execution
-        tracer.complete_execution(success=True)
+        tracer.complete_execution(final_output={
+            "workflow": "Individual",
+            "step": workflow_step,
+            "results_count": len(results),
+            "success": True
+        })
     except Exception as e:
         # Handle exceptions and complete workflow with error
         error_msg = f"Individual workflow error: {str(e)}"
-        tracer.complete_execution(success=False, error=error_msg)
+        tracer.complete_execution(error=error_msg)
         raise
     
     # Return results and execution report
-    return results, tracer.generate_report()
+    return results, tracer.get_report()
 
 
-async def run_individual_workflow(requirements: str, workflow_step: WorkflowStep, tracer: WorkflowExecutionTracer) -> List[TeamMemberResult]:
+async def run_individual_workflow(requirements: str, workflow_step: str, tracer: WorkflowExecutionTracer) -> List[TeamMemberResult]:
     """
     Run a specific workflow step
     
     Args:
         requirements: The project requirements
         workflow_step: The specific workflow step to execute
+        tracer: Workflow execution tracer
         
     Returns:
         List of team member results (containing single result)
@@ -65,54 +68,51 @@ async def run_individual_workflow(requirements: str, workflow_step: WorkflowStep
     results = []
     
     agent_map = {
-        WorkflowStep.planning: "planner_agent",
-        WorkflowStep.design: "designer_agent",
-        WorkflowStep.test_writing: "test_writer_agent",
-        WorkflowStep.implementation: "coder_agent",
-        WorkflowStep.review: "reviewer_agent"
-    }
-    
-    # Map workflow steps to result names
-    step_to_name = {
-        WorkflowStep.planning: "planner",
-        WorkflowStep.design: "designer",
-        WorkflowStep.test_writing: "test_writer",
-        WorkflowStep.implementation: "coder",
-        WorkflowStep.review: "reviewer"
+        "planning": ("planner_agent", TeamMember.planner, "planner"),
+        "design": ("designer_agent", TeamMember.designer, "designer"),
+        "test_writing": ("test_writer_agent", TeamMember.test_writer, "test_writer"),
+        "implementation": ("coder_agent", TeamMember.coder, "coder"),
+        "review": ("reviewer_agent", TeamMember.reviewer, "reviewer")
     }
     
     if workflow_step in agent_map:
-        print(f"🔄 Running {workflow_step.value} phase...")
+        agent_name, team_member, result_name = agent_map[workflow_step]
+        
+        print(f"🔄 Running {workflow_step} phase...")
         
         # Start monitoring step
         step_id = tracer.start_step(
-            step_name=workflow_step.value,
-            agent_name=agent_map[workflow_step],
-            metadata={
+            step_name=workflow_step,
+            agent_name=agent_name,
+            input_data={
                 "requirements": requirements,
                 "workflow_type": "individual",
-                "step_type": workflow_step.value
+                "step_type": workflow_step
             }
         )
         
         try:
-            result = await run_team_member(agent_map[workflow_step], requirements)
+            result = await run_team_member(agent_name, requirements)
             output = str(result)
             
             # Complete monitoring step
             tracer.complete_step(step_id, {
-                "output": output,
-                "step_completed": workflow_step.value,
+                "output": output[:200] + "...",
+                "step_completed": workflow_step,
                 "success": True
             })
             
-            result_name = step_to_name[workflow_step]
-            results.append(TeamMemberResult(name=result_name, output=output))
-            print(f"✅ {workflow_step.value} phase completed successfully")
+            results.append(TeamMemberResult(
+                team_member=team_member,
+                output=output,
+                name=result_name
+            ))
+            print(f"✅ {workflow_step} phase completed successfully")
             
         except Exception as e:
-            error_msg = f"{workflow_step.value} step failed: {str(e)}"
+            error_msg = f"{workflow_step} step failed: {str(e)}"
             tracer.complete_step(step_id, error=error_msg)
-            print(f"❌ {workflow_step.value} failed: {error_msg}")
+            print(f"❌ {workflow_step} failed: {error_msg}")
+            raise
     
     return results

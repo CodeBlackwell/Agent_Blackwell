@@ -1,742 +1,774 @@
 """
-🧪 Enhanced Test Script for Modular Workflows
+🧪 Modern Workflow Testing Framework
 
-This script provides comprehensive testing for the refactored workflows system with
-detailed tracking, timing, debugging information, and aesthetic improvements.
+A comprehensive testing system that leverages the full monitoring and tracing
+capabilities of the enhanced workflow architecture. Designed for clarity,
+aesthetics, and detailed reporting.
 """
+
 import asyncio
 import sys
 import os
 import time
+import json
 import traceback
 from pathlib import Path
 from datetime import datetime
-from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
-import json
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Optional, Tuple
+from enum import Enum
 
 # Add the project root to the Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Import our modern architecture components
 from shared.data_models import (
-    TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
+    TeamMember, WorkflowStep, CodingTeamInput, TeamMemberResult
 )
 from workflows import execute_workflow
-from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport, StepStatus, ReviewDecision
+from workflows.monitoring import (
+    WorkflowExecutionTracer, WorkflowExecutionReport, 
+    StepStatus, ReviewDecision
+)
+from workflows.workflow_manager import get_available_workflows, get_workflow_description
 
-# 🎯 Test Configuration
-TEST_REQUIREMENTS = {
-    "minimal": "Create a basic 'Hello World' REST API endpoint",
-    "standard": "Create a simple Express.js TODO API with GET /todos, POST /todos, GET /todos/:id, PUT /todos/:id, DELETE /todos/:id",
-    "complex": "Build a full-stack e-commerce application with user authentication, product catalog, shopping cart, and payment processing"
-}
+
+# ============================================================================
+# TEST CONFIGURATION
+# ============================================================================
+
+class TestComplexity(Enum):
+    """Test complexity levels"""
+    MINIMAL = "minimal"
+    STANDARD = "standard"
+    COMPLEX = "complex"
+    STRESS = "stress"
+
 
 @dataclass
-class TestStep:
-    """Track individual test steps with timing and results"""
+class TestScenario:
+    """Defines a test scenario"""
     name: str
+    complexity: TestComplexity
+    requirements: str
+    timeout: int = 300
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+# Comprehensive test scenarios
+TEST_SCENARIOS = {
+    TestComplexity.MINIMAL: TestScenario(
+        name="Hello World API",
+        complexity=TestComplexity.MINIMAL,
+        requirements="Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+        timeout=180
+    ),
+    TestComplexity.STANDARD: TestScenario(
+        name="TODO List API",
+        complexity=TestComplexity.STANDARD,
+        requirements="""Create a complete TODO list REST API with the following endpoints:
+        - GET /todos - List all todos
+        - POST /todos - Create a new todo
+        - GET /todos/:id - Get a specific todo
+        - PUT /todos/:id - Update a todo
+        - DELETE /todos/:id - Delete a todo
+        Include proper error handling and validation.""",
+        timeout=300
+    ),
+    TestComplexity.COMPLEX: TestScenario(
+        name="E-Commerce Platform",
+        complexity=TestComplexity.COMPLEX,
+        requirements="""Build a full-stack e-commerce application with:
+        - User authentication and authorization
+        - Product catalog with search and filtering
+        - Shopping cart functionality
+        - Order management system
+        - Payment processing integration
+        - Admin dashboard
+        - Email notifications
+        - API documentation""",
+        timeout=600
+    ),
+    TestComplexity.STRESS: TestScenario(
+        name="Microservices Architecture",
+        complexity=TestComplexity.STRESS,
+        requirements="""Design and implement a microservices architecture for a social media platform with:
+        - User service (authentication, profiles)
+        - Post service (create, read, update, delete posts)
+        - Comment service
+        - Notification service
+        - Media service (image/video upload)
+        - API Gateway
+        - Service discovery
+        - Message queue integration
+        - Monitoring and logging
+        - Docker containerization""",
+        timeout=900
+    )
+}
+
+
+# ============================================================================
+# TEST RESULT TRACKING
+# ============================================================================
+
+@dataclass
+class TestObservations:
+    """Observations from test execution"""
+    agents_involved: List[str] = field(default_factory=list)
+    agent_interaction_sequence: List[str] = field(default_factory=list)
+    review_patterns: Dict[str, Any] = field(default_factory=dict)
+    retry_patterns: Dict[str, Any] = field(default_factory=dict)
+    performance_patterns: Dict[str, Any] = field(default_factory=dict)
+    notable_events: List[str] = field(default_factory=list)
+
+
+@dataclass
+class TestMetrics:
+    """Comprehensive metrics for a test run"""
     start_time: float
     end_time: Optional[float] = None
-    success: bool = False
-    error: Optional[str] = None
-    details: Dict[str, Any] = None
+    
+    # Execution metrics
+    total_steps: int = 0
+    completed_steps: int = 0
+    failed_steps: int = 0
+    
+    # Review metrics
+    total_reviews: int = 0
+    approved_reviews: int = 0
+    revision_requests: int = 0
+    auto_approvals: int = 0
+    
+    # Retry metrics
+    total_retries: int = 0
+    retry_reasons: List[str] = field(default_factory=list)
+    
+    # Performance metrics
+    agent_timings: Dict[str, float] = field(default_factory=dict)
+    step_timings: Dict[str, float] = field(default_factory=dict)
+    
+    # Output metrics
+    total_output_size: int = 0
+    output_by_agent: Dict[str, int] = field(default_factory=dict)
     
     @property
     def duration(self) -> float:
-        if self.end_time is None:
-            return time.time() - self.start_time
-        return self.end_time - self.start_time
+        if self.end_time:
+            return self.end_time - self.start_time
+        return time.time() - self.start_time
     
     @property
-    def status_emoji(self) -> str:
-        if self.end_time is None:
-            return "⏳"
-        return "✅" if self.success else "❌"
+    def success_rate(self) -> float:
+        if self.total_steps == 0:
+            return 0.0
+        return (self.completed_steps / self.total_steps) * 100
+    
+    @property
+    def review_approval_rate(self) -> float:
+        if self.total_reviews == 0:
+            return 0.0
+        return (self.approved_reviews / self.total_reviews) * 100
 
-@dataclass 
-class WorkflowTestResult:
-    """Comprehensive test result tracking with monitoring integration"""
-    workflow_name: str
-    test_type: str
-    start_time: float
-    end_time: Optional[float] = None
-    success: bool = False
-    error: Optional[str] = None
-    steps: List[TestStep] = None
-    agent_results: List[TeamMemberResult] = None
-    agent_execution_path: List[str] = None
-    performance_metrics: Dict[str, Any] = None
-    # Enhanced monitoring fields
+
+@dataclass
+class TestResult:
+    """Complete test result with monitoring integration"""
+    test_id: str
+    scenario: TestScenario
+    workflow_type: str
+    
+    # Status tracking
+    status: str = "pending"  # pending, running, success, failed, timeout
+    error_message: Optional[str] = None
+    
+    # Results
+    agent_results: List[TeamMemberResult] = field(default_factory=list)
     execution_report: Optional[WorkflowExecutionReport] = None
-    monitoring_tracer: Optional[WorkflowExecutionTracer] = None
-    monitoring_metrics: Dict[str, Any] = None
+    
+    # Observations and metrics
+    observations: TestObservations = field(default_factory=TestObservations)
+    metrics: TestMetrics = field(default_factory=lambda: TestMetrics(time.time()))
+    
+    # Artifacts
+    artifacts_path: Optional[Path] = None
     
     def __post_init__(self):
-        if self.steps is None:
-            self.steps = []
-        if self.agent_results is None:
-            self.agent_results = []
-        if self.performance_metrics is None:
-            self.performance_metrics = {}
-        if self.monitoring_metrics is None:
-            self.monitoring_metrics = {}
-    
-    @property
-    def duration(self) -> float:
-        if self.end_time is None:
-            return time.time() - self.start_time
-        return self.end_time - self.start_time
-    
-    @property
-    def status_emoji(self) -> str:
-        if self.end_time is None:
-            return "🔄"
-        return "🎉" if self.success else "💥"
+        self.test_id = f"{self.workflow_type}_{self.scenario.complexity.value}_{int(time.time())}"
 
-class WorkflowTester:
-    """Enhanced workflow testing with comprehensive tracking and reporting"""
+
+# ============================================================================
+# MODERN TEST RUNNER
+# ============================================================================
+
+class ModernWorkflowTester:
+    """
+    Modern testing framework with full monitoring integration and beautiful reporting.
+    Focuses on observation and reporting rather than expectations.
+    """
     
-    def __init__(self):
+    def __init__(self, output_dir: Optional[Path] = None):
+        """Initialize the modern test runner"""
         self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.output_dir = Path(project_root) / "tests" / "outputs" / f"session_{self.session_id}"
+        self.start_time = time.time()
+        
+        # Setup output directory
+        if output_dir:
+            self.output_dir = output_dir
+        else:
+            self.output_dir = Path(project_root) / "tests" / "outputs" / f"session_{self.session_id}"
         self.output_dir.mkdir(exist_ok=True, parents=True)
-        self.test_results: List[WorkflowTestResult] = []
         
-        print(f"🚀 Starting Enhanced Workflow Testing Session")
-        print(f"📁 Session ID: {self.session_id}")
-        print(f"💾 Output Directory: {self.output_dir}")
+        # Test tracking
+        self.test_results: Dict[str, TestResult] = {}
+        self.current_test: Optional[TestResult] = None
+        
+        # Session metadata
+        self.session_metadata = {
+            "session_id": self.session_id,
+            "start_time": datetime.now().isoformat(),
+            "python_version": sys.version,
+            "platform": sys.platform,
+            "workflows_available": get_available_workflows()
+        }
+        
+        self._print_header()
+    
+    def _print_header(self):
+        """Print beautiful test session header"""
+        print("\n" + "=" * 80)
+        print("🧪 MODERN WORKFLOW TESTING FRAMEWORK")
         print("=" * 80)
+        print(f"📅 Session ID: {self.session_id}")
+        print(f"🕐 Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"📁 Output Directory: {self.output_dir}")
+        print(f"🐍 Python Version: {sys.version.split()[0]}")
+        print("=" * 80 + "\n")
     
-    def _print_step_progress(self, step: TestStep, workflow_name: str):
-        """Print real-time step progress"""
-        status = f"{step.status_emoji} {step.name}"
-        if step.end_time:
-            status += f" ({step.duration:.2f}s)"
-        print(f"    {status}")
-    
-    def _track_agent_interactions(self, results: List[TeamMemberResult]) -> Dict[str, Any]:
-        """Extract and track agent interaction metrics"""
-        metrics = {
-            "total_agents": len(results),
-            "agent_sequence": [r.team_member.value for r in results],
-            "output_lengths": {r.team_member.value: len(r.output) for r in results},
-            "total_output_chars": sum(len(r.output) for r in results)
-        }
-        
-        # Calculate timing if available
-        if hasattr(results[0], 'execution_time'):
-            metrics["agent_timings"] = {r.team_member.value: getattr(r, 'execution_time', 0) for r in results}
-            metrics["total_agent_time"] = sum(metrics["agent_timings"].values())
-        
-        # Track unique agents
-        unique_agents = set(r.team_member.value for r in results)
-        metrics["unique_agents"] = list(unique_agents)
-        metrics["unique_agent_count"] = len(unique_agents)
-        
-        # Calculate output distribution
-        if results:
-            output_lengths = [len(r.output) for r in results]
-            metrics["output_stats"] = {
-                "min_length": min(output_lengths),
-                "max_length": max(output_lengths),
-                "avg_length": sum(output_lengths) / len(output_lengths)
-            }
-        
-        return metrics
-    
-    def _validate_monitoring_data(self, execution_report: WorkflowExecutionReport, 
-                                 workflow_results: List[TeamMemberResult]) -> Dict[str, Any]:
-        """Comprehensive validation of monitoring data integrity and completeness"""
-        validation_results = {
-            "validation_passed": True,
-            "validation_errors": [],
-            "validation_warnings": [],
-            "monitoring_summary": {}
-        }
-        
-        try:
-            if execution_report is None:
-                validation_results["validation_passed"] = False
-                validation_results["validation_errors"].append("No execution report provided")
-                return validation_results
-            
-            # Basic report structure validation
-            required_fields = ['execution_id', 'workflow_type', 'start_time', 'steps', 'reviews']
-            for field in required_fields:
-                if not hasattr(execution_report, field):
-                    validation_results["validation_errors"].append(f"Missing required field: {field}")
-            
-            # Step tracking validation
-            step_validation = {
-                "total_steps": execution_report.step_count,
-                "completed_steps": execution_report.completed_steps,
-                "failed_steps": execution_report.failed_steps,
-                "step_completion_rate": (execution_report.completed_steps / max(execution_report.step_count, 1)) * 100
-            }
-            
-            if execution_report.step_count == 0:
-                validation_results["validation_warnings"].append("No workflow steps were tracked")
-            
-            # Review tracking validation
-            review_validation = {
-                "total_reviews": execution_report.total_reviews,
-                "approved_reviews": execution_report.approved_reviews,
-                "revision_requests": execution_report.revision_requests,
-                "auto_approvals": execution_report.auto_approvals,
-                "review_approval_rate": (execution_report.approved_reviews / max(execution_report.total_reviews, 1)) * 100
-            }
-            
-            # Retry tracking validation
-            retry_validation = {
-                "total_retries": execution_report.total_retries,
-                "retry_rate": (execution_report.total_retries / max(execution_report.step_count, 1)) * 100
-            }
-            
-            # Test execution validation
-            test_validation = {
-                "total_tests": execution_report.total_tests,
-                "passed_tests": execution_report.passed_tests,
-                "failed_tests": execution_report.failed_tests,
-                "test_pass_rate": (execution_report.passed_tests / max(execution_report.total_tests, 1)) * 100 if execution_report.total_tests > 0 else 0
-            }
-            
-            # Performance validation
-            performance_validation = {
-                "execution_duration": execution_report.total_duration_seconds,
-                "agent_performance_tracked": len(execution_report.agent_performance) > 0,
-                "has_timing_data": execution_report.end_time is not None
-            }
-            
-            # Cross-validation with workflow results
-            cross_validation = {
-                "workflow_results_count": len(workflow_results),
-                "results_match_tracking": True
-            }
-            
-            # Check if agent results align with monitoring data
-            if len(workflow_results) == 0 and execution_report.step_count > 0:
-                validation_results["validation_warnings"].append(
-                    "Monitoring shows steps but no workflow results returned"
-                )
-                cross_validation["results_match_tracking"] = False
-            
-            # Compile monitoring summary
-            validation_results["monitoring_summary"] = {
-                "steps": step_validation,
-                "reviews": review_validation,
-                "retries": retry_validation,
-                "tests": test_validation,
-                "performance": performance_validation,
-                "cross_validation": cross_validation
-            }
-            
-            # Add summary metrics for easy access
-            validation_results.update({
-                "total_steps": step_validation["total_steps"],
-                "total_reviews": review_validation["total_reviews"],
-                "total_retries": retry_validation["total_retries"],
-                "total_tests": test_validation["total_tests"],
-                "execution_duration": performance_validation["execution_duration"]
-            })
-            
-            # Final validation status
-            if len(validation_results["validation_errors"]) > 0:
-                validation_results["validation_passed"] = False
-            
-        except Exception as e:
-            validation_results["validation_passed"] = False
-            validation_results["validation_errors"].append(f"Validation error: {str(e)}")
-        
-        return validation_results
-    
-    async def _execute_workflow_with_tracking(self, 
-                                            workflow_name: str,
-                                            input_data: CodingTeamInput,
-                                            test_type: str = "standard") -> WorkflowTestResult:
-        """Execute workflow with comprehensive tracking and monitoring validation"""
-        print(f"\n🚀 Testing {workflow_name} Workflow ({test_type})")
-        print("-" * 60)
-        
-        result = WorkflowTestResult(
-            workflow_name=workflow_name,
-            test_type=test_type,
-            start_time=time.time()
+    async def run_test(self, 
+                      workflow_type: str, 
+                      scenario: TestScenario,
+                      save_artifacts: bool = True) -> TestResult:
+        """
+        Run a single test with comprehensive monitoring and observation.
+        """
+        # Create test result
+        result = TestResult(
+            test_id=f"{workflow_type}_{scenario.complexity.value}_{int(time.time())}",
+            scenario=scenario,
+            workflow_type=workflow_type
         )
         
+        self.current_test = result
+        self.test_results[result.test_id] = result
+        
+        # Print test header
+        print(f"\n{'─' * 70}")
+        print(f"🚀 EXECUTING TEST: {scenario.name}")
+        print(f"📊 Workflow: {workflow_type.upper()}")
+        print(f"🎯 Complexity: {scenario.complexity.value.upper()}")
+        print(f"⏱️  Timeout: {scenario.timeout}s")
+        print(f"{'─' * 70}\n")
+        
         try:
-            # Step 1: Initialize workflow with monitoring
-            init_step = TestStep("Initialize Workflow with Monitoring", time.time())
-            result.steps.append(init_step)
-            self._print_step_progress(init_step, workflow_name)
+            result.status = "running"
+            result.metrics.start_time = time.time()
             
-            # Create monitoring tracer
-            tracer = WorkflowExecutionTracer(
-                workflow_type=workflow_name.lower(),
-                execution_id=f"test_{self.session_id}_{workflow_name.lower()}_{test_type}"
-            )
-            result.monitoring_tracer = tracer
-            
-            # Step 2: Execute workflow with monitoring
-            exec_step = TestStep("Execute Workflow with Monitoring", time.time())
-            result.steps.append(exec_step)
-            self._print_step_progress(exec_step, workflow_name)
-            
-            # Execute the workflow with timeout and monitoring
-            workflow_results, execution_report = await asyncio.wait_for(
-                execute_workflow(input_data, tracer=tracer),
-                timeout=300.0  # 5 minute timeout
+            # Create workflow input
+            input_data = CodingTeamInput(
+                requirements=scenario.requirements,
+                workflow_type=workflow_type,
+                max_retries=3,
+                timeout_seconds=scenario.timeout
             )
             
-            # Store monitoring results
+            # Validate input
+            print("🔍 Validating input...")
+            from workflows.workflow_manager import validate_workflow_input
+            is_valid, error_msg = validate_workflow_input(input_data)
+            if not is_valid:
+                raise ValueError(f"Invalid input: {error_msg}")
+            print("   ✅ Input validated\n")
+            
+            # Execute workflow with monitoring
+            print("⚡ Executing workflow...")
+            start_exec = time.time()
+            
+            # Use timeout
+            agent_results, execution_report = await asyncio.wait_for(
+                execute_workflow(input_data),
+                timeout=scenario.timeout
+            )
+            
+            exec_duration = time.time() - start_exec
+            print(f"   ✅ Workflow completed in {exec_duration:.2f}s\n")
+            
+            # Store results
+            result.agent_results = agent_results
             result.execution_report = execution_report
             
-            # Complete execution step
-            exec_step.end_time = time.time()
-            exec_step.success = True
-            exec_step.details = {
-                "results_count": len(workflow_results),
-                "monitoring_enabled": True,
-                "execution_id": tracer.execution_id
-            }
-            self._print_step_progress(exec_step, workflow_name)
+            # Extract metrics from execution report
+            self._extract_metrics(result, execution_report)
             
-            # Step 3: Validate monitoring data
-            monitor_step = TestStep("Validate Monitoring Data", time.time())
-            result.steps.append(monitor_step)
-            self._print_step_progress(monitor_step, workflow_name)
+            # Make observations about the execution
+            self._observe_execution(result)
             
-            # Comprehensive monitoring validation
-            monitoring_validation = self._validate_monitoring_data(execution_report, workflow_results)
-            result.monitoring_metrics = monitoring_validation
+            # Mark as successful
+            result.status = "success"
+            result.metrics.end_time = time.time()
             
-            monitor_step.end_time = time.time()
-            monitor_step.success = monitoring_validation.get('validation_passed', False)
-            monitor_step.details = monitoring_validation
-            self._print_step_progress(monitor_step, workflow_name)
+            # Save artifacts if requested
+            if save_artifacts:
+                await self._save_test_artifacts(result)
             
-            # Step 4: Process results
-            process_step = TestStep("Process Results", time.time())
-            result.steps.append(process_step)
-            self._print_step_progress(process_step, workflow_name)
-            
-            result.agent_results = workflow_results
-            result.agent_execution_path = [r.team_member.value for r in workflow_results]
-            
-            # Track agent interactions
-            result.performance_metrics = self._track_agent_interactions(workflow_results)
-            
-            process_step.end_time = time.time()
-            process_step.success = True
-            process_step.details = {
-                "agent_count": len(workflow_results),
-                "execution_path": result.agent_execution_path
-            }
-            self._print_step_progress(process_step, workflow_name)
-            
-            # Complete initialization step
-            init_step.end_time = time.time()
-            init_step.success = True
-            self._print_step_progress(init_step, workflow_name)
-            
-            # Mark overall success
-            result.success = True
-            result.end_time = time.time()
-            
-            print(f"\n✅ {workflow_name} workflow completed successfully!")
-            print(f"   Duration: {result.duration:.2f}s")
-            print(f"   Agents: {len(result.agent_results)}")
-            print(f"   Path: {' → '.join(result.agent_execution_path)}")
-            print(f"   📊 Monitoring: {monitoring_validation.get('total_steps', 0)} steps, {monitoring_validation.get('total_reviews', 0)} reviews")
+            # Print observations
+            self._print_test_observations(result)
             
         except asyncio.TimeoutError:
-            error_msg = f"Workflow execution timed out after 300 seconds"
-            result.error = error_msg
-            result.end_time = time.time()
-            
-            # Mark current step as failed
-            if result.steps and result.steps[-1].end_time is None:
-                result.steps[-1].end_time = time.time()
-                result.steps[-1].error = error_msg
-            
-            print(f"\n⏰ {workflow_name} workflow timed out")
-            print(f"   Duration: {result.duration:.2f}s")
+            result.status = "timeout"
+            result.error_message = f"Test timed out after {scenario.timeout}s"
+            result.metrics.end_time = time.time()
+            print(f"\n⏰ TIMEOUT: Test exceeded {scenario.timeout}s limit")
             
         except Exception as e:
-            error_msg = f"Workflow execution failed: {str(e)}"
-            result.error = error_msg
-            result.end_time = time.time()
-            
-            # Mark current step as failed
-            if result.steps and result.steps[-1].end_time is None:
-                result.steps[-1].end_time = time.time()
-                result.steps[-1].error = error_msg
-            
-            print(f"\n❌ {workflow_name} workflow failed")
-            print(f"   Error: {error_msg}")
-            print(f"   Duration: {result.duration:.2f}s")
-            
-            # Print traceback for debugging
-            print(f"\n🔍 Error Details:")
-            traceback.print_exc()
+            result.status = "failed"
+            result.error_message = str(e)
+            result.metrics.end_time = time.time()
+            print(f"\n❌ ERROR: {str(e)}")
+            print(f"📋 Traceback:\n{traceback.format_exc()}")
+        
+        finally:
+            self.current_test = None
         
         return result
     
-    async def _save_test_artifacts(self, result: WorkflowTestResult):
-        """Save comprehensive test artifacts with enhanced monitoring data"""
-        # Create subdirectory for this specific test run
-        test_dir = self.output_dir / f"{result.workflow_name.lower().replace(' ', '_')}_{result.test_type}"
-        test_dir.mkdir(exist_ok=True, parents=True)
+    def _extract_metrics(self, result: TestResult, report: WorkflowExecutionReport):
+        """Extract metrics from execution report"""
+        if not report:
+            return
         
-        # 1. Enhanced detailed results file with monitoring data
-        results_file = test_dir / "detailed_results.txt"
-        with open(results_file, 'w') as f:
-            f.write(f"🧪 {result.workflow_name} Test Results (Enhanced with Monitoring)\n")
-            f.write("=" * 80 + "\n\n")
-            
-            f.write(f"📊 Test Summary:\n")
-            f.write(f"  • Status: {result.status_emoji} {'SUCCESS' if result.success else 'FAILED'}\n")
-            f.write(f"  • Duration: {result.duration:.2f}s\n")
-            f.write(f"  • Test Type: {result.test_type}\n")
-            f.write(f"  • Monitoring Enabled: {'✅' if result.monitoring_tracer else '❌'}\n")
-            f.write(f"  • Timestamp: {datetime.fromtimestamp(result.start_time).strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            
-            if result.agent_execution_path:
-                f.write(f"🔄 Execution Path:\n")
-                f.write(f"  {' → '.join(result.agent_execution_path)}\n\n")
-            
-            if result.performance_metrics:
-                f.write(f"📈 Performance Metrics:\n")
-                for key, value in result.performance_metrics.items():
-                    f.write(f"  • {key}: {value}\n")
-                f.write("\n")
-            
-            # Enhanced monitoring data section
-            if result.monitoring_metrics:
-                f.write(f"🔍 Monitoring Validation Results:\n")
-                f.write(f"  • Validation Passed: {'✅' if result.monitoring_metrics.get('validation_passed') else '❌'}\n")
-                f.write(f"  • Total Steps Tracked: {result.monitoring_metrics.get('total_steps', 0)}\n")
-                f.write(f"  • Total Reviews: {result.monitoring_metrics.get('total_reviews', 0)}\n")
-                f.write(f"  • Total Retries: {result.monitoring_metrics.get('total_retries', 0)}\n")
-                f.write(f"  • Total Tests: {result.monitoring_metrics.get('total_tests', 0)}\n")
-                f.write(f"  • Execution Duration: {result.monitoring_metrics.get('execution_duration', 0):.2f}s\n")
-                
-                if result.monitoring_metrics.get('validation_errors'):
-                    f.write(f"  • Validation Errors: {len(result.monitoring_metrics['validation_errors'])}\n")
-                    for error in result.monitoring_metrics['validation_errors']:
-                        f.write(f"    - {error}\n")
-                
-                if result.monitoring_metrics.get('validation_warnings'):
-                    f.write(f"  • Validation Warnings: {len(result.monitoring_metrics['validation_warnings'])}\n")
-                    for warning in result.monitoring_metrics['validation_warnings']:
-                        f.write(f"    - {warning}\n")
-                f.write("\n")
-            
-            f.write(f"⏱️  Step Breakdown:\n")
-            for step in result.steps:
-                f.write(f"  {step.status_emoji} {step.name}: {step.duration:.2f}s\n")
-                if step.details:
-                    for key, value in step.details.items():
-                        f.write(f"    └─ {key}: {value}\n")
-            f.write("\n")
-            
-            if result.agent_results:
-                f.write(f"🤖 Agent Outputs:\n")
-                f.write("-" * 80 + "\n")
-                for idx, agent_result in enumerate(result.agent_results):
-                    f.write(f"\n{idx+1}. {agent_result.team_member.value.upper()} OUTPUT:\n")
-                    f.write("=" * 50 + "\n")
-                    f.write(agent_result.output)
-                    f.write("\n" + "-" * 50 + "\n")
-            
-            if result.error:
-                f.write(f"\n❌ Error Details:\n")
-                f.write(f"{result.error}\n")
+        metrics = result.metrics
         
-        # 2. JSON metrics file
-        metrics_file = test_dir / "metrics.json"
-        with open(metrics_file, 'w') as f:
+        # Step metrics
+        metrics.total_steps = report.step_count
+        metrics.completed_steps = report.completed_steps
+        metrics.failed_steps = report.failed_steps
+        
+        # Review metrics
+        metrics.total_reviews = report.total_reviews
+        metrics.approved_reviews = report.approved_reviews
+        metrics.revision_requests = report.revision_requests
+        metrics.auto_approvals = report.auto_approvals
+        
+        # Retry metrics
+        metrics.total_retries = report.total_retries
+        for retry in report.retries:
+            metrics.retry_reasons.append(retry.reason)
+        
+        # Performance metrics
+        for agent, perf in report.agent_performance.items():
+            if 'average_duration' in perf:
+                metrics.agent_timings[agent] = perf['average_duration']
+        
+        # Output metrics
+        for agent_result in result.agent_results:
+            agent_name = agent_result.name or agent_result.team_member.value
+            output_size = len(agent_result.output)
+            metrics.output_by_agent[agent_name] = output_size
+            metrics.total_output_size += output_size
+    
+    def _observe_execution(self, result: TestResult):
+        """Make observations about the test execution"""
+        print("🔬 Making observations...")
+        
+        observations = result.observations
+        
+        # Observe which agents were involved
+        actual_agents = [r.name or r.team_member.value for r in result.agent_results]
+        observations.agents_involved = actual_agents
+        print(f"   👥 Agents involved: {', '.join(actual_agents)}")
+        
+        # Observe agent interaction sequence
+        if result.execution_report and result.execution_report.steps:
+            interaction_sequence = []
+            for step in result.execution_report.steps:
+                interaction_sequence.append(step.agent_name)
+            observations.agent_interaction_sequence = interaction_sequence
+            print(f"   🔄 Interaction count: {len(interaction_sequence)}")
+        
+        # Observe review patterns
+        if result.metrics.total_reviews > 0:
+            observations.review_patterns = {
+                "total_reviews": result.metrics.total_reviews,
+                "approval_rate": result.metrics.review_approval_rate,
+                "revision_requests": result.metrics.revision_requests,
+                "auto_approvals": result.metrics.auto_approvals
+            }
+            print(f"   📝 Review approval rate: {result.metrics.review_approval_rate:.1f}%")
+        
+        # Observe retry patterns
+        if result.metrics.total_retries > 0:
+            observations.retry_patterns = {
+                "total_retries": result.metrics.total_retries,
+                "retry_reasons": result.metrics.retry_reasons
+            }
+            print(f"   🔁 Retries observed: {result.metrics.total_retries}")
+        
+        # Observe performance patterns
+        if result.metrics.agent_timings:
+            slowest_agent = max(result.metrics.agent_timings.items(), key=lambda x: x[1])
+            fastest_agent = min(result.metrics.agent_timings.items(), key=lambda x: x[1])
+            observations.performance_patterns = {
+                "slowest_agent": {"name": slowest_agent[0], "avg_time": slowest_agent[1]},
+                "fastest_agent": {"name": fastest_agent[0], "avg_time": fastest_agent[1]},
+                "timing_variance": max(result.metrics.agent_timings.values()) - min(result.metrics.agent_timings.values())
+            }
+            print(f"   ⚡ Performance variance: {observations.performance_patterns['timing_variance']:.2f}s")
+        
+        # Note any interesting patterns
+        if result.metrics.auto_approvals > 0:
+            observations.notable_events.append(f"Auto-approvals occurred: {result.metrics.auto_approvals}")
+        
+        if result.metrics.total_retries > result.metrics.total_steps * 0.5:
+            observations.notable_events.append("High retry rate observed (>50% of steps)")
+        
+        if result.metrics.total_output_size > 50000:
+            observations.notable_events.append(f"Large output generated: {result.metrics.total_output_size:,} chars")
+        
+        print("   ✅ Observations complete\n")
+    
+    def _print_test_observations(self, result: TestResult):
+        """Print detailed test observations"""
+        print("\n" + "═" * 70)
+        print(f"🔍 TEST OBSERVATIONS: {result.scenario.name}")
+        print("═" * 70)
+        
+        # Status
+        status_emoji = {
+            "success": "✅",
+            "failed": "❌",
+            "timeout": "⏰",
+            "pending": "⏳",
+            "running": "🔄"
+        }.get(result.status, "❓")
+        
+        print(f"\n{status_emoji} Status: {result.status.upper()}")
+        print(f"⏱️  Duration: {result.metrics.duration:.2f}s")
+        
+        # Execution observations
+        print(f"\n📊 Execution Observations:")
+        print(f"   • Workflow Type: {result.workflow_type}")
+        print(f"   • Steps Executed: {result.metrics.total_steps}")
+        print(f"   • Success Rate: {result.metrics.success_rate:.1f}%")
+        
+        # Agent observations
+        print(f"\n👥 Agent Observations:")
+        print(f"   • Agents Involved: {len(result.observations.agents_involved)}")
+        for i, agent in enumerate(result.observations.agents_involved, 1):
+            output_size = result.metrics.output_by_agent.get(agent, 0)
+            timing = result.metrics.agent_timings.get(agent, 0)
+            print(f"   {i}. {agent}:")
+            print(f"      - Output: {output_size:,} characters")
+            if timing > 0:
+                print(f"      - Avg Time: {timing:.2f}s")
+        
+        # Review observations
+        if result.observations.review_patterns:
+            print(f"\n📝 Review Process Observations:")
+            patterns = result.observations.review_patterns
+            print(f"   • Total Reviews: {patterns['total_reviews']}")
+            print(f"   • Approval Rate: {patterns['approval_rate']:.1f}%")
+            if patterns['revision_requests'] > 0:
+                print(f"   • Revisions Requested: {patterns['revision_requests']}")
+            if patterns['auto_approvals'] > 0:
+                print(f"   • Auto-Approvals: {patterns['auto_approvals']}")
+        
+        # Retry observations
+        if result.observations.retry_patterns:
+            print(f"\n🔁 Retry Observations:")
+            print(f"   • Total Retries: {result.observations.retry_patterns['total_retries']}")
+            unique_reasons = set(result.observations.retry_patterns['retry_reasons'])
+            print(f"   • Unique Retry Reasons: {len(unique_reasons)}")
+        
+        # Performance observations
+        if result.observations.performance_patterns:
+            print(f"\n⚡ Performance Observations:")
+            perf = result.observations.performance_patterns
+            print(f"   • Slowest Agent: {perf['slowest_agent']['name']} ({perf['slowest_agent']['avg_time']:.2f}s)")
+            print(f"   • Fastest Agent: {perf['fastest_agent']['name']} ({perf['fastest_agent']['avg_time']:.2f}s)")
+            print(f"   • Timing Variance: {perf['timing_variance']:.2f}s")
+        
+        # Notable events
+        if result.observations.notable_events:
+            print(f"\n📌 Notable Events:")
+            for event in result.observations.notable_events:
+                print(f"   • {event}")
+        
+        # Output statistics
+        print(f"\n📝 Output Statistics:")
+        print(f"   • Total Output: {result.metrics.total_output_size:,} characters")
+        print(f"   • Average per Agent: {result.metrics.total_output_size // len(result.observations.agents_involved):,} characters")
+        
+        if result.error_message:
+            print(f"\n❌ Error: {result.error_message}")
+        
+        print("\n" + "═" * 70)
+    
+    async def _save_test_artifacts(self, result: TestResult):
+        """Save comprehensive test artifacts"""
+        print("💾 Saving artifacts...")
+        
+        # Create test-specific directory
+        test_dir = self.output_dir / f"{result.workflow_type}_{result.scenario.complexity.value}"
+        test_dir.mkdir(exist_ok=True)
+        result.artifacts_path = test_dir
+        
+        # Save test observations
+        observations_file = test_dir / "test_observations.json"
+        with open(observations_file, 'w') as f:
             json.dump({
-                "workflow_name": result.workflow_name,
-                "test_type": result.test_type,
-                "success": result.success,
-                "duration": result.duration,
-                "timestamp": result.start_time,
-                "agent_execution_path": result.agent_execution_path,
-                "performance_metrics": result.performance_metrics,
-                "steps": [
-                    {
-                        "name": step.name,
-                        "duration": step.duration,
-                        "success": step.success,
-                        "details": step.details
-                    }
-                    for step in result.steps
-                ],
-                "error": result.error
+                "test_id": result.test_id,
+                "scenario": {
+                    "name": result.scenario.name,
+                    "complexity": result.scenario.complexity.value,
+                    "requirements": result.scenario.requirements
+                },
+                "workflow_type": result.workflow_type,
+                "status": result.status,
+                "duration": result.metrics.duration,
+                "observations": {
+                    "agents_involved": result.observations.agents_involved,
+                    "agent_interaction_sequence": result.observations.agent_interaction_sequence,
+                    "review_patterns": result.observations.review_patterns,
+                    "retry_patterns": result.observations.retry_patterns,
+                    "performance_patterns": result.observations.performance_patterns,
+                    "notable_events": result.observations.notable_events
+                },
+                "metrics": {
+                    "total_steps": result.metrics.total_steps,
+                    "completed_steps": result.metrics.completed_steps,
+                    "success_rate": result.metrics.success_rate,
+                    "total_reviews": result.metrics.total_reviews,
+                    "review_approval_rate": result.metrics.review_approval_rate,
+                    "total_retries": result.metrics.total_retries,
+                    "total_output_size": result.metrics.total_output_size,
+                    "output_by_agent": result.metrics.output_by_agent,
+                    "agent_timings": result.metrics.agent_timings
+                },
+                "error": result.error_message
             }, f, indent=2)
         
-        # 3. Agent outputs file (separate for easier reading)
-        if result.agent_results:
-            agent_outputs_file = test_dir / "agent_outputs.txt"
-            with open(agent_outputs_file, 'w') as f:
-                f.write(f"🤖 Agent Outputs for {result.workflow_name} ({result.test_type})\n")
-                f.write("=" * 80 + "\n\n")
-                
-                for idx, agent_result in enumerate(result.agent_results):
-                    f.write(f"{idx+1}. {agent_result.team_member.value.upper()} OUTPUT:\n")
-                    f.write("=" * 50 + "\n")
-                    f.write(agent_result.output)
-                    f.write("\n" + "-" * 50 + "\n\n")
+        # Save execution report
+        if result.execution_report:
+            report_file = test_dir / "execution_report.json"
+            with open(report_file, 'w') as f:
+                f.write(result.execution_report.to_json())
         
-        # 4. Error log file (if there was an error)
-        if result.error:
-            error_file = test_dir / "error.log"
-            with open(error_file, 'w') as f:
-                f.write(f"❌ Error in {result.workflow_name} ({result.test_type})\n")
-                f.write("=" * 50 + "\n")
-                f.write(f"Error: {result.error}\n\n")
-                f.write("Timestamp: " + datetime.fromtimestamp(result.start_time).strftime('%Y-%m-%d %H:%M:%S') + "\n")
+        # Save agent outputs
+        outputs_dir = test_dir / "agent_outputs"
+        outputs_dir.mkdir(exist_ok=True)
         
-        # 5. Test summary file
-        summary_file = test_dir / "test_summary.txt"
-        with open(summary_file, 'w') as f:
-            f.write(f"📋 {result.workflow_name} ({result.test_type}) - Test Summary\n")
-            f.write("=" * 60 + "\n\n")
-            f.write(f"Status: {result.status_emoji} {'SUCCESS' if result.success else 'FAILED'}\n")
-            f.write(f"Duration: {result.duration:.2f}s\n")
-            f.write(f"Timestamp: {datetime.fromtimestamp(result.start_time).strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            
-            if result.agent_execution_path:
-                f.write(f"Execution Path:\n{' → '.join(result.agent_execution_path)}\n\n")
-            
-            if result.performance_metrics:
-                f.write("Performance Metrics:\n")
-                for key, value in result.performance_metrics.items():
-                    f.write(f"  • {key}: {value}\n")
-                f.write("\n")
-            
-            f.write("Step Breakdown:\n")
-            for step in result.steps:
-                f.write(f"  {step.status_emoji} {step.name}: {step.duration:.2f}s\n")
+        for i, agent_result in enumerate(result.agent_results):
+            agent_name = agent_result.name or agent_result.team_member.value
+            output_file = outputs_dir / f"{i+1}_{agent_name}.txt"
+            with open(output_file, 'w') as f:
+                f.write(f"AGENT: {agent_name}\n")
+                f.write("=" * 60 + "\n\n")
+                f.write(agent_result.output)
         
-        print(f"    📁 Artifacts saved to: {test_dir.name}/")
+        print(f"   ✅ Artifacts saved to: {test_dir.relative_to(self.output_dir)}")
     
-    async def _create_combined_report(self):
-        """Create a combined report file with all test results"""
-        combined_file = self.output_dir / "combined_test_report.txt"
+    async def run_workflow_suite(self, 
+                               workflow_type: str,
+                               complexities: Optional[List[TestComplexity]] = None):
+        """Run a complete test suite for a workflow type"""
+        print(f"\n{'━' * 80}")
+        print(f"🔬 TESTING WORKFLOW: {workflow_type.upper()}")
+        print(f"📖 Description: {get_workflow_description(workflow_type)}")
+        print(f"{'━' * 80}\n")
         
-        with open(combined_file, 'w') as f:
-            f.write("🧪 COMBINED WORKFLOW TEST REPORT\n")
-            f.write("=" * 80 + "\n\n")
-            f.write(f"Session ID: {self.session_id}\n")
-            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Total Tests: {len(self.test_results)}\n\n")
+        if complexities is None:
+            complexities = [TestComplexity.MINIMAL, TestComplexity.STANDARD]
+        
+        suite_results = []
+        
+        for complexity in complexities:
+            scenario = TEST_SCENARIOS[complexity]
             
-            # Summary table
-            f.write("📊 SUMMARY TABLE\n")
-            f.write("-" * 80 + "\n")
-            f.write(f"{'Workflow':<20} {'Type':<10} {'Status':<8} {'Duration':<10} {'Agents':<15}\n")
-            f.write("-" * 80 + "\n")
+            # Skip complex scenarios for individual workflows
+            if workflow_type in ["planning", "design", "review"] and complexity in [TestComplexity.COMPLEX, TestComplexity.STRESS]:
+                print(f"⏭️  Skipping {complexity.value} test for {workflow_type} (not applicable)")
+                continue
             
-            for result in self.test_results:
-                status = "✅ PASS" if result.success else "❌ FAIL"
-                agent_count = len(result.agent_results) if result.agent_results else 0
-                f.write(f"{result.workflow_name:<20} {result.test_type:<10} {status:<8} {result.duration:<8.2f}s {agent_count:<15}\n")
+            result = await self.run_test(workflow_type, scenario)
+            suite_results.append(result)
             
-            f.write("\n\n")
-            
-            # Detailed results for each test
-            for idx, result in enumerate(self.test_results, 1):
-                f.write(f"{idx}. {result.workflow_name} ({result.test_type})\n")
-                f.write("=" * 60 + "\n")
-                f.write(f"Status: {result.status_emoji} {'SUCCESS' if result.success else 'FAILED'}\n")
-                f.write(f"Duration: {result.duration:.2f}s\n")
-                
-                if result.agent_execution_path:
-                    f.write(f"Execution Path: {' → '.join(result.agent_execution_path)}\n")
-                
-                if result.error:
-                    f.write(f"Error: {result.error}\n")
-                
-                f.write(f"Artifacts Directory: {result.workflow_name.lower().replace(' ', '_')}_{result.test_type}/\n")
-                f.write("\n")
+            # Brief pause between tests
+            await asyncio.sleep(1)
         
-        return combined_file
+        return suite_results
     
-    async def test_tdd_workflow(self, test_type: str = "standard") -> WorkflowTestResult:
-        """Test TDD workflow with enhanced tracking"""
-        input_data = CodingTeamInput(
-            requirements=TEST_REQUIREMENTS[test_type],
-            workflow=WorkflowStep.tdd_workflow,
-            team_members=[TeamMember.planner, TeamMember.designer, TeamMember.test_writer] if test_type != "minimal" 
-                         else [TeamMember.planner, TeamMember.designer]
-        )
+    async def run_comprehensive_test_suite(self):
+        """Run comprehensive test suite across all workflows"""
+        print("\n" + "🌟" * 40)
+        print("🎯 STARTING COMPREHENSIVE TEST SUITE")
+        print("🌟" * 40 + "\n")
         
-        return await self._execute_workflow_with_tracking("TDD Workflow", input_data, test_type)
-    
-    async def test_full_workflow(self, test_type: str = "standard") -> WorkflowTestResult:
-        """Test full workflow with enhanced tracking"""
-        input_data = CodingTeamInput(
-            requirements=TEST_REQUIREMENTS[test_type],
-            workflow=WorkflowStep.full_workflow,
-            team_members=[TeamMember.planner, TeamMember.designer, TeamMember.coder] if test_type != "minimal"
-                         else [TeamMember.planner, TeamMember.designer]
-        )
-        
-        return await self._execute_workflow_with_tracking("Full Workflow", input_data, test_type)
-    
-    async def test_individual_workflow(self, test_type: str = "standard") -> WorkflowTestResult:
-        """Test individual workflow steps with enhanced tracking"""
-        input_data = CodingTeamInput(
-            requirements=TEST_REQUIREMENTS[test_type],
-            workflow=WorkflowStep.planning,
-            team_members=[TeamMember.planner]
-        )
-        
-        return await self._execute_workflow_with_tracking("Individual Workflow", input_data, test_type)
-    
-    async def run_comprehensive_tests(self):
-        """Run all workflow tests with different complexity levels"""
-        print(f"🎯 Starting Comprehensive Workflow Testing")
-        print(f"⚡ Testing {len(TEST_REQUIREMENTS)} complexity levels")
-        print(f"🧪 Running {len(TEST_REQUIREMENTS) * 3} total tests")
-        print()
-        
-        overall_start = time.time()
-        
-        test_configurations = [
-            ("TDD Workflow", self.test_tdd_workflow),
-            ("Full Workflow", self.test_full_workflow),
-            ("Individual Workflow", self.test_individual_workflow)
+        # Define test plan
+        test_plan = [
+            ("tdd", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
+            ("full", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
+            ("planning", [TestComplexity.MINIMAL]),
+            ("design", [TestComplexity.MINIMAL]),
+            ("implementation", [TestComplexity.MINIMAL]),
         ]
         
-        for test_type in ["minimal", "standard"]:  # Skip complex for faster testing
-            print(f"\n🔄 Running {test_type.upper()} complexity tests")
-            print("=" * 60)
-            
-            for workflow_name, test_func in test_configurations:
-                try:
-                    result = await test_func(test_type)
-                    self.test_results.append(result)
-                    
-                    # Real-time status update
-                    print(f"  {result.status_emoji} {workflow_name} ({test_type}): {result.duration:.2f}s")
-                    if result.error:
-                        print(f"    ⚠️  {result.error}")
-                    
-                except Exception as e:
-                    print(f"  💥 {workflow_name} ({test_type}): CRITICAL ERROR - {str(e)}")
+        all_results = []
         
-        overall_duration = time.time() - overall_start
+        for workflow_type, complexities in test_plan:
+            results = await self.run_workflow_suite(workflow_type, complexities)
+            all_results.extend(results)
         
-        # Generate comprehensive report
-        await self._generate_final_report(overall_duration)
+        # Generate final report
+        await self._generate_session_report(all_results)
     
-    async def _generate_final_report(self, overall_duration: float):
-        """Generate comprehensive test session report"""
-        print(f"\n🎯 COMPREHENSIVE TEST REPORT")
+    async def _generate_session_report(self, all_results: List[TestResult]):
+        """Generate comprehensive session report focusing on observations"""
+        duration = time.time() - self.start_time
+        
+        print("\n" + "=" * 80)
+        print("📊 COMPREHENSIVE TEST SESSION REPORT")
         print("=" * 80)
         
-        # Calculate statistics
-        total_tests = len(self.test_results)
-        successful_tests = sum(1 for r in self.test_results if r.success)
-        failed_tests = total_tests - successful_tests
+        # Session info
+        print(f"\n📅 Session ID: {self.session_id}")
+        print(f"⏱️  Total Duration: {duration:.2f}s")
+        print(f"🧪 Total Tests: {len(all_results)}")
         
-        total_workflow_time = sum(r.duration for r in self.test_results)
-        avg_workflow_time = total_workflow_time / total_tests if total_tests > 0 else 0
+        # Results breakdown
+        success_count = sum(1 for r in all_results if r.status == "success")
+        failed_count = sum(1 for r in all_results if r.status == "failed")
+        timeout_count = sum(1 for r in all_results if r.status == "timeout")
         
-        print(f"📊 Session Statistics:")
-        print(f"  • Total Tests: {total_tests}")
-        print(f"  • Successful: {successful_tests} ✅")
-        print(f"  • Failed: {failed_tests} ❌")
-        print(f"  • Success Rate: {(successful_tests/total_tests*100):.1f}%")
-        print(f"  • Total Workflow Time: {total_workflow_time:.2f}s")
-        print(f"  • Average Workflow Time: {avg_workflow_time:.2f}s")
-        print(f"  • Overall Session Time: {overall_duration:.2f}s")
+        success_rate = (success_count / len(all_results) * 100) if all_results else 0
         
-        print(f"\n🏆 Test Results by Workflow:")
-        for result in self.test_results:
-            status = "✅ PASS" if result.success else "❌ FAIL"
-            print(f"  {status} {result.workflow_name} ({result.test_type}): {result.duration:.2f}s")
-            if result.agent_execution_path:
-                print(f"    └─ Path: {' → '.join(result.agent_execution_path)}")
+        print(f"\n📈 Results Breakdown:")
+        print(f"   ✅ Successful: {success_count}")
+        print(f"   ❌ Failed: {failed_count}")
+        print(f"   ⏰ Timed Out: {timeout_count}")
+        print(f"   📊 Success Rate: {success_rate:.1f}%")
         
-        # Performance insights
-        if successful_tests > 0:
-            successful_results = [r for r in self.test_results if r.success]
-            fastest = min(successful_results, key=lambda x: x.duration)
-            slowest = max(successful_results, key=lambda x: x.duration)
+        # Aggregate observations
+        all_agents = set()
+        total_steps = 0
+        total_reviews = 0
+        total_retries = 0
+        all_notable_events = []
+        
+        for result in all_results:
+            all_agents.update(result.observations.agents_involved)
+            total_steps += result.metrics.total_steps
+            total_reviews += result.metrics.total_reviews
+            total_retries += result.metrics.total_retries
+            all_notable_events.extend(result.observations.notable_events)
+        
+        print(f"\n🔬 Aggregate Observations:")
+        print(f"   • Unique Agents Observed: {len(all_agents)}")
+        print(f"   • Total Steps Executed: {total_steps}")
+        print(f"   • Total Reviews: {total_reviews}")
+        print(f"   • Total Retries: {total_retries}")
+        
+        # Agent participation summary
+        agent_participation = {}
+        for result in all_results:
+            for agent in result.observations.agents_involved:
+                agent_participation[agent] = agent_participation.get(agent, 0) + 1
+        
+        print(f"\n👥 Agent Participation Summary:")
+        for agent, count in sorted(agent_participation.items(), key=lambda x: x[1], reverse=True):
+            participation_rate = (count / len(all_results) * 100)
+            print(f"   • {agent}: {count} tests ({participation_rate:.1f}%)")
+        
+        # Notable patterns across all tests
+        if all_notable_events:
+            print(f"\n📌 Notable Patterns Observed:")
+            event_counts = {}
+            for event in all_notable_events:
+                event_type = event.split(':')[0]
+                event_counts[event_type] = event_counts.get(event_type, 0) + 1
             
-            print(f"\n⚡ Performance Insights:")
-            print(f"  • Fastest: {fastest.workflow_name} ({fastest.test_type}) - {fastest.duration:.2f}s")
-            print(f"  • Slowest: {slowest.workflow_name} ({slowest.test_type}) - {slowest.duration:.2f}s")
+            for event_type, count in sorted(event_counts.items(), key=lambda x: x[1], reverse=True):
+                print(f"   • {event_type}: {count} occurrences")
         
-        # Save session summary
-        summary_file = self.output_dir / "session_summary.json"
-        with open(summary_file, 'w') as f:
-            json.dump({
-                "session_id": self.session_id,
-                "timestamp": datetime.now().isoformat(),
-                "overall_duration": overall_duration,
-                "total_tests": total_tests,
-                "successful_tests": successful_tests,
-                "failed_tests": failed_tests,
-                "success_rate": successful_tests/total_tests if total_tests > 0 else 0,
-                "total_workflow_time": total_workflow_time,
-                "average_workflow_time": avg_workflow_time,
-                "test_results": [
-                    {
-                        "workflow_name": r.workflow_name,
-                        "test_type": r.test_type,
-                        "success": r.success,
-                        "duration": r.duration,
-                        "error": r.error,
-                        "agent_path": r.agent_execution_path,
-                        "artifacts_dir": f"{r.workflow_name.lower().replace(' ', '_')}_{r.test_type}"
-                    }
-                    for r in self.test_results
-                ]
-            }, f, indent=2)
+        # Save session report
+        session_report = {
+            "session_id": self.session_id,
+            "duration": duration,
+            "total_tests": len(all_results),
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "timeout_count": timeout_count,
+            "success_rate": success_rate,
+            "observations": {
+                "unique_agents": list(all_agents),
+                "total_steps": total_steps,
+                "total_reviews": total_reviews,
+                "total_retries": total_retries,
+                "agent_participation": agent_participation,
+                "notable_events": all_notable_events
+            },
+            "test_results": [
+                {
+                    "test_id": r.test_id,
+                    "workflow_type": r.workflow_type,
+                    "complexity": r.scenario.complexity.value,
+                    "status": r.status,
+                    "duration": r.metrics.duration,
+                    "agents_involved": r.observations.agents_involved
+                }
+                for r in all_results
+            ]
+        }
         
-        # Create combined report
-        combined_report = await self._create_combined_report()
+        report_file = self.output_dir / "session_report.json"
+        with open(report_file, 'w') as f:
+            json.dump(session_report, f, indent=2)
         
         print(f"\n📁 All artifacts saved to: {self.output_dir}")
-        print(f"📊 Session summary: {summary_file}")
-        print(f"📋 Combined report: {combined_report}")
+        print(f"📊 Session report: {report_file.name}")
         
-        # List all test subdirectories
-        test_dirs = [d for d in self.output_dir.iterdir() if d.is_dir()]
-        if test_dirs:
-            print(f"📂 Individual test directories:")
-            for test_dir in sorted(test_dirs):
-                print(f"  • {test_dir.name}/")
-        
-        if failed_tests > 0:
-            print(f"\n⚠️  {failed_tests} test(s) failed. Check individual error files for details.")
-        else:
-            print(f"\n🎉 All tests passed! The workflow system is functioning correctly.")
+        print("\n" + "=" * 80)
+        print("✨ TEST SESSION COMPLETE!")
+        print("=" * 80 + "\n")
+
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
 
 async def main():
-    """Main test execution"""
-    print("🚀 Enhanced Workflow Testing System")
-    print("=" * 80)
-    
-    tester = WorkflowTester()
+    """Main test execution entry point"""
+    tester = ModernWorkflowTester()
     
     try:
-        await tester.run_comprehensive_tests()
+        # Run the comprehensive test suite
+        await tester.run_comprehensive_test_suite()
+        
     except KeyboardInterrupt:
-        print(f"\n⏹️  Testing interrupted by user")
+        print("\n\n⚠️  Test execution interrupted by user")
+        
     except Exception as e:
-        print(f"\n💥 Critical testing error: {e}")
+        print(f"\n\n💥 Critical error in test execution: {e}")
         traceback.print_exc()
 
+
 if __name__ == "__main__":
-    print("🧪 Enhanced Workflow Module Test Script")
-    print("=" * 80)
-    print("This script provides comprehensive testing with detailed tracking and reporting")
-    print()
+    # Clear the console for a fresh start
+    os.system('clear' if os.name == 'posix' else 'cls')
     
+    print("🚀 Initializing Modern Workflow Testing Framework...")
+    print("📚 Loading dependencies...")
+    
+    # Run the async main function
     asyncio.run(main())

@@ -1,89 +1,98 @@
 """
-Shared data models for the multi-agent workflow system.
-This module contains common data classes used across orchestrator, workflows, and tests
-to avoid circular import issues.
+Shared data models for the workflow system.
 """
-
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+from typing import List, Optional, Dict, Any
 
 
 class TeamMember(Enum):
-    """Enumeration of available team members"""
-    PLANNER = "planner_agent"
-    DESIGNER = "designer_agent" 
-    CODER = "coder_agent"
-    TEST_WRITER = "test_writer_agent"
-    REVIEWER = "reviewer_agent"
+    """Available team members"""
+    planner = "planner_agent"
+    designer = "designer_agent"
+    coder = "coder_agent"
+    test_writer = "test_writer_agent"
+    reviewer = "reviewer_agent"
+    
+    # Aliases for backward compatibility
+    PLANNER = planner
+    DESIGNER = designer
+    CODER = coder
+    TEST_WRITER = test_writer
+    REVIEWER = reviewer
 
 
 class WorkflowStep(Enum):
-    """Enumeration of workflow steps"""
-    PLANNING = "planning"
-    DESIGN = "design"
-    CODING = "coding"
-    TESTING = "testing"
-    REVIEW = "review"
-
-
-@dataclass
-class TeamMemberResult:
-    """Result from a team member execution"""
-    team_member: TeamMember
-    output: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    execution_time: Optional[float] = None
-    error: Optional[str] = None
+    """Available workflow steps"""
+    # Full workflows
+    tdd_workflow = "tdd_workflow"
+    full_workflow = "full_workflow"
+    
+    # Individual steps
+    planning = "planning"
+    design = "design"
+    test_writing = "test_writing"
+    implementation = "implementation"
+    review = "review"
 
 
 @dataclass
 class CodingTeamInput:
-    """Input data for the coding team workflow"""
+    """Input data for coding team workflows"""
     requirements: str
-    workflow_type: str = "full"  # "tdd", "full", or "individual"
-    step_type: Optional[str] = None  # For individual workflows
-    context: Dict[str, Any] = field(default_factory=dict)
+    workflow: Optional[WorkflowStep] = None  # For backward compatibility
+    workflow_type: Optional[str] = None  # New field name
+    step_type: Optional[str] = None
+    team_members: List[TeamMember] = field(default_factory=list)
     max_retries: int = 3
     timeout_seconds: int = 300
+    
+    def __post_init__(self):
+        # Handle backward compatibility between workflow and workflow_type
+        if self.workflow and not self.workflow_type:
+            # Extract the value from the enum
+            if hasattr(self.workflow, 'value'):
+                self.workflow_type = self.workflow.value.replace('_workflow', '')
+            else:
+                self.workflow_type = str(self.workflow)
+        elif self.workflow_type and not self.workflow:
+            # Map string back to enum if needed
+            workflow_map = {
+                'tdd': WorkflowStep.tdd_workflow,
+                'full': WorkflowStep.full_workflow,
+                'planning': WorkflowStep.planning,
+                'design': WorkflowStep.design,
+                'test_writing': WorkflowStep.test_writing,
+                'implementation': WorkflowStep.implementation,
+                'review': WorkflowStep.review
+            }
+            self.workflow = workflow_map.get(self.workflow_type)
+
+
+@dataclass
+class TeamMemberResult:
+    """Result from a team member"""
+    team_member: TeamMember
+    output: str
+    name: Optional[str] = None  # For backward compatibility
+    
+    def __post_init__(self):
+        if not self.name and self.team_member:
+            self.name = self.team_member.value.replace('_agent', '')
 
 
 @dataclass
 class CodingTeamResult:
-    """Result from the coding team workflow execution"""
-    success: bool
+    """Result from the coding team workflow"""
     results: List[TeamMemberResult]
-    execution_time: float
-    workflow_type: str
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    # Enhanced monitoring fields
+    final_summary: str
+    progress_report: str = ""
+    success_metrics: Dict[str, Any] = field(default_factory=dict)
     monitoring_report: Optional[str] = None
-    execution_tracer: Optional[Any] = None  # WorkflowExecutionTracer instance
+    execution_tracer: Optional[Any] = None
 
 
 @dataclass
-class TestStepResult:
-    """Result from a single test step"""
-    name: str
-    start_time: float
-    end_time: Optional[float] = None
-    success: bool = False
-    error: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
-    
-    @property
-    def duration(self) -> float:
-        """Calculate step duration"""
-        if self.end_time is None:
-            return 0.0
-        return self.end_time - self.start_time
-    
-    @property
-    def status_emoji(self) -> str:
-        """Get status emoji for display"""
-        if self.end_time is None:
-            return "⏳"
-        return "✅" if self.success else "❌"
+class CodingTeamOutput:
+    """Output wrapper for coding team results"""
+    result: CodingTeamResult

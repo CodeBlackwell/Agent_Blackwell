@@ -19,11 +19,10 @@ import json
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from orchestrator.orchestrator_agent import (
-    TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult,
-    current_progress_report  # Import the global progress report to access agent flow
+from shared.data_models import (
+    TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
-from workflows import execute_workflow
+from orchestrator.orchestrator_agent import run_team_member
 
 # 🎯 Test Configuration
 TEST_REQUIREMENTS = {

@@ -1,16 +1,19 @@
 """
 Workflow manager for coordinating different workflow implementations.
 """
-from typing import List, Tuple, Optional
+from typing import List, Dict, Any, Optional, Tuple
+import asyncio
 
-from orchestrator.orchestrator_agent import (
-    TeamMember, TeamMemberResult, WorkflowStep
+# Import shared data models
+from shared.data_models import (
+    TeamMember, TeamMemberResult, WorkflowStep, CodingTeamInput
 )
+
+# Import workflow implementations
 from workflows.tdd.tdd_workflow import execute_tdd_workflow
 from workflows.full.full_workflow import execute_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
 from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
-from shared.models import CodingTeamInput, TeamMemberResult
 
 
 async def execute_workflow(input_data: CodingTeamInput, 

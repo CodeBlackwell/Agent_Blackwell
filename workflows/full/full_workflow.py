@@ -3,9 +3,10 @@ Full workflow implementation with comprehensive monitoring.
 """
 from typing import List
 from workflows.monitoring import WorkflowExecutionTracer
-from orchestrator.orchestrator_agent import (
-    TeamMember, TeamMemberResult, WorkflowStep, run_team_member
+from shared.data_models import (
+    TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
+from orchestrator.orchestrator_agent import run_team_member
 from workflows.utils import review_output
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 

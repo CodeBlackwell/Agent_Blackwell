@@ -1,3 +1,3 @@
-from workflows.tdd.tdd_workflow import run_tdd_workflow
+from workflows.tdd.tdd_workflow import execute_tdd_workflow
 
-__all__ = ["run_tdd_workflow"]
+__all__ = ["execute_tdd_workflow"]

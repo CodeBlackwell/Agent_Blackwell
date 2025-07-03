@@ -3,9 +3,10 @@ Individual workflow step implementation with comprehensive monitoring.
 """
 from typing import List
 from workflows.monitoring import WorkflowExecutionTracer
-from orchestrator.orchestrator_agent import (
-    TeamMember, TeamMemberResult, WorkflowStep, run_team_member
+from shared.data_models import (
+    TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
+from orchestrator.orchestrator_agent import run_team_member
 
 async def run_individual_workflow(requirements: str, workflow_step: WorkflowStep, tracer: WorkflowExecutionTracer) -> List[TeamMemberResult]:
     """

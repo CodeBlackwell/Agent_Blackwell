@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 import asyncio
-from enum import Enum
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
 import time
@@ -15,6 +14,12 @@ import re
 # Add the project root to the Python path so we can import from the agents module
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# Import shared data models
+from shared.data_models import (
+    TeamMember, WorkflowStep, TeamMemberResult, 
+    CodingTeamInput, CodingTeamResult
+)
 
 from acp_sdk import Message
 from acp_sdk.models import MessagePart
@@ -44,6 +49,10 @@ from orchestrator.regression_test_runner_tool import TestRunnerTool
 
 # Import the enhanced orchestrator config
 from orchestrator.orchestrator_configs import orchestrator_config
+
+# Import monitoring system
+from workflows.monitoring import WorkflowExecutionTracer, StepStatus, ReviewDecision
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -327,42 +336,31 @@ async def reviewer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
 # ENHANCED CODING TEAM COORDINATION TOOL
 # ============================================================================
 
-class TeamMember(str, Enum):
-    planner = "planner"
-    designer = "designer"
-    test_writer = "test_writer"
-    coder = "coder"
-    reviewer = "reviewer"
+# Using shared data models from shared.data_models
+# TeamMember, WorkflowStep, CodingTeamInput, TeamMemberResult, CodingTeamResult are imported above
 
-class WorkflowStep(str, Enum):
-    planning = "planning"
-    design = "design"
-    test_writing = "test_writing"
-    implementation = "implementation"
-    review = "review"
-    tdd_workflow = "tdd_workflow"
-    full_workflow = "full_workflow"
-
-class CodingTeamInput(BaseModel):
+# Pydantic models for tool interface (keeping separate from dataclasses)
+class CodingTeamInputModel(BaseModel):
     requirements: str = Field(description="The project requirements or task description")
-    workflow: WorkflowStep = Field(description="The workflow step to execute")
-    team_members: list[TeamMember] = Field(
-        default=[TeamMember.planner, TeamMember.designer, TeamMember.test_writer, TeamMember.coder, TeamMember.reviewer],
-        description="Team members to involve in the process"
-    )
+    workflow_type: str = Field(description="The workflow type to execute (tdd, full, individual)")
+    step_type: Optional[str] = Field(default=None, description="For individual workflows, the specific step")
+    max_retries: int = Field(default=3, description="Maximum retry attempts")
+    timeout_seconds: int = Field(default=300, description="Timeout in seconds")
 
-class TeamMemberResult(BaseModel):
-    team_member: TeamMember = Field(description="The team member who produced this result")
+class TeamMemberResultModel(BaseModel):
+    team_member: str = Field(description="The team member who produced this result")
     output: str = Field(description="The output from the team member")
 
-class CodingTeamResult(BaseModel):
-    results: list[TeamMemberResult] = Field(description="Results from each team member")
+class CodingTeamResultModel(BaseModel):
+    results: list[TeamMemberResultModel] = Field(description="Results from each team member")
     final_summary: str = Field(description="Summary of the complete workflow")
     progress_report: str = Field(description="Detailed progress report")
     success_metrics: Dict[str, Any] = Field(default_factory=dict, description="Success metrics and statistics")
+    monitoring_report: Optional[str] = Field(default=None, description="Comprehensive monitoring report in JSON format")
+    execution_tracer: Optional[Any] = Field(default=None, description="WorkflowExecutionTracer instance for detailed analysis")
 
 class CodingTeamOutput(ToolOutput):
-    result: CodingTeamResult = Field(description="Enhanced coding team result")
+    result: CodingTeamResultModel = Field(description="Enhanced coding team result")
 
     def get_text_content(self) -> str:
         return self.result.progress_report
@@ -370,15 +368,15 @@ class CodingTeamOutput(ToolOutput):
     def is_empty(self) -> bool:
         return False
 
-    def __init__(self, result: CodingTeamResult) -> None:
+    def __init__(self, result: CodingTeamResultModel) -> None:
         super().__init__()
         self.result = result
 
-class EnhancedCodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOutput]):
+class EnhancedCodingTeamTool(Tool[CodingTeamInputModel, ToolRunOptions, CodingTeamOutput]):
     """Enhanced tool with comprehensive progress tracking and parallel execution"""
     name = "CodingTeam"
     description = "Coordinate a coding team with detailed progress tracking and parallel execution capabilities"
-    input_schema = CodingTeamInput
+    input_schema = CodingTeamInputModel
 
     def _create_emitter(self) -> Emitter:
         return Emitter.root().child(
@@ -387,7 +385,7 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOut
         )
 
     async def _run(
-        self, input: CodingTeamInput, options: ToolRunOptions | None, context: RunContext
+        self, input: CodingTeamInputModel, options: ToolRunOptions | None, context: RunContext
     ) -> CodingTeamOutput:
         """Enhanced workflow execution with comprehensive tracking"""
         global current_progress_report
@@ -396,19 +394,34 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOut
         session_id = f"session_{int(time.time())}"
         current_progress_report = ProgressReport(
             session_id=session_id,
-            workflow_type=input.workflow.value,
+            workflow_type=input.workflow_type,
             start_time=time.time()
         )
         
-        print(f"🚀 Starting Enhanced Workflow: {input.workflow.value}")
+        print(f"🚀 Starting Enhanced Workflow: {input.workflow_type}")
         print(f"📋 Session ID: {session_id}")
         
         try:
             # Import here to avoid circular imports
             from workflows import execute_workflow
             
-            # Execute the workflow with tracking
-            results = await execute_workflow(input)
+            # Create comprehensive monitoring tracer
+            tracer = WorkflowExecutionTracer(
+                workflow_type=input.workflow_type,
+                execution_id=session_id
+            )
+            
+            # Convert Pydantic model to dataclass for workflow execution
+            workflow_input = CodingTeamInput(
+                requirements=input.requirements,
+                workflow_type=input.workflow_type,
+                step_type=input.step_type,
+                max_retries=input.max_retries,
+                timeout_seconds=input.timeout_seconds
+            )
+            
+            # Execute the workflow with comprehensive monitoring
+            results, execution_report = await execute_workflow(workflow_input, tracer=tracer)
             
             # Analyze test results from outputs
             await self._analyze_test_results(results)
@@ -418,18 +431,35 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOut
             
             # Complete progress tracking
             current_progress_report.end_time = time.time()
+            tracer.complete_execution(
+                final_output={
+                    "results_count": len(results),
+                    "session_id": session_id,
+                    "workflow_type": input.workflow.value
+                }
+            )
             
-            # Generate comprehensive report
+            # Generate comprehensive reports
             progress_report = current_progress_report.generate_report()
+            monitoring_report = execution_report.to_json() if execution_report else None
             
-            # Create success metrics
+            # Create enhanced success metrics with monitoring data
             success_metrics = {
                 "total_objectives": len(current_progress_report.objectives),
                 "completed_objectives": sum(1 for obj in current_progress_report.objectives if obj.status == "completed"),
                 "success_rate": current_progress_report.success_rate,
                 "total_duration": current_progress_report.duration,
                 "tests_pass_rate": current_progress_report.test_results.pass_rate,
-                "challenges_encountered": len(current_progress_report.challenges)
+                "challenges_encountered": len(current_progress_report.challenges),
+                # Enhanced monitoring metrics
+                "monitoring_enabled": True,
+                "execution_id": session_id,
+                "total_steps": execution_report.step_count if execution_report else 0,
+                "completed_steps": execution_report.completed_steps if execution_report else 0,
+                "total_reviews": execution_report.total_reviews if execution_report else 0,
+                "approved_reviews": execution_report.approved_reviews if execution_report else 0,
+                "total_retries": execution_report.total_retries if execution_report else 0,
+                "test_executions": execution_report.total_tests if execution_report else 0
             }
             
             # Create final summary
@@ -446,7 +476,9 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOut
                 results=results,
                 final_summary=summary,
                 progress_report=progress_report,
-                success_metrics=success_metrics
+                success_metrics=success_metrics,
+                monitoring_report=monitoring_report,
+                execution_tracer=tracer
             )
             
             return CodingTeamOutput(result=result)
@@ -463,7 +495,9 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInput, ToolRunOptions, CodingTeamOut
                     results=[],
                     final_summary=f"Workflow failed: {str(e)}",
                     progress_report=error_report,
-                    success_metrics={"error": str(e)}
+                    success_metrics={"error": str(e)},
+                    monitoring_report=None,
+                    execution_tracer=None
                 )
                 
                 return CodingTeamOutput(result=result)

@@ -6,6 +6,7 @@ from typing import List
 from orchestrator.orchestrator_agent import (
     TeamMember, TeamMemberResult, WorkflowStep, run_team_member
 )
+from workflows.utils import review_output
 
 async def run_full_workflow(requirements: str, team_members: List[TeamMember]) -> List[TeamMemberResult]:
     """
@@ -22,17 +23,35 @@ async def run_full_workflow(requirements: str, team_members: List[TeamMember]) -
     
     print(f"🔄 Starting full workflow for: {requirements[:50]}...")
     
-    # Step 1: Planning
+    # Step 1: Planning with review
     if TeamMember.planner in team_members:
         print("📋 Planning phase...")
-        planning_result = await run_team_member("planner_agent", requirements)
-        plan_output = str(planning_result[0])
-        results.append(TeamMemberResult(team_member=TeamMember.planner, output=plan_output))
+        planning_approved = False
+        plan_output = ""
+        planning_input = requirements
         
-        # Step 2: Design (using plan as input)
+        while not planning_approved:
+            planning_result = await run_team_member("planner_agent", planning_input)
+            plan_output = str(planning_result[0])
+            
+            # Review the plan
+            approved, feedback = await review_output(plan_output, "plan")
+            if approved:
+                planning_approved = True
+                results.append(TeamMemberResult(team_member=TeamMember.planner, output=plan_output))
+                print("✅ Plan approved by reviewer")
+            else:
+                print(f"❌ Plan needs revision: {feedback}")
+                planning_input = f"{requirements}\n\nReviewer feedback: {feedback}"
+        
+        # Step 2: Design with review (using plan as input)
         if TeamMember.designer in team_members:
             print("🎨 Design phase...")
-            design_input = f"""You are the designer for this project. Here is the detailed plan:
+            design_approved = False
+            design_output = ""
+            
+            while not design_approved:
+                design_input = f"""You are the designer for this project. Here is the detailed plan:
 
 {plan_output}
 
@@ -41,14 +60,28 @@ Based on this plan, create a comprehensive technical design. Do NOT ask for more
 Original requirements: {requirements}
 
 Create the technical architecture, database schemas, API endpoints, and component designs."""
-            design_result = await run_team_member("designer_agent", design_input)
-            design_output = str(design_result[0])
-            results.append(TeamMemberResult(team_member=TeamMember.designer, output=design_output))
+                
+                design_result = await run_team_member("designer_agent", design_input)
+                design_output = str(design_result[0])
+                
+                # Review the design
+                approved, feedback = await review_output(design_output, "design", context=plan_output)
+                if approved:
+                    design_approved = True
+                    results.append(TeamMemberResult(team_member=TeamMember.designer, output=design_output))
+                    print("✅ Design approved by reviewer")
+                else:
+                    print(f"❌ Design needs revision: {feedback}")
+                    design_input = f"{design_input}\n\nReviewer feedback: {feedback}"
             
-            # Step 3: Implementation (using plan and design as input)
+            # Step 3: Implementation with review (using plan and design as input)
             if TeamMember.coder in team_members:
                 print("💻 Implementation phase...")
-                code_input = f"""You are the developer for this project. Here are the specifications:
+                implementation_approved = False
+                code_output = ""
+                
+                while not implementation_approved:
+                    code_input = f"""You are the developer for this project. Here are the specifications:
 
 PLAN:
 {plan_output}
@@ -61,14 +94,24 @@ Based on these specifications, implement working code that follows the design. D
 Original requirements: {requirements}
 
 Write complete, working code with proper documentation."""
-                code_result = await run_team_member("coder_agent", code_input)
-                code_output = str(code_result[0])
-                results.append(TeamMemberResult(team_member=TeamMember.coder, output=code_output))
+                    
+                    code_result = await run_team_member("coder_agent", code_input)
+                    code_output = str(code_result[0])
+                    
+                    # Review the implementation
+                    approved, feedback = await review_output(code_output, "implementation", context=f"{plan_output}\n\n{design_output}")
+                    if approved:
+                        implementation_approved = True
+                        results.append(TeamMemberResult(team_member=TeamMember.coder, output=code_output))
+                        print("✅ Implementation approved by reviewer")
+                    else:
+                        print(f"❌ Implementation needs revision: {feedback}")
+                        code_input = f"{code_input}\n\nReviewer feedback: {feedback}"
                 
-                # Step 4: Review (using implementation as input)
+                # Step 4: Final Review (using implementation as input)
                 if TeamMember.reviewer in team_members:
-                    print("🔍 Review phase...")
-                    review_input = f"""You are reviewing this implementation. Here is the complete context:
+                    print("🔍 Final review phase...")
+                    review_input = f"""You are conducting a final review of this implementation. Here is the complete context:
 
 ORIGINAL REQUIREMENTS: {requirements}
 
@@ -78,12 +121,13 @@ PLAN:
 DESIGN:
 {design_output}
 
-IMPLEMENTATION TO REVIEW:
+IMPLEMENTATION:
 {code_output}
 
-Review this implementation for code quality, security, performance, and adherence to the design. Provide specific feedback and recommendations."""
+Provide a comprehensive final review of this implementation, focusing on code quality, security, performance, and adherence to the design. Include any recommendations for future improvements."""
+                    
                     review_result = await run_team_member("reviewer_agent", review_input)
-                    review_output = str(review_result[0])
-                    results.append(TeamMemberResult(team_member=TeamMember.reviewer, output=review_output))
+                    review_result_text = str(review_result[0])
+                    results.append(TeamMemberResult(team_member=TeamMember.reviewer, output=review_result_text))
     
     return results

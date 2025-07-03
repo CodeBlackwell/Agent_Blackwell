@@ -8,6 +8,7 @@ import re
 from orchestrator.orchestrator_agent import (
     TeamMember, TeamMemberResult, WorkflowStep, run_team_member
 )
+from workflows.utils import review_output
 
 # Configuration for retry logic
 MAX_TOTAL_RETRIES = 10
@@ -56,32 +57,6 @@ class RetryState:
         )
         
         return can_retry
-
-async def review_output(output: str, stage: str, context: str = "") -> Tuple[bool, str]:
-    """
-    Review the output from any agent and provide feedback
-    
-    Returns:
-        (approved, feedback) tuple
-    """
-    review_input = f"""Review this {stage} output:
-
-{output}
-
-Context: {context}
-
-Evaluate if this {stage} is complete, correct, and ready for the next stage.
-If approved, respond with "APPROVED:" followed by a brief summary.
-If revision needed, respond with "REVISION NEEDED:" followed by specific feedback on what needs to be fixed."""
-    
-    review_result = await run_team_member("reviewer_agent", review_input)
-    review_output = str(review_result[0])
-    
-    # Parse reviewer response
-    approved = "APPROVED:" in review_output
-    feedback = review_output.split(":", 1)[1].strip() if ":" in review_output else review_output
-    
-    return approved, feedback
 
 async def execute_tests(code_output: str, test_output: str) -> TestExecutionResult:
     """
@@ -296,7 +271,7 @@ IMPLEMENTATION:
 All tests have passed. Review for code quality, security, performance, and best practices."""
         
         review_result = await run_team_member("reviewer_agent", review_input)
-        review_output = str(review_result[0])
-        results.append(TeamMemberResult(team_member=TeamMember.reviewer, output=review_output))
+        review_result_text = str(review_result[0])
+        results.append(TeamMemberResult(team_member=TeamMember.reviewer, output=review_result_text))
     
     return results

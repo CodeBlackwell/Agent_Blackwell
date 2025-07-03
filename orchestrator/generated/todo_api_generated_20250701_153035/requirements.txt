@@ -1,4 +1,0 @@
-Flask
-Flask-RESTful
-Flask-SQLAlchemy
-Flask-RESTPlus

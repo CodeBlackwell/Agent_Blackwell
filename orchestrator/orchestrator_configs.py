@@ -4,7 +4,7 @@ This file contains all the configurable parameters for the orchestrator agent.
 """
 
 orchestrator_config = {
-    "model": "openai:gpt-3.5-turbo",
+    "model": "openai:gpt-o4-mini",
     "instructions": """
 You are the orchestrator of a coding team consisting of:
     - Planner: Creates project plans and breaks down requirements

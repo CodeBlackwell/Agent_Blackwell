@@ -12,6 +12,7 @@ import os
 import time
 import json
 import traceback
+import argparse
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, field
@@ -609,25 +610,36 @@ class ModernWorkflowTester:
         
         return suite_results
     
-    async def run_comprehensive_test_suite(self):
+    async def run_comprehensive_test_suite(self, complexities=None):
         """Run comprehensive test suite across all workflows"""
         print("\n" + "🌟" * 40)
         print("🎯 STARTING COMPREHENSIVE TEST SUITE")
         print("🌟" * 40 + "\n")
         
-        # Define test plan
-        test_plan = [
-            ("tdd", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
-            ("full", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
-            ("planning", [TestComplexity.MINIMAL]),
-            ("design", [TestComplexity.MINIMAL]),
-            ("implementation", [TestComplexity.MINIMAL]),
-        ]
+        # If no complexities specified, use default test plan
+        if complexities is None:
+            # Define test plan
+            test_plan = [
+                ("tdd", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
+                ("full", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
+                ("planning", [TestComplexity.MINIMAL]),
+                ("design", [TestComplexity.MINIMAL]),
+                ("implementation", [TestComplexity.MINIMAL]),
+            ]
+        else:
+            # Custom test plan with specified complexities
+            test_plan = [
+                ("tdd", complexities),
+                ("full", complexities),
+                ("planning", complexities),
+                ("design", complexities),
+                ("implementation", complexities),
+            ]
         
         all_results = []
         
-        for workflow_type, complexities in test_plan:
-            results = await self.run_workflow_suite(workflow_type, complexities)
+        for workflow_type, test_complexities in test_plan:
+            results = await self.run_workflow_suite(workflow_type, test_complexities)
             all_results.extend(results)
         
         # Generate final report
@@ -749,11 +761,56 @@ class ModernWorkflowTester:
 
 async def main():
     """Main test execution entry point"""
+    parser = argparse.ArgumentParser(description='Modern Workflow Testing Framework')
+    
+    # Add workflow type options
+    parser.add_argument('--workflow', '-w', choices=['tdd', 'full', 'planning', 'design', 'implementation', 'all'],
+                        default='all', help='Specific workflow type to test (default: all)')
+    
+    # Add complexity options
+    parser.add_argument('--complexity', '-c', 
+                       choices=['minimal', 'standard', 'complex', 'stress', 'all'],
+                       default='minimal', 
+                       help='Test complexity level (default: minimal)')
+    
+    # Option to list available tests without running them
+    parser.add_argument('--list', '-l', action='store_true',
+                       help='List available tests without running them')
+    
+    # Option to save artifacts
+    parser.add_argument('--save-artifacts', '-s', action='store_true', default=True,
+                       help='Save test artifacts (default: True)')
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # Convert string complexity to enum
+    complexity_map = {
+        'minimal': TestComplexity.MINIMAL,
+        'standard': TestComplexity.STANDARD,
+        'complex': TestComplexity.COMPLEX,
+        'stress': TestComplexity.STRESS,
+        'all': None
+    }
+    
+    selected_complexity = complexity_map[args.complexity]
+    complexities = [selected_complexity] if selected_complexity else list(TestComplexity)
+    
+    # Initialize tester
     tester = ModernWorkflowTester()
     
+    # If list option is selected, just show available tests and exit
+    if args.list:
+        _list_available_tests(args.workflow)
+        return
+        
     try:
-        # Run the comprehensive test suite
-        await tester.run_comprehensive_test_suite()
+        if args.workflow == 'all':
+            # Run the comprehensive test suite with filter on complexity
+            await tester.run_comprehensive_test_suite(complexities)
+        else:
+            # Run specific workflow tests
+            await tester.run_workflow_suite(args.workflow, complexities)
         
     except KeyboardInterrupt:
         print("\n\n⚠️  Test execution interrupted by user")
@@ -762,6 +819,32 @@ async def main():
         print(f"\n\n💥 Critical error in test execution: {e}")
         traceback.print_exc()
 
+def _list_available_tests(workflow_filter='all'):
+    """List all available tests without running them"""
+    print("\n📋 Available Tests:")
+    
+    test_plan = [
+        ("tdd", list(TestComplexity)),
+        ("full", list(TestComplexity)),
+        ("planning", list(TestComplexity)),
+        ("design", list(TestComplexity)),
+        ("implementation", list(TestComplexity)),
+    ]
+    
+    for workflow_type, complexities in test_plan:
+        if workflow_filter != 'all' and workflow_filter != workflow_type:
+            continue
+            
+        workflow_desc = get_workflow_description(workflow_type)
+        print(f"\n🔹 {workflow_type.upper()} - {workflow_desc}")
+        
+        for complexity in complexities:
+            if complexity.value in TEST_SCENARIOS:
+                scenario = TEST_SCENARIOS[complexity]
+                print(f"  ┣ {complexity.value}: {scenario.name}")
+                print(f"  ┗ Timeout: {scenario.timeout}s")
+    
+    print("\n💡 Run tests with: python test_workflows.py --workflow <type> --complexity <level>")
 
 if __name__ == "__main__":
     # Clear the console for a fresh start

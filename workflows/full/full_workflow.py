@@ -152,12 +152,12 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
                     
                     review_input = f"Requirements: {requirements}\n\nPlan:\n{plan_output}\n\nDesign:\n{design_output}\n\nImplementation:\n{code_output}"
                     review_result = await run_team_member("reviewer_agent", review_input)
-                    review_output = str(review_result)
+                    review_result_output = str(review_result)
                     
-                    tracer.complete_step(step_id, {"output": review_output[:200] + "..."})
+                    tracer.complete_step(step_id, {"output": review_result_output[:200] + "..."})
                     results.append(TeamMemberResult(
                         team_member=TeamMember.reviewer,
-                        output=review_output,
+                        output=review_result_output,
                         name="reviewer"
                     ))
     

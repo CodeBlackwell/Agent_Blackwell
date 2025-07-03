@@ -175,7 +175,6 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
         })
         review_input = f"Requirements: {input_data.requirements}\n\nCode: {code_output}\n\nTests: {test_output}"
         review_result = await run_team_member("reviewer_agent", review_input)
-        review_output = str(review_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.reviewer,
             output=review_output,

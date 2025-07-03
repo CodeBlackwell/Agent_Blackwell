@@ -3,7 +3,6 @@ Utility functions for workflow implementations.
 """
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 from workflows.monitoring import WorkflowExecutionTracer, ReviewDecision
-from orchestrator.orchestrator_agent import run_team_member
 from typing import Optional
 
 async def review_output(content: str, context: str = "", max_retries: int = MAX_REVIEW_RETRIES, 
@@ -22,6 +21,9 @@ async def review_output(content: str, context: str = "", max_retries: int = MAX_
     Returns:
         Tuple of (approved: bool, feedback: str)
     """
+    # Import run_team_member dynamically to avoid circular imports
+    from orchestrator.orchestrator_agent import run_team_member
+    
     review_prompt = f"""
     Please review the following output:
     

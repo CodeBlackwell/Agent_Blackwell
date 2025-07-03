@@ -7,7 +7,6 @@ from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionRepor
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
-from orchestrator.orchestrator_agent import run_team_member
 
 async def execute_individual_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """
@@ -65,6 +64,9 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
     Returns:
         List of team member results (containing single result)
     """
+    # Import run_team_member dynamically to avoid circular imports
+    from orchestrator.orchestrator_agent import run_team_member
+    
     results = []
     
     agent_map = {
@@ -78,7 +80,7 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
     if workflow_step in agent_map:
         agent_name, team_member, result_name = agent_map[workflow_step]
         
-        print(f"🔄 Running {workflow_step} phase...")
+        print(f" Running {workflow_step} phase...")
         
         # Start monitoring step
         step_id = tracer.start_step(
@@ -107,12 +109,12 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
                 output=output,
                 name=result_name
             ))
-            print(f"✅ {workflow_step} phase completed successfully")
+            print(f" {workflow_step} phase completed successfully")
             
         except Exception as e:
             error_msg = f"{workflow_step} step failed: {str(e)}"
             tracer.complete_step(step_id, error=error_msg)
-            print(f"❌ {workflow_step} failed: {error_msg}")
+            print(f" {workflow_step} failed: {error_msg}")
             raise
     
     return results

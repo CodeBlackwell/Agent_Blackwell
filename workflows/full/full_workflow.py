@@ -7,7 +7,6 @@ from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionRepor
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
-from orchestrator.orchestrator_agent import run_team_member
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 
 import workflows.utils as workflow_utils
@@ -67,6 +66,9 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
     Returns:
         List of team member results
     """
+    # Import run_team_member dynamically to avoid circular imports
+    from orchestrator.orchestrator_agent import run_team_member
+    
     results = []
     max_retries = MAX_REVIEW_RETRIES
     

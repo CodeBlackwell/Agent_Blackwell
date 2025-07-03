@@ -19,8 +19,8 @@ from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, TeamMemberResult
 )
 
-# Import orchestrator function
-from orchestrator.orchestrator_agent import run_team_member
+# Remove direct import of run_team_member - will import dynamically in functions
+# from orchestrator.orchestrator_agent import run_team_member
 
 # Import monitoring components
 from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport, StepStatus, ReviewDecision
@@ -43,6 +43,9 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     Returns:
         Tuple of (team member results, execution report)
     """
+    # Import run_team_member dynamically to avoid circular imports
+    from orchestrator.orchestrator_agent import run_team_member
+    
     # Create tracer if not provided
     if tracer is None:
         tracer = WorkflowExecutionTracer(

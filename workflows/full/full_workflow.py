@@ -1,14 +1,53 @@
 """
 Full workflow implementation with comprehensive monitoring.
 """
-from typing import List
-from workflows.monitoring import WorkflowExecutionTracer
+from typing import List, Optional, Tuple
+import asyncio
+from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
 from orchestrator.orchestrator_agent import run_team_member
 from workflows.utils import review_output
 from workflows.workflow_config import MAX_REVIEW_RETRIES
+
+async def execute_full_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+    """
+    Execute the full workflow with comprehensive monitoring.
+    
+    Args:
+        input_data: The input data containing requirements and workflow configuration
+        tracer: Optional tracer for monitoring execution (creates new one if not provided)
+        
+    Returns:
+        Tuple of (team member results, execution report)
+    """
+    # Create tracer if not provided
+    if tracer is None:
+        tracer = WorkflowExecutionTracer(
+            workflow_type="Full",
+            execution_id=f"full_{int(asyncio.get_event_loop().time())}"
+        )
+    
+    # Start workflow execution
+    tracer.start_execution(requirements=input_data.requirements)
+    
+    try:
+        # Execute the workflow
+        team_members = ["planner", "designer", "coder", "reviewer"]
+        results = await run_full_workflow(input_data.requirements, team_members, tracer)
+        
+        # Complete workflow execution
+        tracer.complete_execution(success=True)
+    except Exception as e:
+        # Handle exceptions and complete workflow with error
+        error_msg = f"Full workflow error: {str(e)}"
+        tracer.complete_execution(success=False, error=error_msg)
+        raise
+    
+    # Return results and execution report
+    return results, tracer.generate_report()
+
 
 async def run_full_workflow(requirements: str, team_members: List[str], tracer: WorkflowExecutionTracer) -> List[TeamMemberResult]:
     """

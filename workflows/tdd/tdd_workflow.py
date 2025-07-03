@@ -1,35 +1,266 @@
 """
-🧪 Enhanced Test Script for Modular Workflows with Agent Path Tracking
+TDD Workflow Implementation
 
-This script provides comprehensive testing for the refactored workflows system with
-robust agent interaction tracking, detailed timing, and aesthetic improvements.
+This module implements the Test-Driven Development workflow with comprehensive monitoring.
 """
 import asyncio
 import sys
-import os
-import time
-import traceback
 from pathlib import Path
-from datetime import datetime
+from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
-import json
 
 # Add the project root to the Python path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from shared.data_models import (
-    TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
+    TeamMember, WorkflowStep, CodingTeamInput, TeamMemberResult
 )
 from orchestrator.orchestrator_agent import run_team_member
+from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport, StepStatus, ReviewDecision
+from workflows.utils import review_output
+from workflows.workflow_config import MAX_REVIEW_RETRIES
 
-# 🎯 Test Configuration
-TEST_REQUIREMENTS = {
-    "minimal": "Create a basic 'Hello World' REST API endpoint",
-    "standard": "Create a simple Express.js TODO API with GET /todos, POST /todos, GET /todos/:id, PUT /todos/:id, DELETE /todos/:id",
-    "complex": "Build a full-stack e-commerce application with user authentication, product catalog, shopping cart, and payment processing"
-}
+async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+    """
+    Execute the TDD workflow with comprehensive monitoring.
+    
+    Args:
+        input_data: The input data containing requirements and workflow configuration
+        tracer: Optional tracer for monitoring execution (creates new one if not provided)
+        
+    Returns:
+        Tuple of (team member results, execution report)
+    """
+    # Create tracer if not provided
+    if tracer is None:
+        tracer = WorkflowExecutionTracer(
+            workflow_type="TDD",
+            execution_id=f"tdd_{int(asyncio.get_event_loop().time())}"
+        )
+    
+    # Initialize results list
+    results = []
+    
+    # Start workflow execution
+    tracer.start_execution(requirements=input_data.requirements)
+    
+    try:
+        # Planning phase
+        tracer.start_step("planning", "Generate project plan")
+        planning_result = await run_team_member(
+            TeamMember.PLANNER,
+            input_data.requirements,
+            tracer=tracer
+        )
+        results.append(planning_result)
+        
+        # Review planning
+        approved, feedback = await review_output(
+            planning_result.output, 
+            "planning", 
+            tracer=tracer
+        )
+        
+        # Handle planning revisions if needed
+        retry_count = 0
+        while not approved and retry_count < input_data.max_retries:
+            tracer.record_retry(
+                step_name="planning",
+                attempt=retry_count + 1,
+                reason=f"Planning revision needed: {feedback}"
+            )
+            
+            # Retry planning with feedback
+            planning_result = await run_team_member(
+                TeamMember.PLANNER,
+                f"{input_data.requirements}\n\nFeedback from review: {feedback}",
+                tracer=tracer
+            )
+            results.append(planning_result)
+            
+            # Review revised planning
+            approved, feedback = await review_output(
+                planning_result.output, 
+                "planning", 
+                tracer=tracer
+            )
+            retry_count += 1
+        
+        tracer.complete_step(
+            "planning",
+            status=StepStatus.SUCCESS if approved else StepStatus.PARTIAL_SUCCESS,
+            output=planning_result.output
+        )
+        
+        # Test writing phase
+        tracer.start_step("test_writing", "Write tests based on requirements")
+        test_writing_result = await run_team_member(
+            TeamMember.TEST_WRITER,
+            f"Requirements: {input_data.requirements}\n\nPlan: {planning_result.output}",
+            tracer=tracer
+        )
+        results.append(test_writing_result)
+        
+        # Review test writing
+        approved, feedback = await review_output(
+            test_writing_result.output, 
+            "test_writing", 
+            tracer=tracer
+        )
+        
+        # Handle test writing revisions if needed
+        retry_count = 0
+        while not approved and retry_count < input_data.max_retries:
+            tracer.record_retry(
+                step_name="test_writing",
+                attempt=retry_count + 1,
+                reason=f"Test writing revision needed: {feedback}"
+            )
+            
+            # Retry test writing with feedback
+            test_writing_result = await run_team_member(
+                TeamMember.TEST_WRITER,
+                f"Requirements: {input_data.requirements}\n\nPlan: {planning_result.output}\n\nFeedback from review: {feedback}",
+                tracer=tracer
+            )
+            results.append(test_writing_result)
+            
+            # Review revised test writing
+            approved, feedback = await review_output(
+                test_writing_result.output, 
+                "test_writing", 
+                tracer=tracer
+            )
+            retry_count += 1
+        
+        tracer.complete_step(
+            "test_writing",
+            status=StepStatus.SUCCESS if approved else StepStatus.PARTIAL_SUCCESS,
+            output=test_writing_result.output
+        )
+        
+        # Coding phase with test-driven approach
+        tracer.start_step("coding", "Implement code to pass tests")
+        coding_input = f"Requirements: {input_data.requirements}\n\nPlan: {planning_result.output}\n\nTests: {test_writing_result.output}"
+        
+        # Initial coding attempt
+        coding_result = await run_team_member(
+            TeamMember.CODER,
+            coding_input,
+            tracer=tracer
+        )
+        results.append(coding_result)
+        
+        # Review and test execution loop
+        retry_count = 0
+        tests_pass = False
+        
+        while not tests_pass and retry_count < input_data.max_retries:
+            # Review code quality first
+            code_approved, code_feedback = await review_output(
+                coding_result.output, 
+                "code_quality", 
+                tracer=tracer
+            )
+            
+            if not code_approved:
+                tracer.record_retry(
+                    step_name="coding",
+                    attempt=retry_count + 1,
+                    reason=f"Code quality issues: {code_feedback}"
+                )
+                
+                # Retry coding with feedback
+                coding_result = await run_team_member(
+                    TeamMember.CODER,
+                    f"{coding_input}\n\nCode review feedback: {code_feedback}",
+                    tracer=tracer
+                )
+                results.append(coding_result)
+                retry_count += 1
+                continue
+            
+            # Execute tests against code
+            tracer.record_test_execution("unit_tests", "Executing unit tests against implementation")
+            
+            # Simulate test execution (in a real system, this would run actual tests)
+            # For this implementation, we'll have the reviewer evaluate if tests would pass
+            test_result, test_feedback = await review_output(
+                f"Code: {coding_result.output}\n\nTests: {test_writing_result.output}", 
+                "test_execution", 
+                tracer=tracer
+            )
+            
+            tests_pass = test_result
+            
+            if not tests_pass:
+                tracer.record_retry(
+                    step_name="coding",
+                    attempt=retry_count + 1,
+                    reason=f"Tests failed: {test_feedback}"
+                )
+                
+                # Retry coding with test failure feedback
+                coding_result = await run_team_member(
+                    TeamMember.CODER,
+                    f"{coding_input}\n\nTest failures: {test_feedback}",
+                    tracer=tracer
+                )
+                results.append(coding_result)
+                retry_count += 1
+        
+        tracer.complete_step(
+            "coding",
+            status=StepStatus.SUCCESS if tests_pass else StepStatus.PARTIAL_SUCCESS,
+            output=coding_result.output
+        )
+        
+        # Final review
+        tracer.start_step("final_review", "Comprehensive final review")
+        final_review_input = f"Requirements: {input_data.requirements}\n\nPlan: {planning_result.output}\n\nTests: {test_writing_result.output}\n\nImplementation: {coding_result.output}"
+        
+        final_review_result = await run_team_member(
+            TeamMember.REVIEWER,
+            final_review_input,
+            tracer=tracer
+        )
+        results.append(final_review_result)
+        
+        tracer.complete_step(
+            "final_review",
+            status=StepStatus.SUCCESS,
+            output=final_review_result.output
+        )
+        
+        # Complete workflow execution
+        tracer.complete_execution(success=True)
+        
+    except Exception as e:
+        # Handle exceptions and complete workflow with error
+        error_msg = f"TDD workflow error: {str(e)}"
+        tracer.complete_execution(success=False, error=error_msg)
+        raise
+    
+    # Return results and execution report
+    return results, tracer.generate_report()
+
+
+# Legacy function for backward compatibility
+async def run_tdd_workflow(requirements: str, tracer: Optional[WorkflowExecutionTracer] = None) -> List[TeamMemberResult]:
+    """
+    Legacy wrapper for backward compatibility.
+    """
+    input_data = CodingTeamInput(
+        requirements=requirements,
+        workflow_type="TDD",
+        step_type=None,
+        max_retries=3,
+        timeout_seconds=600
+    )
+    
+    results, _ = await execute_tdd_workflow(input_data, tracer)
+    return results
 
 @dataclass
 class AgentPathInfo:

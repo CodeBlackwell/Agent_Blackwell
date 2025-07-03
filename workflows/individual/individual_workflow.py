@@ -1,12 +1,55 @@
 """
 Individual workflow step implementation with comprehensive monitoring.
 """
-from typing import List
-from workflows.monitoring import WorkflowExecutionTracer
+from typing import List, Optional, Tuple
+import asyncio
+from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
 from orchestrator.orchestrator_agent import run_team_member
+
+async def execute_individual_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+    """
+    Execute an individual workflow step with comprehensive monitoring.
+    
+    Args:
+        input_data: The input data containing requirements and workflow configuration
+        tracer: Optional tracer for monitoring execution (creates new one if not provided)
+        
+    Returns:
+        Tuple of (team member results, execution report)
+    """
+    # Create tracer if not provided
+    if tracer is None:
+        tracer = WorkflowExecutionTracer(
+            workflow_type="Individual",
+            execution_id=f"individual_{int(asyncio.get_event_loop().time())}"
+        )
+    
+    # Extract workflow step from input data
+    workflow_step = WorkflowStep.planning  # Default to planning if not specified
+    if hasattr(input_data, 'workflow_step') and input_data.workflow_step:
+        workflow_step = input_data.workflow_step
+    
+    # Start workflow execution
+    tracer.start_execution(requirements=input_data.requirements)
+    
+    try:
+        # Execute the workflow
+        results = await run_individual_workflow(input_data.requirements, workflow_step, tracer)
+        
+        # Complete workflow execution
+        tracer.complete_execution(success=True)
+    except Exception as e:
+        # Handle exceptions and complete workflow with error
+        error_msg = f"Individual workflow error: {str(e)}"
+        tracer.complete_execution(success=False, error=error_msg)
+        raise
+    
+    # Return results and execution report
+    return results, tracer.generate_report()
+
 
 async def run_individual_workflow(requirements: str, workflow_step: WorkflowStep, tracer: WorkflowExecutionTracer) -> List[TeamMemberResult]:
     """

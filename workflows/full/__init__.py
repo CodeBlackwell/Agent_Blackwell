@@ -1,3 +1,3 @@
-from workflows.full.full_workflow import run_full_workflow
+from workflows.full.full_workflow import execute_full_workflow, run_full_workflow
 
-__all__ = ["run_full_workflow"]
+__all__ = ["execute_full_workflow", "run_full_workflow"]

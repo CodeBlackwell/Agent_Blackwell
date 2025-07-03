@@ -1,0 +1,184 @@
+🤖 Agent Outputs for Full Workflow (standard)
+================================================================================
+
+1. PLANNER OUTPUT:
+==================================================
+I will provide a structured project plan for creating the Express.js TODO API with the specified endpoints. Let's break it down into sections for clarity.
+--------------------------------------------------
+
+2. DESIGNER OUTPUT:
+==================================================
+
+### System Architecture Overview
+The system will consist of an Express.js server handling HTTP requests for a TODO API. It will include endpoints for GET /todos, POST /todos, GET /todos/:id, PUT /todos/:id, DELETE /todos/:id. The server will interact with a database to store and retrieve TODO items.
+
+### Component Design
+1. **Express.js Server**: Responsible for handling incoming HTTP requests and routing them to the appropriate endpoints.
+2. **Database**: Will store TODO items with fields like id, title, description, completed, etc.
+3. **API Endpoints**: 
+   - GET /todos: Retrieve all TODO items
+   - POST /todos: Create a new TODO item
+   - GET /todos/:id: Retrieve a specific TODO item by ID
+   - PUT /todos/:id: Update a specific TODO item by ID
+   - DELETE /todos/:id: Delete a specific TODO item by ID
+
+### Data Models and Schemas
+**TODO Item Schema**:
+- id: String (unique identifier)
+- title: String
+- description: String
+- completed: Boolean
+
+### API Specifications
+1. GET /todos
+   - Response: Array of TODO items
+2. POST /todos
+   - Request Body: JSON object with title, description, completed
+   - Response: Created TODO item
+3. GET /todos/:id
+   - Response: Specific TODO item
+4. PUT /todos/:id
+   - Request Body: JSON object with updated fields
+   - Response: Updated TODO item
+5. DELETE /todos/:id
+   - Response: Success message
+
+### Interface Definitions
+1. **Express.js Routes**:
+   - GET /todos
+   - POST /todos
+   - GET /todos/:id
+   - PUT /todos/:id
+   - DELETE /todos/:id
+2. **Database Interface**:
+   - CRUD operations for TODO items
+
+### Design Patterns and Guidelines
+- Use RESTful principles for API design
+- Implement error handling for invalid requests
+- Secure API endpoints with proper authentication and authorization mechanisms
+- Follow separation of concerns by dividing logic into controllers, services, and models
+
+This technical design outlines the system architecture, component design, data models, API specifications, interface definitions, and design patterns for the Express.js TODO API project.
+--------------------------------------------------
+
+3. CODER OUTPUT:
+==================================================
+
+✅ PROJECT CREATED: todo_api_generated_20250702_215229
+📁 Location: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/coder/../../orchestrator/generated/todo_api_generated_20250702_215229
+📄 Files created: 4
+🕐 Generated: 2025-07-02 21:52:29
+
+Files:
+  - package.json
+  - src/app.js
+  - test/app.test.js
+  - README.md
+
+--- IMPLEMENTATION DETAILS ---
+
+FILENAME: package.json
+```json
+{
+  "name": "express-todo-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.17.1",
+    "uuid": "^8.3.2"
+  }
+}
+```
+
+FILENAME: src/app.js
+```javascript
+const express = require('express');
+const { v4: uuidv4 } = require('uuid');
+
+const app = express();
+app.use(express.json());
+
+let todos = [];
+
+// GET all todos
+app.get('/todos', (req, res) => {
+  res.json(todos);
+});
+
+// POST a new todo
+app.post('/todos', (req, res) => {
+  const { title, description, completed } = req.body;
+  const newTodo = { id: uuidv4(), title, description, completed };
+  todos.push(newTodo);
+  res.status(201).json(newTodo);
+});
+
+// GET a specific todo by ID
+app.get('/todos/:id', (req, res) => {
+  const todo = todos.find(todo => todo.id === req.params.id);
+  if (!todo) {
+    res.status(404).json({ error: 'Todo not found' });
+  } else {
+    res.json(todo);
+  }
+});
+
+// PUT update a todo by ID
+app.put('/todos/:id', (req, res) => {
+  const { title, description, completed } = req.body;
+  const todoIndex = todos.findIndex(todo => todo.id === req.params.id);
+  if (todoIndex === -1) {
+    res.status(404).json({ error: 'Todo not found' });
+  } else {
+    todos[todoIndex] = { ...todos[todoIndex], title, description, completed };
+    res.json(todos[todoIndex]);
+  }
+});
+
+// DELETE a todo by ID
+app.delete('/todos/:id', (req, res) => {
+  const todoIndex = todos.findIndex(todo => todo.id === req.params.id);
+  if (todoIndex === -1) {
+    res.status(404).json({ error: 'Todo not found' });
+  } else {
+    todos = todos.filter(todo => todo.id !== req.params.id);
+    res.json({ message: 'Todo deleted' });
+  }
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+```
+
+FILENAME: test/app.test.js
+```javascript
+const request = require('supertest');
+const app = require('../src/app');
+
+describe('GET /todos', () => {
+  it('responds with JSON array of todos', async () => {
+    const response = await request(app).get('/todos');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+});
+
+// Add more test cases for POST, GET by ID, PUT, DELETE endpoints
+```
+
+FILENAME: README.md
+```markdown
+# Express.js TODO API
+
+## Setup Instructions
+1. Clone the repository
+2. Install dependencies with `npm install`
+3. Start the server with `node src/app.js`
+4. Test the API endpoints
+```
+
+Please let me know if you need any further assistance or modifications.
+--------------------------------------------------
+

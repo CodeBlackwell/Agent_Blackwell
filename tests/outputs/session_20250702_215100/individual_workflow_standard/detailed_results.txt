@@ -1,0 +1,36 @@
+🧪 Individual Workflow Test Results
+================================================================================
+
+📊 Test Summary:
+  • Status: 🔄 FAILED
+  • Duration: 0.89s
+  • Test Type: standard
+  • Timestamp: 2025-07-02 21:52:29
+
+🔄 Execution Path:
+  Planner → Reviewer → Designer → Reviewer → Designer → Reviewer → Planner → Reviewer → Designer → Reviewer → Planner → Planner → Reviewer → Planner → Reviewer → Designer → Reviewer → Test_writer → Reviewer → Test_writer → Reviewer → Test_writer → Reviewer → Test_writer → Planner → Reviewer → Designer → Reviewer → Designer → Reviewer → Designer → Reviewer → Designer → Coder → Reviewer → Coder → Reviewer → Coder → Reviewer → Coder → Planner
+
+📈 Performance Metrics:
+  • total_agents: 1
+  • agent_sequence: ['planner']
+  • output_lengths: {'planner': 107}
+  • total_output_chars: 107
+
+⏱️  Step Breakdown:
+  ✅ 🔧 Initializing workflow: 0.10s
+  ✅ ⚡ Executing workflow pipeline: 0.79s
+    └─ results_count: 1
+  ✅ 🔍 Analyzing results: 0.00s
+    └─ total_agents: 1
+    └─ agent_sequence: ['planner']
+    └─ output_lengths: {'planner': 107}
+    └─ total_output_chars: 107
+  ⏳ 💾 Saving artifacts: 0.00s
+
+🤖 Agent Outputs:
+--------------------------------------------------------------------------------
+
+1. PLANNER OUTPUT:
+==================================================
+I will provide a structured project plan for creating the Express.js TODO API with the specified endpoints.
+--------------------------------------------------

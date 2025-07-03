@@ -1,0 +1,21 @@
+📋 Individual Workflow (minimal) - Test Summary
+============================================================
+
+Status: 🔄 FAILED
+Duration: 2.71s
+Timestamp: 2025-07-02 22:30:55
+
+Execution Path:
+planner
+
+Performance Metrics:
+  • total_agents: 1
+  • agent_sequence: ['planner']
+  • output_lengths: {'planner': 1931}
+  • total_output_chars: 1931
+
+Step Breakdown:
+  ✅ 🔧 Initializing workflow: 0.10s
+  ✅ ⚡ Executing workflow pipeline: 2.60s
+  ✅ 🔍 Analyzing results: 0.00s
+  ⏳ 💾 Saving artifacts: 0.00s

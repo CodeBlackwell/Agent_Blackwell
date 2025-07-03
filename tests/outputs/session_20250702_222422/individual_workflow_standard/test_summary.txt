@@ -1,0 +1,21 @@
+📋 Individual Workflow (standard) - Test Summary
+============================================================
+
+Status: 🔄 FAILED
+Duration: 2.91s
+Timestamp: 2025-07-02 22:25:59
+
+Execution Path:
+planner
+
+Performance Metrics:
+  • total_agents: 1
+  • agent_sequence: ['planner']
+  • output_lengths: {'planner': 2315}
+  • total_output_chars: 2315
+
+Step Breakdown:
+  ✅ 🔧 Initializing workflow: 0.10s
+  ✅ ⚡ Executing workflow pipeline: 2.81s
+  ✅ 🔍 Analyzing results: 0.00s
+  ⏳ 💾 Saving artifacts: 0.00s

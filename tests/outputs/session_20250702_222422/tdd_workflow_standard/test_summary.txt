@@ -1,0 +1,22 @@
+📋 TDD Workflow (standard) - Test Summary
+============================================================
+
+Status: 🔄 FAILED
+Duration: 21.20s
+Timestamp: 2025-07-02 22:24:57
+
+Execution Path:
+planner → designer → test_writer
+
+Performance Metrics:
+  • total_agents: 3
+  • agent_sequence: ['planner', 'designer', 'test_writer']
+  • output_lengths: {'planner': 2246, 'designer': 1935, 'test_writer': 1232}
+  • total_output_chars: 5413
+  • test_writer_has_tests: True
+
+Step Breakdown:
+  ✅ 🔧 Initializing workflow: 0.10s
+  ✅ ⚡ Executing workflow pipeline: 21.09s
+  ✅ 🔍 Analyzing results: 0.00s
+  ⏳ 💾 Saving artifacts: 0.00s

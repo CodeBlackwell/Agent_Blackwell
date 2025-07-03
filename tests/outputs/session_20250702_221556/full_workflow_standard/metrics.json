@@ -1,0 +1,72 @@
+{
+  "workflow_name": "Full Workflow",
+  "test_type": "standard",
+  "success": false,
+  "duration": 12.121901035308838,
+  "timestamp": 1751509029.712735,
+  "agent_execution_path": [
+    "planner",
+    "designer",
+    "coder"
+  ],
+  "performance_metrics": {
+    "total_agents": 3,
+    "agent_sequence": [
+      "planner",
+      "designer",
+      "coder"
+    ],
+    "output_lengths": {
+      "planner": 2284,
+      "designer": 2113,
+      "coder": 438
+    },
+    "total_output_chars": 4835,
+    "coder_has_code": false,
+    "coder_has_imports": false
+  },
+  "steps": [
+    {
+      "name": "\ud83d\udd27 Initializing workflow",
+      "duration": 0.10094475746154785,
+      "success": true,
+      "details": null
+    },
+    {
+      "name": "\u26a1 Executing workflow pipeline",
+      "duration": 12.019959211349487,
+      "success": true,
+      "details": {
+        "results_count": 3
+      }
+    },
+    {
+      "name": "\ud83d\udd0d Analyzing results",
+      "duration": 7.200241088867188e-05,
+      "success": true,
+      "details": {
+        "total_agents": 3,
+        "agent_sequence": [
+          "planner",
+          "designer",
+          "coder"
+        ],
+        "output_lengths": {
+          "planner": 2284,
+          "designer": 2113,
+          "coder": 438
+        },
+        "total_output_chars": 4835,
+        "coder_has_code": false,
+        "coder_has_imports": false
+      }
+    },
+    {
+      "name": "\ud83d\udcbe Saving artifacts",
+      "duration": 0.0008101463317871094,
+      "success": false,
+      "details": null
+    }
+  ],
+  "error": null
+}

@@ -1,0 +1,167 @@
+🧪 Full Workflow Test Results
+================================================================================
+
+📊 Test Summary:
+  • Status: 🔄 FAILED
+  • Duration: 12.12s
+  • Test Type: standard
+  • Timestamp: 2025-07-02 22:17:09
+
+🔄 Execution Path:
+  planner → designer → coder
+
+📈 Performance Metrics:
+  • total_agents: 3
+  • agent_sequence: ['planner', 'designer', 'coder']
+  • output_lengths: {'planner': 2284, 'designer': 2113, 'coder': 438}
+  • total_output_chars: 4835
+  • coder_has_code: False
+  • coder_has_imports: False
+
+⏱️  Step Breakdown:
+  ✅ 🔧 Initializing workflow: 0.10s
+  ✅ ⚡ Executing workflow pipeline: 12.02s
+    └─ results_count: 3
+  ✅ 🔍 Analyzing results: 0.00s
+    └─ total_agents: 3
+    └─ agent_sequence: ['planner', 'designer', 'coder']
+    └─ output_lengths: {'planner': 2284, 'designer': 2113, 'coder': 438}
+    └─ total_output_chars: 4835
+    └─ coder_has_code: False
+    └─ coder_has_imports: False
+  ⏳ 💾 Saving artifacts: 0.00s
+
+🤖 Agent Outputs:
+--------------------------------------------------------------------------------
+
+1. PLANNER OUTPUT:
+==================================================
+
+# Project Plan: Simple Express.js TODO API
+
+## Project Overview
+The project aims to create a simple Express.js TODO API with the following endpoints: GET /todos, POST /todos, GET /todos/:id, PUT /todos/:id, DELETE /todos/:id. This API will allow users to manage a list of TODO items.
+
+## Technical Requirements
+1. Node.js and Express.js for backend development.
+2. MongoDB for storing TODO data.
+3. Mongoose for interacting with the MongoDB database.
+4. Postman for API testing.
+5. Git for version control.
+6. Docker for containerization (optional).
+
+## Task Breakdown
+1. **Setup Project**
+   - Initialize Node.js project.
+   - Install Express.js and set up the basic server.
+   
+2. **Database Configuration**
+   - Set up MongoDB database.
+   - Connect Express.js with MongoDB using Mongoose.
+   
+3. **Create Endpoints**
+   - Implement GET /todos to fetch all TODO items.
+   - Implement POST /todos to create a new TODO item.
+   - Implement GET /todos/:id to get a specific TODO item.
+   - Implement PUT /todos/:id to update a TODO item.
+   - Implement DELETE /todos/:id to delete a TODO item.
+   
+4. **Testing**
+   - Test each endpoint using Postman.
+   
+5. **Documentation**
+   - Document API endpoints and usage.
+   
+6. **Deployment (Optional)**
+   - Set up deployment environment (e.g., Heroku).
+   - Deploy the Express.js TODO API.
+
+## Architecture Recommendations
+- Follow the MVC (Model-View-Controller) pattern for better code organization.
+- Use middleware for error handling and request validation.
+- Implement JWT (JSON Web Tokens) for authentication (if required).
+- Implement CORS (Cross-Origin Resource Sharing) for handling API requests from different origins.
+
+## Risk Assessment
+1. **Technical Risks**
+   - Compatibility issues between Node.js, Express.js, and MongoDB versions.
+   - Security vulnerabilities if not handled properly.
+   
+2. **Resource Risks**
+   - Limited resources for testing and deployment.
+   
+3. **Timeline Risks**
+   - Delays in development due to unforeseen technical challenges.
+   
+4. **Scope Risks**
+   - Scope creep leading to additional features beyond the defined endpoints.
+
+This project plan provides a structured approach to developing a simple Express.js TODO API, ensuring a systematic implementation of the required functionality.
+--------------------------------------------------
+
+2. DESIGNER OUTPUT:
+==================================================
+
+### System Architecture Overview
+The system will consist of a Node.js backend using Express.js framework to handle HTTP requests and responses. MongoDB will be used as the database to store TODO data, with Mongoose as the ODM for interacting with the database. Postman will be utilized for API testing, and Git for version control. Docker can be optionally used for containerization.
+
+### Component Design
+1. **Express.js Server**: Handles incoming HTTP requests and routes them to the appropriate endpoints.
+2. **MongoDB Database**: Stores TODO data with collections for managing tasks.
+3. **Mongoose ODM**: Provides an interface to interact with MongoDB, defining schemas and models for TODO items.
+4. **Postman**: Used for testing API endpoints and ensuring functionality.
+5. **Git**: Version control system for tracking changes in the project.
+6. **Docker (Optional)**: Containerization tool for packaging the application and its dependencies.
+
+### Data Models and Schemas
+- **TODO Schema**:
+  - _id: ObjectId
+  - title: String
+  - description: String
+  - completed: Boolean
+  - createdAt: Date
+  - updatedAt: Date
+
+### API Specifications
+1. **GET /todos**: Retrieve all TODO items.
+2. **POST /todos**: Create a new TODO item.
+3. **GET /todos/:id**: Get a specific TODO item by ID.
+4. **PUT /todos/:id**: Update a TODO item by ID.
+5. **DELETE /todos/:id**: Delete a TODO item by ID.
+
+### Interface Definitions
+1. **Express.js Routes**:
+   - GET /todos
+   - POST /todos
+   - GET /todos/:id
+   - PUT /todos/:id
+   - DELETE /todos/:id
+2. **Mongoose Models**:
+   - TODO Model with CRUD operations.
+
+### Design Patterns and Guidelines
+1. **MVC Pattern**: Separate concerns for models, views, and controllers.
+2. **Middleware**: Implement error handling and request validation middleware.
+3. **JWT Authentication**: Implement JSON Web Tokens for authentication if required.
+4. **CORS**: Enable Cross-Origin Resource Sharing for handling API requests from different origins.
+
+This design ensures a structured approach to developing the Express.js TODO API, focusing on scalability, performance, and maintainability.
+--------------------------------------------------
+
+3. CODER OUTPUT:
+==================================================
+
+⚠️  No code files detected in response. Created debug file for analysis.
+📁 Location: /Users/lechristopherblackwell/Desktop/Ground_up/rebuild/agents/coder/../../orchestrator/generated/todo_api_generated_20250702_221720
+📄 Debug file: debug_response.txt
+
+💡 The LLM may not be following the expected FILENAME: format.
+Check debug_response.txt to see the actual response format.
+
+Expected format:
+FILENAME: app.js
+```javascript
+code here
+```
+
+--------------------------------------------------

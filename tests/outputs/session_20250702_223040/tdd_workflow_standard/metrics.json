@@ -1,0 +1,70 @@
+{
+  "workflow_name": "TDD Workflow",
+  "test_type": "standard",
+  "success": false,
+  "duration": 24.320757150650024,
+  "timestamp": 1751509858.688865,
+  "agent_execution_path": [
+    "planner",
+    "designer",
+    "test_writer"
+  ],
+  "performance_metrics": {
+    "total_agents": 3,
+    "agent_sequence": [
+      "planner",
+      "designer",
+      "test_writer"
+    ],
+    "output_lengths": {
+      "planner": 2424,
+      "designer": 1778,
+      "test_writer": 1560
+    },
+    "total_output_chars": 5762,
+    "test_writer_has_tests": true
+  },
+  "steps": [
+    {
+      "name": "\ud83d\udd27 Initializing workflow",
+      "duration": 0.10122513771057129,
+      "success": true,
+      "details": null
+    },
+    {
+      "name": "\u26a1 Executing workflow pipeline",
+      "duration": 24.218658208847046,
+      "success": true,
+      "details": {
+        "results_count": 3
+      }
+    },
+    {
+      "name": "\ud83d\udd0d Analyzing results",
+      "duration": 4.124641418457031e-05,
+      "success": true,
+      "details": {
+        "total_agents": 3,
+        "agent_sequence": [
+          "planner",
+          "designer",
+          "test_writer"
+        ],
+        "output_lengths": {
+          "planner": 2424,
+          "designer": 1778,
+          "test_writer": 1560
+        },
+        "total_output_chars": 5762,
+        "test_writer_has_tests": true
+      }
+    },
+    {
+      "name": "\ud83d\udcbe Saving artifacts",
+      "duration": 0.0007352828979492188,
+      "success": false,
+      "details": null
+    }
+  ],
+  "error": null
+}

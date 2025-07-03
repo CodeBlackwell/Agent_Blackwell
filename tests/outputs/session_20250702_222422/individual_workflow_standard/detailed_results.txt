@@ -1,0 +1,91 @@
+🧪 Individual Workflow Test Results
+================================================================================
+
+📊 Test Summary:
+  • Status: 🔄 FAILED
+  • Duration: 2.91s
+  • Test Type: standard
+  • Timestamp: 2025-07-02 22:25:59
+
+🔄 Execution Path:
+  planner
+
+📈 Performance Metrics:
+  • total_agents: 1
+  • agent_sequence: ['planner']
+  • output_lengths: {'planner': 2315}
+  • total_output_chars: 2315
+
+⏱️  Step Breakdown:
+  ✅ 🔧 Initializing workflow: 0.10s
+  ✅ ⚡ Executing workflow pipeline: 2.81s
+    └─ results_count: 1
+  ✅ 🔍 Analyzing results: 0.00s
+    └─ total_agents: 1
+    └─ agent_sequence: ['planner']
+    └─ output_lengths: {'planner': 2315}
+    └─ total_output_chars: 2315
+  ⏳ 💾 Saving artifacts: 0.00s
+
+🤖 Agent Outputs:
+--------------------------------------------------------------------------------
+
+1. PLANNER OUTPUT:
+==================================================
+
+# Project Plan: Simple Express.js TODO API
+
+## Project Overview
+The project aims to create a simple Express.js TODO API with the following endpoints: GET /todos, POST /todos, GET /todos/:id, PUT /todos/:id, DELETE /todos/:id. This API will allow users to manage a list of TODO items.
+
+## Technical Requirements
+- Node.js and Express.js for backend development
+- MongoDB for data storage
+- Express middleware for request handling
+- RESTful API design principles
+- Error handling and validation
+- Testing with tools like Jest or Mocha
+- Documentation using tools like Swagger
+
+## Task Breakdown
+1. **Setup Project Environment**
+   - Initialize Node.js project
+   - Install necessary dependencies (Express, MongoDB driver)
+   
+2. **Create Express Server**
+   - Set up Express server with basic configuration
+   - Implement middleware for request parsing and error handling
+   
+3. **Define MongoDB Schema**
+   - Design the schema for TODO items
+   - Connect Express server to MongoDB database
+   
+4. **Implement API Endpoints**
+   - Create routes for GET /todos, POST /todos, GET /todos/:id, PUT /todos/:id, DELETE /todos/:id
+   - Implement CRUD operations for TODO items
+   
+5. **Error Handling and Validation**
+   - Implement error handling middleware
+   - Validate request data for POST and PUT endpoints
+   
+6. **Testing**
+   - Write unit tests for API endpoints and services
+   - Use tools like Jest or Mocha for testing
+   
+7. **Documentation**
+   - Generate API documentation using Swagger or similar tools
+   - Document endpoints, request/response formats, and error codes
+
+## Architecture Recommendations
+- Use MVC (Model-View-Controller) architecture for better code organization
+- Separate concerns by having controllers for route handling, models for data manipulation, and views for response formatting
+- Implement middleware for common functionalities like authentication, logging, etc.
+
+## Risk Assessment
+- **Technical Risks**: Potential challenges in integrating MongoDB, handling asynchronous operations, or managing API scalability.
+- **Dependency Risks**: Dependencies on external libraries or services that may impact project timelines.
+- **Security Risks**: Ensure proper data validation and authentication mechanisms to prevent security vulnerabilities.
+
+Estimated Time: 2-3 weeks
+Priority: High
+--------------------------------------------------

@@ -1,0 +1,85 @@
+{
+  "session_id": "20250702_221556",
+  "timestamp": "2025-07-02T22:17:27.996920",
+  "overall_duration": 91.5075581073761,
+  "total_tests": 6,
+  "successful_tests": 6,
+  "failed_tests": 0,
+  "success_rate": 1.0,
+  "total_workflow_time": 91.50705051422119,
+  "average_workflow_time": 15.251175085703531,
+  "test_results": [
+    {
+      "workflow_name": "TDD Workflow",
+      "test_type": "minimal",
+      "success": true,
+      "duration": 11.582901954650879,
+      "error": null,
+      "agent_path": [
+        "planner",
+        "designer"
+      ],
+      "artifacts_dir": "tdd_workflow_minimal"
+    },
+    {
+      "workflow_name": "Full Workflow",
+      "test_type": "minimal",
+      "success": true,
+      "duration": 7.680216073989868,
+      "error": null,
+      "agent_path": [
+        "planner",
+        "designer"
+      ],
+      "artifacts_dir": "full_workflow_minimal"
+    },
+    {
+      "workflow_name": "Individual Workflow",
+      "test_type": "minimal",
+      "success": true,
+      "duration": 3.979081869125366,
+      "error": null,
+      "agent_path": [
+        "planner"
+      ],
+      "artifacts_dir": "individual_workflow_minimal"
+    },
+    {
+      "workflow_name": "TDD Workflow",
+      "test_type": "standard",
+      "success": true,
+      "duration": 49.981069803237915,
+      "error": null,
+      "agent_path": [
+        "planner",
+        "designer",
+        "test_writer"
+      ],
+      "artifacts_dir": "tdd_workflow_standard"
+    },
+    {
+      "workflow_name": "Full Workflow",
+      "test_type": "standard",
+      "success": true,
+      "duration": 12.122727870941162,
+      "error": null,
+      "agent_path": [
+        "planner",
+        "designer",
+        "coder"
+      ],
+      "artifacts_dir": "full_workflow_standard"
+    },
+    {
+      "workflow_name": "Individual Workflow",
+      "test_type": "standard",
+      "success": true,
+      "duration": 6.161052942276001,
+      "error": null,
+      "agent_path": [
+        "planner"
+      ],
+      "artifacts_dir": "individual_workflow_standard"
+    }
+  ]
+}

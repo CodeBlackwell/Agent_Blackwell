@@ -1,0 +1,63 @@
+{
+  "workflow_name": "Full Workflow",
+  "test_type": "minimal",
+  "success": false,
+  "duration": 7.679397821426392,
+  "timestamp": 1751508968.0721521,
+  "agent_execution_path": [
+    "planner",
+    "designer"
+  ],
+  "performance_metrics": {
+    "total_agents": 2,
+    "agent_sequence": [
+      "planner",
+      "designer"
+    ],
+    "output_lengths": {
+      "planner": 2180,
+      "designer": 2078
+    },
+    "total_output_chars": 4258
+  },
+  "steps": [
+    {
+      "name": "\ud83d\udd27 Initializing workflow",
+      "duration": 0.1002349853515625,
+      "success": true,
+      "details": null
+    },
+    {
+      "name": "\u26a1 Executing workflow pipeline",
+      "duration": 7.578258037567139,
+      "success": true,
+      "details": {
+        "results_count": 2
+      }
+    },
+    {
+      "name": "\ud83d\udd0d Analyzing results",
+      "duration": 4.100799560546875e-05,
+      "success": true,
+      "details": {
+        "total_agents": 2,
+        "agent_sequence": [
+          "planner",
+          "designer"
+        ],
+        "output_lengths": {
+          "planner": 2180,
+          "designer": 2078
+        },
+        "total_output_chars": 4258
+      }
+    },
+    {
+      "name": "\ud83d\udcbe Saving artifacts",
+      "duration": 0.0007879734039306641,
+      "success": false,
+      "details": null
+    }
+  ],
+  "error": null
+}

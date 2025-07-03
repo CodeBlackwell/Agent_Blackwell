@@ -1,0 +1,23 @@
+📋 Full Workflow (standard) - Test Summary
+============================================================
+
+Status: 🔄 FAILED
+Duration: 12.12s
+Timestamp: 2025-07-02 22:17:09
+
+Execution Path:
+planner → designer → coder
+
+Performance Metrics:
+  • total_agents: 3
+  • agent_sequence: ['planner', 'designer', 'coder']
+  • output_lengths: {'planner': 2284, 'designer': 2113, 'coder': 438}
+  • total_output_chars: 4835
+  • coder_has_code: False
+  • coder_has_imports: False
+
+Step Breakdown:
+  ✅ 🔧 Initializing workflow: 0.10s
+  ✅ ⚡ Executing workflow pipeline: 12.02s
+  ✅ 🔍 Analyzing results: 0.00s
+  ⏳ 💾 Saving artifacts: 0.00s

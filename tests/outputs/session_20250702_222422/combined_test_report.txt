@@ -1,0 +1,61 @@
+🧪 COMBINED WORKFLOW TEST REPORT
+================================================================================
+
+Session ID: 20250702_222422
+Generated: 2025-07-02 22:26:02
+Total Tests: 6
+
+📊 SUMMARY TABLE
+--------------------------------------------------------------------------------
+Workflow             Type       Status   Duration   Agents         
+--------------------------------------------------------------------------------
+TDD Workflow         minimal    ✅ PASS   13.60   s 2              
+Full Workflow        minimal    ✅ PASS   14.89   s 2              
+Individual Workflow  minimal    ✅ PASS   6.74    s 1              
+TDD Workflow         standard   ✅ PASS   21.20   s 3              
+Full Workflow        standard   ✅ PASS   40.47   s 3              
+Individual Workflow  standard   ✅ PASS   2.91    s 1              
+
+
+1. TDD Workflow (minimal)
+============================================================
+Status: 🎉 SUCCESS
+Duration: 13.60s
+Execution Path: planner → designer
+Artifacts Directory: tdd_workflow_minimal/
+
+2. Full Workflow (minimal)
+============================================================
+Status: 🎉 SUCCESS
+Duration: 14.89s
+Execution Path: planner → designer
+Artifacts Directory: full_workflow_minimal/
+
+3. Individual Workflow (minimal)
+============================================================
+Status: 🎉 SUCCESS
+Duration: 6.74s
+Execution Path: planner
+Artifacts Directory: individual_workflow_minimal/
+
+4. TDD Workflow (standard)
+============================================================
+Status: 🎉 SUCCESS
+Duration: 21.20s
+Execution Path: planner → designer → test_writer
+Artifacts Directory: tdd_workflow_standard/
+
+5. Full Workflow (standard)
+============================================================
+Status: 🎉 SUCCESS
+Duration: 40.47s
+Execution Path: planner → designer → coder
+Artifacts Directory: full_workflow_standard/
+
+6. Individual Workflow (standard)
+============================================================
+Status: 🎉 SUCCESS
+Duration: 2.91s
+Execution Path: planner
+Artifacts Directory: individual_workflow_standard/
+

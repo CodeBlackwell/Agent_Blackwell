@@ -17,3 +17,7 @@ test_writer_config = {
 reviewer_config = {
     "model": "openai:gpt-4o-mini",
 }
+
+executor_config = {
+    "model": "openai:gpt-3.5-turbo",
+}

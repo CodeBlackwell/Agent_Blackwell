@@ -1,0 +1,226 @@
+{
+  "execution_id": "0687cdf0-17a4-4b5e-8723-f8639d281978",
+  "workflow_type": "tdd",
+  "start_time": "2025-07-03T17:51:47.811303",
+  "end_time": "2025-07-03T17:51:53.407276",
+  "total_duration_seconds": 5.595973,
+  "status": "completed",
+  "steps": [
+    {
+      "step_id": "planning_0_175147",
+      "step_name": "planning",
+      "agent_name": "planner_agent",
+      "status": "completed",
+      "start_time": "2025-07-03T17:51:47.811332",
+      "end_time": "2025-07-03T17:51:51.509238",
+      "duration_seconds": 3.697906,
+      "input_data": {
+        "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response"
+      },
+      "output_data": {
+        "output": "[]..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "design_1_175151",
+      "step_name": "design",
+      "agent_name": "designer_agent",
+      "status": "completed",
+      "start_time": "2025-07-03T17:51:51.911526",
+      "end_time": "2025-07-03T17:51:52.298574",
+      "duration_seconds": 0.387048,
+      "input_data": {
+        "plan_input": "[]...",
+        "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response"
+      },
+      "output_data": {
+        "output": "[]..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "test_writing_2_175152",
+      "step_name": "test_writing",
+      "agent_name": "test_writer_agent",
+      "status": "completed",
+      "start_time": "2025-07-03T17:51:52.479373",
+      "end_time": "2025-07-03T17:51:52.696565",
+      "duration_seconds": 0.217192,
+      "input_data": {
+        "plan_input": "[]...",
+        "design_input": "[]..."
+      },
+      "output_data": {
+        "output": "[]..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "coding_3_175153",
+      "step_name": "coding",
+      "agent_name": "coder_agent",
+      "status": "completed",
+      "start_time": "2025-07-03T17:51:53.117787",
+      "end_time": "2025-07-03T17:51:53.273098",
+      "duration_seconds": 0.155311,
+      "input_data": {
+        "test_input": "[]...",
+        "design_input": "[]..."
+      },
+      "output_data": {
+        "output": "[]..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "final_review_4_175153",
+      "step_name": "final_review",
+      "agent_name": "reviewer_agent",
+      "status": "completed",
+      "start_time": "2025-07-03T17:51:53.273134",
+      "end_time": "2025-07-03T17:51:53.407211",
+      "duration_seconds": 0.134077,
+      "input_data": {
+        "code_input": "[]...",
+        "context": "TDD workflow final review"
+      },
+      "output_data": {
+        "output": "[]..."
+      },
+      "error_message": null,
+      "metadata": {}
+    }
+  ],
+  "step_count": 5,
+  "completed_steps": 5,
+  "failed_steps": 0,
+  "reviews": [
+    {
+      "review_id": "review_0_175151",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[]",
+      "decision": "auto_approved",
+      "feedback": "Auto-approved due to review error: 'list' object has no attribute 'upper'",
+      "timestamp": "2025-07-03T17:51:51.911505",
+      "retry_count": 0,
+      "auto_approved": true,
+      "metadata": {
+        "target_agent": "planner_agent"
+      }
+    },
+    {
+      "review_id": "review_1_175152",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[]",
+      "decision": "auto_approved",
+      "feedback": "Auto-approved due to review error: 'list' object has no attribute 'upper'",
+      "timestamp": "2025-07-03T17:51:52.479353",
+      "retry_count": 0,
+      "auto_approved": true,
+      "metadata": {
+        "target_agent": "designer_agent"
+      }
+    },
+    {
+      "review_id": "review_2_175153",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[]",
+      "decision": "auto_approved",
+      "feedback": "Auto-approved due to review error: 'list' object has no attribute 'upper'",
+      "timestamp": "2025-07-03T17:51:53.117768",
+      "retry_count": 0,
+      "auto_approved": true,
+      "metadata": {
+        "target_agent": "test_writer_agent"
+      }
+    }
+  ],
+  "total_reviews": 3,
+  "approved_reviews": 0,
+  "revision_requests": 0,
+  "auto_approvals": 3,
+  "retries": [],
+  "total_retries": 0,
+  "test_executions": [],
+  "total_tests": 0,
+  "passed_tests": 0,
+  "failed_tests": 0,
+  "agent_performance": {
+    "planner_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 3.697906,
+      "average_duration": 3.697906,
+      "reviews_received": 1,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "designer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 0.387048,
+      "average_duration": 0.387048,
+      "reviews_received": 1,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "test_writer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 0.217192,
+      "average_duration": 0.217192,
+      "reviews_received": 1,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "coder_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 0.155311,
+      "average_duration": 0.155311,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "reviewer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 0.134077,
+      "average_duration": 0.134077,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    }
+  },
+  "final_output": {
+    "workflow_type": "tdd",
+    "results_count": 5,
+    "team_members": [
+      "planner",
+      "designer",
+      "test_writer",
+      "coder",
+      "reviewer"
+    ]
+  },
+  "error_summary": null,
+  "metadata": {
+    "input_requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+    "workflow_type": "tdd"
+  }
+}

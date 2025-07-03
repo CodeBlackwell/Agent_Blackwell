@@ -1,0 +1,72 @@
+{
+  "test_id": "tdd_complex_1751577710",
+  "scenario": {
+    "name": "E-Commerce Platform",
+    "complexity": "complex",
+    "requirements": "Build a full-stack e-commerce application with:\n        - User authentication and authorization\n        - Product catalog with search and filtering\n        - Shopping cart functionality\n        - Order management system\n        - Payment processing integration\n        - Admin dashboard\n        - Email notifications\n        - API documentation"
+  },
+  "workflow_type": "tdd",
+  "status": "success",
+  "duration": 22.039430856704712,
+  "observations": {
+    "agents_involved": [
+      "planner",
+      "designer",
+      "test_writer",
+      "coder",
+      "reviewer"
+    ],
+    "agent_interaction_sequence": [
+      "planner_agent",
+      "designer_agent",
+      "test_writer_agent",
+      "coder_agent",
+      "reviewer_agent"
+    ],
+    "review_patterns": {
+      "total_reviews": 3,
+      "approval_rate": 0.0,
+      "revision_requests": 0,
+      "auto_approvals": 3
+    },
+    "retry_patterns": {},
+    "performance_patterns": {
+      "slowest_agent": {
+        "name": "planner_agent",
+        "avg_time": 9.081456
+      },
+      "fastest_agent": {
+        "name": "reviewer_agent",
+        "avg_time": 0.870771
+      },
+      "timing_variance": 8.210685
+    },
+    "notable_events": [
+      "Auto-approvals occurred: 3"
+    ]
+  },
+  "metrics": {
+    "total_steps": 5,
+    "completed_steps": 5,
+    "success_rate": 100.0,
+    "total_reviews": 3,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 9595,
+    "output_by_agent": {
+      "planner": 2995,
+      "designer": 2738,
+      "test_writer": 814,
+      "coder": 2541,
+      "reviewer": 507
+    },
+    "agent_timings": {
+      "planner_agent": 9.081456,
+      "designer_agent": 3.705806,
+      "test_writer_agent": 1.494501,
+      "coder_agent": 3.835115,
+      "reviewer_agent": 0.870771
+    }
+  },
+  "error": null
+}

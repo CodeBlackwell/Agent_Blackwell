@@ -4,3 +4,5 @@ pydantic
 requests
 asyncio
 beeai_framework
+docker>=6.0.0
+aiodocker>=0.21.0

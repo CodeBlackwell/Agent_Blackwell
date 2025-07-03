@@ -168,19 +168,20 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
         ))
         tracer.complete_step(step_id, {"output": code_output[:200] + "..."})
         
-        # Final review
+        # Final review - FIX: Use review_result_output instead of review_output
         step_id = tracer.start_step("final_review", "reviewer_agent", {
             "code_input": code_output[:200] + "...",
             "context": "TDD workflow final review"
         })
         review_input = f"Requirements: {input_data.requirements}\n\nCode: {code_output}\n\nTests: {test_output}"
         review_result = await run_team_member("reviewer_agent", review_input)
+        review_result_output = str(review_result)  # Convert result to string
         results.append(TeamMemberResult(
             team_member=TeamMember.reviewer,
-            output=review_output,
+            output=review_result_output,  # Use the string output
             name="reviewer"
         ))
-        tracer.complete_step(step_id, {"output": review_output[:200] + "..."})
+        tracer.complete_step(step_id, {"output": review_result_output[:200] + "..."})  # Use the string output
         
         # Complete workflow execution
         tracer.complete_execution(final_output={

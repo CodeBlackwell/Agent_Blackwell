@@ -174,6 +174,54 @@ class WorkflowExecutionReport:
         
         # Calculate agent performance metrics
         self._calculate_agent_performance()
+
+    def to_json(self) -> str:
+        """Convert the execution report to JSON."""
+        def serialize_datetime(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            elif isinstance(obj, Enum):
+                return obj.value
+            elif isinstance(obj, WorkflowStepResult):
+                return obj.__dict__
+            elif isinstance(obj, ReviewResult):
+                return obj.__dict__
+            elif isinstance(obj, TestExecutionResult):
+                return obj.__dict__
+            elif isinstance(obj, RetryAttempt):
+                return obj.__dict__
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+        
+        # Convert dataclass to dict for serialization
+        report_dict = {
+            'execution_id': self.execution_id,
+            'workflow_type': self.workflow_type,
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'total_duration_seconds': self.total_duration_seconds,
+            'status': self.status,
+            'steps': self.steps,
+            'step_count': self.step_count,
+            'completed_steps': self.completed_steps,
+            'failed_steps': self.failed_steps,
+            'reviews': self.reviews,
+            'total_reviews': self.total_reviews,
+            'approved_reviews': self.approved_reviews,
+            'revision_requests': self.revision_requests,
+            'auto_approvals': self.auto_approvals,
+            'retries': self.retries,
+            'total_retries': self.total_retries,
+            'test_executions': self.test_executions,
+            'total_tests': self.total_tests,
+            'passed_tests': self.passed_tests,
+            'failed_tests': self.failed_tests,
+            'agent_performance': self.agent_performance,
+            'final_output': self.final_output,
+            'error_summary': self.error_summary,
+            'metadata': self.metadata
+        }
+        
+        return json.dumps(report_dict, default=serialize_datetime, indent=2)
     
     def _calculate_agent_performance(self):
         """Calculate performance metrics for each agent."""

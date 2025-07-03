@@ -8,8 +8,11 @@ from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
 from orchestrator.orchestrator_agent import run_team_member
-from workflows.utils import review_output
 from workflows.workflow_config import MAX_REVIEW_RETRIES
+
+import workflows.utils as workflow_utils
+review_output = workflow_utils.review_output
+
 
 async def execute_full_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """

@@ -176,6 +176,94 @@ type: initial_input
 
 ---
 
+#### planner_agent → reviewer_agent
+
+**Schema:**
+
+```
+stage: plan
+output: plan_output
+```
+
+---
+
+#### reviewer_agent → workflow_continuation
+
+**Schema:**
+
+```
+decision: approved
+stage: plan
+```
+
+---
+
+#### designer_agent → reviewer_agent
+
+**Schema:**
+
+```
+stage: design
+output: design_output
+```
+
+---
+
+#### reviewer_agent → workflow_continuation
+
+**Schema:**
+
+```
+decision: approved
+stage: design
+```
+
+---
+
+#### reviewer_agent → designer_agent
+
+**Schema:**
+
+```
+decision: revision_needed
+stage: design
+```
+
+---
+
+#### coder_agent → reviewer_agent
+
+**Schema:**
+
+```
+stage: implementation
+output: code_output
+```
+
+---
+
+#### reviewer_agent → workflow_continuation
+
+**Schema:**
+
+```
+decision: approved
+stage: implementation
+```
+
+---
+
+#### reviewer_agent → coder_agent
+
+**Schema:**
+
+```
+decision: revision_needed
+stage: implementation
+```
+
+---
+
 #### planner_agent → designer_agent
 
 **Schema:**

@@ -3,17 +3,17 @@ digraph {
 	rankdir=TB size="12,16"
 	node [fontname=Arial shape=box style="rounded,filled"]
 	edge [fontname=Arial fontsize=10]
+	coder_agent [label=Coder fillcolor="#CCFFFF"]
+	designer_agent [label=Designer fillcolor="#E6FFE6"]
 	test_execution [label="Test
 Execution" fillcolor="#F0E6FF" shape=diamond]
-	designer_agent [label=Designer fillcolor="#E6FFE6"]
+	input [label="Input
+(Requirements)" fillcolor="#E6F3FF" shape=ellipse]
 	planner_agent [label=Planner fillcolor="#FFE6CC"]
 	workflow_continuation [label="Continue
 Workflow" fillcolor="#E6E6E6" shape=ellipse]
-	input [label="Input
-(Requirements)" fillcolor="#E6F3FF" shape=ellipse]
-	test_writer_agent [label="Test Writer" fillcolor="#FFCCFF"]
-	coder_agent [label=Coder fillcolor="#CCFFFF"]
 	reviewer_agent [label=Reviewer fillcolor="#FFCCCC"]
+	test_writer_agent [label="Test Writer" fillcolor="#FFCCFF"]
 	input -> planner_agent [label=initial_input color=blue penwidth=2 style=solid]
 	planner_agent -> reviewer_agent [label="Review plan" arrowhead=diamond color=red penwidth=2 style=dashed]
 	reviewer_agent -> workflow_continuation [label="Approved: plan" arrowhead=normal arrowsize=1.5 color=green penwidth=3 style=bold]

@@ -10,6 +10,86 @@
   },
   {
     "source": "planner_agent",
+    "target": "reviewer_agent",
+    "schema": {
+      "stage": "plan",
+      "output": "plan_output"
+    },
+    "transformations": [],
+    "flow_type": "review"
+  },
+  {
+    "source": "reviewer_agent",
+    "target": "workflow_continuation",
+    "schema": {
+      "decision": "approved",
+      "stage": "plan"
+    },
+    "transformations": [],
+    "flow_type": "approval"
+  },
+  {
+    "source": "designer_agent",
+    "target": "reviewer_agent",
+    "schema": {
+      "stage": "design",
+      "output": "design_output"
+    },
+    "transformations": [],
+    "flow_type": "review"
+  },
+  {
+    "source": "reviewer_agent",
+    "target": "workflow_continuation",
+    "schema": {
+      "decision": "approved",
+      "stage": "design"
+    },
+    "transformations": [],
+    "flow_type": "approval"
+  },
+  {
+    "source": "reviewer_agent",
+    "target": "designer_agent",
+    "schema": {
+      "decision": "revision_needed",
+      "stage": "design"
+    },
+    "transformations": [],
+    "flow_type": "feedback"
+  },
+  {
+    "source": "coder_agent",
+    "target": "reviewer_agent",
+    "schema": {
+      "stage": "implementation",
+      "output": "code_output"
+    },
+    "transformations": [],
+    "flow_type": "review"
+  },
+  {
+    "source": "reviewer_agent",
+    "target": "workflow_continuation",
+    "schema": {
+      "decision": "approved",
+      "stage": "implementation"
+    },
+    "transformations": [],
+    "flow_type": "approval"
+  },
+  {
+    "source": "reviewer_agent",
+    "target": "coder_agent",
+    "schema": {
+      "decision": "revision_needed",
+      "stage": "implementation"
+    },
+    "transformations": [],
+    "flow_type": "feedback"
+  },
+  {
+    "source": "planner_agent",
     "target": "designer_agent",
     "schema": {
       "type": "sequential"

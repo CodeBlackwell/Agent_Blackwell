@@ -6,6 +6,18 @@ from enum import Enum
 from typing import List, Optional, Dict, Any
 
 
+class BaseModel:
+    """Base model class for all data models"""
+    pass
+
+
+@dataclass
+class ExecutionResult:
+    """Base class for execution results"""
+    success: bool
+    feedback: str
+
+
 class TeamMember(Enum):
     """Available team members"""
     planner = "planner_agent"

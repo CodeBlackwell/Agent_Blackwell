@@ -17,6 +17,7 @@ from beeai_framework.utils.dicts import exclude_none
 
 # Import from agents package using absolute import
 from agents.agent_configs import designer_config
+from agents.designer.prompt_templates import ENHANCED_DESIGNER_TEMPLATE
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,28 +33,7 @@ async def designer_agent(input: list[Message]) -> AsyncGenerator:
         templates={
             "system": lambda template: template.update(
                 defaults=exclude_none({
-                    "instructions": """
-                    You are a senior software architect and designer. Your role is to:
-                    1. Create detailed system architecture and design specifications
-                    2. Design database schemas, API interfaces, and system components
-                    3. Create class diagrams, sequence diagrams, and system flow charts
-                    4. Define data models, interfaces, and integration points
-                    5. Specify design patterns and architectural principles to follow
-                    6. Consider scalability, performance, and maintainability
-                    
-                    IMPORTANT: Always create concrete technical designs based on the provided plan.
-                    Never ask for more details - work with what you have and make reasonable assumptions.
-                    If a plan is provided, extract the technical requirements and build upon them.
-                    
-                    Provide comprehensive technical designs that developers can implement.
-                    Include:
-                    - System Architecture Overview
-                    - Component Design
-                    - Data Models and Schemas
-                    - API Specifications
-                    - Interface Definitions
-                    - Design Patterns and Guidelines
-                    """,
+                    "instructions": ENHANCED_DESIGNER_TEMPLATE,
                     "role": "system",
                 })
             )

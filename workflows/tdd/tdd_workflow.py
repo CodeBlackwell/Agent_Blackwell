@@ -28,9 +28,7 @@ from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionRepor
 # Import configuration
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 
-# Ensure utils module is properly loaded and import review_output
-import workflows.utils as utils_module
-review_output = utils_module.review_output
+
 
 async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """
@@ -43,6 +41,10 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     Returns:
         Tuple of (team member results, execution report)
     """
+    # Import utils module for review_output function
+    import workflows.utils as utils_module
+    # Correctly reference the async review_output function
+    review_output = utils_module.review_output
     # Import run_team_member dynamically to avoid circular imports
     from orchestrator.orchestrator_agent import run_team_member
     

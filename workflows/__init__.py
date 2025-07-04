@@ -7,8 +7,8 @@ Ensures all workflow modules and utilities are properly accessible.
 from workflows.workflow_manager import execute_workflow
 
 # Import utility functions to ensure they're available
-from workflows import utils
-from workflows.utils import review_output
+from workflows import workflow_utils
+from workflows.workflow_utils import review_output
 
 # Import monitoring components
 from workflows import monitoring

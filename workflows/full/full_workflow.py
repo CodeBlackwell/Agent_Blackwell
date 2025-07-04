@@ -8,10 +8,7 @@ from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
 from workflows.workflow_config import MAX_REVIEW_RETRIES
-
-import workflows.utils as workflow_utils
-review_output = workflow_utils.review_output
-
+from workflows.incremental.feature_orchestrator import run_incremental_coding_phase
 
 async def execute_full_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """
@@ -68,6 +65,11 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
     """
     # Import run_team_member dynamically to avoid circular imports
     from orchestrator.orchestrator_agent import run_team_member
+
+    # Import review_output from the renamed workflow_utils.py file
+    from workflows import workflow_utils
+    # Use the review_output function from the module
+    review_output = workflow_utils.review_output
     
     results = []
     max_retries = MAX_REVIEW_RETRIES
@@ -127,22 +129,61 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
             # Step 3: Implementation
             if "coder" in team_members:
                 print("💻 Implementation phase...")
-                step_id = tracer.start_step("implementation", "coder_agent", {
+                step_id = tracer.start_step("implementation", "incremental_coding", {
                     "plan_input": plan_output[:200] + "...",
                     "design_input": design_output[:200] + "...",
                     "requirements": requirements
                 })
                 
-                code_input = f"Plan:\n{plan_output}\n\nDesign:\n{design_output}\n\nRequirements: {requirements}"
-                code_result = await run_team_member("coder_agent", code_input)
-                code_output = str(code_result)
-                
-                tracer.complete_step(step_id, {"output": code_output[:200] + "..."})
-                results.append(TeamMemberResult(
-                    team_member=TeamMember.coder,
-                    output=code_output,
-                    name="coder"
-                ))
+                # Use incremental feature orchestrator instead of direct coder_agent call
+                try:
+                    code_output, execution_metrics = await run_incremental_coding_phase(
+                        designer_output=design_output,
+                        requirements=requirements,
+                        tests=None,  # No tests in full workflow
+                        tracer=tracer,
+                        max_retries=3
+                    )
+                    
+                    # Add execution metrics to tracer
+                    tracer.add_metadata("incremental_execution_metrics", execution_metrics)
+                    
+                    # Log feature execution stats
+                    print(f"✅ Completed {execution_metrics['completed_features']}/{execution_metrics['total_features']} features")
+                    print(f"📊 Success rate: {execution_metrics['success_rate']:.1f}%")
+                    
+                    # Add coder result to results list
+                    tracer.complete_step(step_id, {
+                        "output": code_output[:200] + "...",
+                        "features_completed": execution_metrics['completed_features'],
+                        "total_features": execution_metrics['total_features']
+                    })
+                    
+                    # The incremental orchestrator already returns a TeamMemberResult for the coder
+                    # so we don't need to create one here, just add it to our results list
+                    coder_result = TeamMemberResult(
+                        team_member=TeamMember.coder,
+                        output=code_output,
+                        name="coder"
+                    )
+                    results.append(coder_result)
+                    
+                except Exception as e:
+                    error_msg = f"Incremental coding phase error: {str(e)}"
+                    print(f"❌ {error_msg}")
+                    tracer.complete_step(step_id, {"error": error_msg}, success=False)
+                    # Fall back to standard coder implementation
+                    print("⚠️ Falling back to standard implementation...")
+                    
+                    code_input = f"Plan:\n{plan_output}\n\nDesign:\n{design_output}\n\nRequirements: {requirements}"
+                    code_result = await run_team_member("coder_agent", code_input)
+                    code_output = str(code_result)
+                    
+                    results.append(TeamMemberResult(
+                        team_member=TeamMember.coder,
+                        output=code_output,
+                        name="coder"
+                    ))
                 
                 # Step 4: Final Review
                 if "reviewer" in team_members:

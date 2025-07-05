@@ -11,6 +11,8 @@ from shared.utils.feature_parser import Feature, ComplexityLevel
 from workflows.monitoring import WorkflowExecutionTracer
 from shared.data_models import TeamMemberResult, ExecutionResult
 from workflows.workflow_config import EXECUTION_CONFIG
+from workflows.incremental.error_analyzer import ErrorAnalyzer, ErrorContext
+from workflows.incremental.validation_system import GranularValidator
 
 
 @dataclass
@@ -35,6 +37,8 @@ class IncrementalExecutor:
         self.tracer = tracer
         self.codebase_state: Dict[str, str] = {}
         self.validated_features: List[str] = []
+        self.error_analyzer = ErrorAnalyzer()
+        self.granular_validator = GranularValidator()
     
     async def validate_feature(
         self,
@@ -46,7 +50,7 @@ class IncrementalExecutor:
         Validate a single feature implementation.
         Follows ACP pattern for agent invocation.
         """
-        from orchestrator.orchestrator_agent import run_agent
+        from orchestrator.orchestrator_agent import run_team_member
         
         # Update codebase state
         self.codebase_state.update(new_files)
@@ -67,7 +71,7 @@ class IncrementalExecutor:
         
         try:
             # Run executor agent following ACP patterns
-            result = await run_agent("executor", executor_input, session_id=self.session_id)
+            result = await run_team_member("executor_agent", executor_input)
             execution_output = str(result)
             
             # Parse results

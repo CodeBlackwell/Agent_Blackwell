@@ -4,12 +4,17 @@ Follows ACP workflow patterns.
 """
 from typing import List, Dict, Any, Optional, Tuple
 import asyncio
+import re
 from dataclasses import dataclass
+from datetime import datetime
 
 from shared.utils.feature_parser import Feature, FeatureParser, ComplexityLevel
 # No direct imports from incremental_executor to avoid circular imports
 from workflows.monitoring import WorkflowExecutionTracer
 from shared.data_models import TeamMemberResult, TeamMember
+from .stagnation_detector import StagnationDetector
+from .retry_strategies import RetryOrchestrator, RetryContext, RetryStrategy
+from .progress_monitor import ProgressMonitor
 
 
 @dataclass
@@ -347,10 +352,11 @@ async def execute_features_incrementally(
     design: str,
     tests: Optional[str],
     tracer: WorkflowExecutionTracer,
-    max_retries: int = 3
+    max_retries: int = 3,
+    stagnation_threshold: float = 0.7
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
-    Execute features incrementally with retry logic.
+    Execute features incrementally with retry logic and stagnation detection.
     Follows ACP patterns for orchestrated execution.
     """
     from orchestrator.orchestrator_agent import run_team_member
@@ -362,10 +368,32 @@ async def execute_features_incrementally(
         tracer=tracer
     )
     
+    # Initialize stagnation detector
+    stagnation_detector = StagnationDetector(
+        stagnation_threshold=stagnation_threshold,
+        min_attempts_before_detection=3
+    )
+    
+    # Initialize retry orchestrator
+    retry_orchestrator = RetryOrchestrator()
+    
+    # Initialize progress monitor
+    progress_monitor = ProgressMonitor(
+        workflow_id=tracer.execution_id,
+        total_features=len(features)
+    )
+    
     completed_features = []
+    skipped_features = []
+    
+    # Print initial progress visualization
+    print(progress_monitor.visualize_progress())
     
     for idx, feature in enumerate(features):
         print(f"\n🔨 Implementing {feature.id}: {feature.title}")
+        
+        # Start progress tracking for this feature
+        progress_monitor.start_feature(feature.id, feature.title)
         
         # Start feature step
         step_id = tracer.start_step(
@@ -381,8 +409,32 @@ async def execute_features_incrementally(
         success = False
         retry_count = 0
         
+        # Check if we should skip this feature due to previous stagnation
+        if stagnation_detector.should_skip_feature(feature.id):
+            print(f"⏭️  Skipping {feature.id} due to previous stagnation")
+            skipped_features.append(feature)
+            progress_monitor.skip_feature(feature.id, "Previous stagnation detected")
+            tracer.complete_step(step_id, {
+                "status": "skipped",
+                "reason": "stagnation_detected"
+            })
+            continue
+        
         while not success and retry_count < max_retries:
-            # Prepare context for coder
+            attempt_start_time = datetime.now()
+            
+            # Check for stagnation before retry
+            if retry_count > 0:
+                stagnation_info = stagnation_detector.detect_stagnation(feature.id)
+                if stagnation_info:
+                    print(f"\n⚠️  Stagnation detected: {stagnation_info['recommendation']}")
+                    
+                    # Get alternative approach suggestion
+                    alternative = stagnation_detector.suggest_alternative_approach(feature.id)
+                    if alternative:
+                        print(f"💡 Suggestion: {alternative}")
+            
+            # Prepare context for coder with stagnation awareness
             coder_input = prepare_feature_context(
                 feature,
                 requirements,
@@ -392,6 +444,18 @@ async def execute_features_incrementally(
                 retry_count
             )
             
+            # Add stagnation context if available
+            if retry_count > 0:
+                summary = stagnation_detector.get_feature_summary(feature.id)
+                if summary and summary['most_recent_errors']:
+                    coder_input += "\n\nPREVIOUS ERRORS TO AVOID:\n"
+                    for error in summary['most_recent_errors']:
+                        coder_input += f"- {error['type']}: {error['message']}\n"
+                
+                # Apply retry strategy modifications if available
+                if 'retry_decision' in locals() and retry_decision.modifications:
+                    coder_input = retry_decision.get_modified_context(coder_input)
+            
             # Get code from coder agent
             code_result = await run_team_member("coder_agent", coder_input)
             code_output = str(code_result)
@@ -399,11 +463,33 @@ async def execute_features_incrementally(
             # Parse files from output
             new_files = parse_code_files(code_output)
             
+            # Calculate code change size for stagnation detection
+            code_diff_size = sum(len(content.split('\n')) for content in new_files.values())
+            
             # Validate with executor
             validation_result = await executor.validate_feature(
                 feature,
                 new_files,
                 tests
+            )
+            
+            # Record attempt for stagnation detection
+            attempt_duration = (datetime.now() - attempt_start_time).total_seconds()
+            test_results = None
+            if validation_result.tests_passed is not None or validation_result.tests_failed is not None:
+                test_results = (
+                    validation_result.tests_passed or 0,
+                    validation_result.tests_failed or 0
+                )
+            
+            stagnation_detector.record_attempt(
+                feature_id=feature.id,
+                success=validation_result.success,
+                error_message=validation_result.feedback if not validation_result.success else None,
+                files_changed=list(new_files.keys()),
+                code_diff_size=code_diff_size,
+                test_results=test_results,
+                duration=attempt_duration
             )
             
             if validation_result.success:
@@ -415,6 +501,14 @@ async def execute_features_incrementally(
                     "validation": validation_result
                 })
                 
+                # Update progress monitor
+                progress_monitor.complete_feature(
+                    feature.id,
+                    success=True,
+                    files_created=list(new_files.keys()),
+                    lines_of_code=code_diff_size
+                )
+                
                 # Complete step
                 tracer.complete_step(step_id, {
                     "status": "success",
@@ -422,33 +516,118 @@ async def execute_features_incrementally(
                     "validation_passed": True
                 })
                 
-                # Show progress
-                progress = (idx + 1) / len(features) * 100
-                print(f"✅ {feature.id} complete ({progress:.0f}% overall)")
+                # Show progress visualization
+                print(f"✅ {feature.id} complete")
+                print(progress_monitor.visualize_progress())
                 
             else:
                 retry_count += 1
                 if retry_count < max_retries:
-                    print(f"❌ Validation failed, retrying ({retry_count}/{max_retries})")
-                    tracer.record_retry(
+                    # Create retry context for decision
+                    error_history = [v.feedback for v in stagnation_detector.feature_metrics.get(feature.id, {}).get('failed_validations', [])]
+                    error_categories = []
+                    for err in error_history:
+                        if "syntax" in err.lower():
+                            error_categories.append("syntax_error")
+                        elif "import" in err.lower():
+                            error_categories.append("import_error")
+                        elif "test" in err.lower():
+                            error_categories.append("test_failure")
+                        else:
+                            error_categories.append("unknown")
+                    
+                    retry_context = RetryContext(
+                        feature_id=feature.id,
                         attempt_number=retry_count,
-                        reason=validation_result.feedback
+                        total_attempts=max_retries,
+                        error_history=error_history[-5:],  # Last 5 errors
+                        error_categories=error_categories[-5:],
+                        time_spent=attempt_duration,
+                        code_changes_size=[code_diff_size],
+                        test_progress=[test_results] if test_results else [],
+                        complexity_level=feature.complexity.value,
+                        dependencies=feature.dependencies
                     )
+                    
+                    # Get retry decision
+                    retry_decision = retry_orchestrator.decide_retry(retry_context)
+                    
+                    if retry_decision.should_retry:
+                        print(f"❌ Validation failed, retrying ({retry_count}/{max_retries})")
+                        print(f"   Strategy: {retry_decision.strategy.value} - {retry_decision.reason}")
+                        
+                        # Update progress monitor with retry
+                        progress_monitor.record_retry(
+                            feature.id,
+                            retry_decision.strategy.value,
+                            validation_result.feedback
+                        )
+                        
+                        # Apply delay if needed
+                        if retry_decision.delay_seconds > 0:
+                            import asyncio
+                            print(f"   Waiting {retry_decision.delay_seconds:.1f}s before retry...")
+                            await asyncio.sleep(retry_decision.delay_seconds)
+                        
+                        tracer.record_retry(
+                            attempt_number=retry_count,
+                            reason=validation_result.feedback,
+                            metadata={"strategy": retry_decision.strategy.value}
+                        )
+                    else:
+                        # Decision is not to retry
+                        break
         
         if not success:
-            # Feature failed after all retries
-            tracer.complete_step(step_id, {
-                "status": "failed",
-                "error": validation_result.feedback,
-                "attempts": retry_count
-            })
-            
-            print(f"⚠️  {feature.id} failed after {retry_count} attempts")
-            
-            # Decide whether to continue based on complexity
-            if feature.complexity == ComplexityLevel.HIGH:
-                print("❌ Stopping due to high-complexity feature failure")
-                break
+            # Check if we should skip based on stagnation
+            if stagnation_detector.should_skip_feature(feature.id):
+                print(f"⚠️  {feature.id} is stagnating after {retry_count} attempts - skipping")
+                skipped_features.append(feature)
+                progress_monitor.mark_stagnant(feature.id)
+                progress_monitor.skip_feature(feature.id, "Stagnation after retries")
+                tracer.complete_step(step_id, {
+                    "status": "skipped",
+                    "reason": "stagnation_after_retries",
+                    "attempts": retry_count
+                })
+            else:
+                # Feature failed after all retries
+                progress_monitor.complete_feature(
+                    feature.id,
+                    success=False,
+                    files_created=[],
+                    lines_of_code=0
+                )
+                tracer.complete_step(step_id, {
+                    "status": "failed",
+                    "error": validation_result.feedback,
+                    "attempts": retry_count
+                })
+                
+                print(f"⚠️  {feature.id} failed after {retry_count} attempts")
+                
+                # Decide whether to continue based on complexity
+                if feature.complexity == ComplexityLevel.HIGH:
+                    print("❌ Stopping due to high-complexity feature failure")
+                    break
+    
+    # Add summary of skipped features
+    if skipped_features:
+        print(f"\n📊 Skipped {len(skipped_features)} features due to stagnation")
+        for feature in skipped_features:
+            summary = stagnation_detector.get_feature_summary(feature.id)
+            if summary:
+                print(f"  - {feature.id}: {summary['total_attempts']} attempts, "
+                      f"stagnation score: {summary['stagnation_score']:.2f}")
+    
+    # Print final progress visualization
+    print("\n" + "="*60)
+    print("FINAL PROGRESS REPORT")
+    print(progress_monitor.visualize_progress())
+    
+    # Export progress data to tracer metadata
+    tracer.add_metadata("progress_report", progress_monitor.get_progress_summary())
+    tracer.add_metadata("retry_strategies", retry_orchestrator.get_strategy_report())
     
     return completed_features, executor.codebase_state
 

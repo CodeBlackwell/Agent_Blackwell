@@ -7,6 +7,8 @@ from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionRepor
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
+# Import executor components
+from agents.executor.executor_agent import generate_session_id
 
 async def execute_individual_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """
@@ -74,7 +76,8 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
         "design": ("designer_agent", TeamMember.designer, "designer"),
         "test_writing": ("test_writer_agent", TeamMember.test_writer, "test_writer"),
         "implementation": ("coder_agent", TeamMember.coder, "coder"),
-        "review": ("reviewer_agent", TeamMember.reviewer, "reviewer")
+        "review": ("reviewer_agent", TeamMember.reviewer, "reviewer"),
+        "execution": ("executor_agent", TeamMember.executor, "executor")
     }
     
     if workflow_step in agent_map:

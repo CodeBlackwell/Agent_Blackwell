@@ -17,8 +17,8 @@ from beeai_framework.backend.chat import ChatModel
 from beeai_framework.memory import TokenMemory
 from beeai_framework.utils.dicts import exclude_none
 
-# Import from agents package using absolute import
 from agents.agent_configs import coder_config
+from workflows.workflow_config import GENERATED_CODE_PATH
 
 # Load environment variables from .env file
 load_dotenv()
@@ -113,9 +113,14 @@ async def coder_agent(input: list[Message]) -> AsyncGenerator:
         # Create user-friendly timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Determine project root directory with new structure
+        # Determine project root directory using the centralized configuration
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        generated_dir = os.path.join(script_dir, "..", "..", "orchestrator", "generated")
+        project_base = os.path.abspath(os.path.join(script_dir, "..", ".."))
+        
+        # Use the centralized GENERATED_CODE_PATH configuration
+        generated_dir = os.path.abspath(os.path.join(project_base, GENERATED_CODE_PATH))
+        print(f"🔄 Using generated code path: {generated_dir}")  # Debug log
+        
         project_folder_name = f"{project_name}_generated_{timestamp}"
         project_root = os.path.join(generated_dir, project_folder_name)
         

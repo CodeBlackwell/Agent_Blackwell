@@ -38,6 +38,7 @@ from beeai_framework.utils.dicts import exclude_none
 from agents.agent_configs import executor_config
 from agents.executor.docker_manager import DockerEnvironmentManager, EnvironmentSpec
 from agents.executor.environment_analyzer import parse_environment_spec
+from workflows.workflow_config import GENERATED_CODE_PATH
 
 load_dotenv()
 
@@ -144,9 +145,15 @@ def format_docker_execution_response(session_id: str, env_spec: Dict,
 
 async def executor_agent(input: list[Message]) -> AsyncGenerator:
     """Agent responsible for analyzing, building, and executing code in Docker environments"""
-    llm = ChatModel.from_name(executor_config["model"])
-    
     print("🐳 Docker Executor Agent Starting...")
+    
+    # Ensure the generated code directory exists
+    generated_path = Path(GENERATED_CODE_PATH)
+    generated_path.mkdir(parents=True, exist_ok=True)
+    print(f"📂 Generated code will be saved to: {generated_path.absolute()}")
+    
+    # Initialize OpenAI client
+    llm = ChatModel.from_name(executor_config["model"])
     
     # Extract input
     input_text = ""

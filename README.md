@@ -37,6 +37,103 @@ This architecture allows for a flexible and extensible system where workflows ca
 - **Centralized Configuration**: All LLM configurations, including prompts and model parameters, are managed in a central location for consistency and easy maintenance.
 - **Comprehensive Testing**: The system includes a full suite of tests for each agent and workflow, ensuring reliability and stability.
 
+## 🧪 Testing
+
+The system includes a comprehensive testing suite for both individual agents and workflows.
+
+### Agent Testing
+
+To run the agent tests, use the `run_agent_tests.py` script:
+
+```bash
+# Run all agent tests
+python tests/run_agent_tests.py
+
+# Run a specific agent test
+python tests/run_agent_tests.py planner
+```
+
+### Workflow Testing
+
+To test the different workflows, use the `test_workflows.py` script:
+
+```bash
+# Run all workflow tests with minimal complexity
+python tests/test_workflows.py
+
+# Run a specific workflow with a specific complexity
+python tests/test_workflows.py --workflow tdd --complexity minimal
+
+# List all available tests without running them
+python tests/test_workflows.py --list
+
+# Run full workflow tests with standard complexity
+python tests/test_workflows.py --workflow full --complexity standard
+```
+
+#### Workflow Test Options
+
+- **Workflow Types**:
+  - `tdd`: Test-Driven Development workflow (Planning → Design → Test Writing → Implementation → Execution → Review)
+  - `full`: Full Development workflow (Planning → Design → Implementation → Review)
+  - `planning`: Execute only the planning phase
+  - `design`: Execute only the design phase
+  - `implementation`: Execute only the implementation phase
+  - `all`: Run all workflow types (default)
+
+- **Complexity Levels**:
+  - `minimal`: Simple "Hello World" API (fastest)
+  - `standard`: TODO List API with CRUD operations
+  - `complex`: E-Commerce platform with multiple features
+  - `stress`: Microservices architecture (most comprehensive)
+  - `all`: Run all complexity levels
+
+#### Test Monitoring and Reports
+
+The workflow testing framework includes comprehensive monitoring capabilities:
+- **Progress Tracking**: Monitors each step of the workflow execution
+- **Performance Metrics**: Captures timing data for each agent and step
+- **Agent Interactions**: Records the sequence and patterns of agent communications
+- **Review Process Analysis**: Tracks approval rates, retry patterns, and feedback loops
+- **Test Artifacts**: Saves all agent outputs, generated code, and execution reports
+
+#### Test Results and Artifacts
+
+All test results are stored in the `tests/outputs/session_[TIMESTAMP]` directory, with:
+- Agent outputs saved as individual text files
+- Execution reports in JSON format
+- Generated code in separate directories
+- Comprehensive session report with metrics and observations
+
+#### Working with the Executor Agent
+
+The Executor Agent can be included in workflows to test and run the generated code:
+
+1. Ensure `TeamMember.executor` is included in the `team_members` list of the `CodingTeamInput`
+2. The Executor will:
+   - Create project files in `orchestrator/generated/app_generated_[timestamp]/`
+   - Set up the development environment 
+   - Attempt to run the tests against the code
+   - Return execution results for the reviewer to evaluate
+
+```bash
+# To view generated project files from the most recent test
+cd orchestrator/generated/
+ls -lt | head -5
+```
+
+### Integration Testing
+
+For more detailed integration testing focused on executor functionality:
+
+```bash
+# Run executor direct tests
+python tests/test_executor_direct.py
+
+# Run full TDD workflow with executor integration
+python tests/test_workflows.py --workflow tdd --complexity standard
+```
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -68,32 +165,6 @@ python orchestrator/orchestrator_agent.py
 ```
 
 The server will be available at `http://localhost:8080`.
-
-## 🧪 Testing
-
-The system includes a comprehensive testing suite for both individual agents and workflows.
-
-### Agent Testing
-
-To run the agent tests, use the `run_agent_tests.py` script:
-
-```bash
-# Run all agent tests
-python tests/run_agent_tests.py
-
-# Run a specific agent test
-python tests/run_agent_tests.py planner
-```
-
-### Workflow Testing
-
-To test the different workflows, use the `test_workflows.py` script:
-
-```bash
-python tests/test_workflows.py
-```
-
-This script allows you to test the TDD, Full Development, and individual step workflows with custom inputs.
 
 ## 📁 Project Structure
 

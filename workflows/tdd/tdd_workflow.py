@@ -28,6 +28,9 @@ from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionRepor
 # Import configuration
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 
+# Import executor components
+from agents.executor.executor_agent import generate_session_id
+
 
 
 async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
@@ -42,7 +45,7 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
         Tuple of (team member results, execution report)
     """
     # Import utils module for review_output function
-    import workflows.utils as utils_module
+    import workflows.workflow_utils as utils_module
     # Correctly reference the async review_output function
     review_output = utils_module.review_output
     # Import run_team_member dynamically to avoid circular imports
@@ -173,12 +176,59 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
         ))
         tracer.complete_step(step_id, {"output": code_output[:200] + "..."})
         
+        # Step 4.5: Execute tests and code
+        session_id = generate_session_id()
+        
+        if TeamMember.executor in input_data.team_members:
+            print("🐳 Executing tests and code...")
+            step_id = tracer.start_step("execution", "executor_agent", {
+                "session_id": session_id,
+                "code": code_output[:200] + "...",
+                "tests": test_output[:200] + "..."
+            })
+            
+            # Prepare execution input with session ID
+            execution_input = f"""SESSION_ID: {session_id}
+
+Execute the following code and tests:
+
+{code_output}
+
+{test_output}
+"""
+            
+            execution_result = await run_team_member("executor_agent", execution_input)
+            execution_output = str(execution_result)
+            
+            tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
+            
+            # Add execution results to the results list
+            results.append(TeamMemberResult(
+                team_member=TeamMember.executor,
+                output=execution_output,
+                name="executor"
+            ))
+            
+            # Include execution results in review
+            review_input = f"""Requirements: {input_data.requirements}
+
+Code: {code_output}
+
+Tests: {test_output}
+
+Execution Results:
+{execution_output}
+
+Please review the code, tests, AND execution results."""
+        else:
+            review_input = f"Requirements: {input_data.requirements}\n\nCode: {code_output}\n\nTests: {test_output}"
+        
         # Final review - FIX: Use review_result_output instead of review_output
         step_id = tracer.start_step("final_review", "reviewer_agent", {
             "code_input": code_output[:200] + "...",
             "context": "TDD workflow final review"
         })
-        review_input = f"Requirements: {input_data.requirements}\n\nCode: {code_output}\n\nTests: {test_output}"
+        # review_input is already set conditionally above based on whether executor is present
         review_result = await run_team_member("reviewer_agent", review_input)
         review_result_output = str(review_result)  # Convert result to string
         results.append(TeamMemberResult(

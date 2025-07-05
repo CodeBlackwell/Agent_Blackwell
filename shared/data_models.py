@@ -25,6 +25,7 @@ class TeamMember(Enum):
     coder = "coder_agent"
     test_writer = "test_writer_agent"
     reviewer = "reviewer_agent"
+    executor = "executor_agent"
     
     # Aliases for backward compatibility
     PLANNER = planner

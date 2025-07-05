@@ -281,6 +281,7 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "coder_agent": 8080,
         "test_writer_agent": 8080,
         "reviewer_agent": 8080,
+        "executor_agent": 8080,
     }
     
     agent_name_mapping = {
@@ -288,7 +289,8 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "designer_agent": "designer_agent_wrapper",
         "coder_agent": "coder_agent_wrapper",
         "test_writer_agent": "test_writer_agent_wrapper",
-        "reviewer_agent": "reviewer_agent_wrapper"
+        "reviewer_agent": "reviewer_agent_wrapper",
+        "executor_agent": "executor_agent_wrapper"
     }
     
     internal_agent_name = agent_name_mapping.get(agent, agent)
@@ -330,6 +332,12 @@ async def test_writer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
 @server.agent()
 async def reviewer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
     async for part in reviewer_agent(input):
+        yield part
+
+@server.agent()
+async def executor_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    from agents.executor.executor_agent import executor_agent
+    async for part in executor_agent(input):
         yield part
 
 # ============================================================================

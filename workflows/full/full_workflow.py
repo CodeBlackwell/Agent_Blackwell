@@ -9,6 +9,8 @@ from shared.data_models import (
 )
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 from workflows.incremental.feature_orchestrator import run_incremental_coding_phase
+# Import executor components
+from agents.executor.executor_agent import generate_session_id
 
 async def execute_full_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """
@@ -31,8 +33,10 @@ async def execute_full_workflow(input_data: CodingTeamInput, tracer: Optional[Wo
     # The tracer is already initialized by workflow_manager
     
     try:
-        # Execute the workflow
+        # Execute the workflow - include executor if it's in input_data.team_members
         team_members = ["planner", "designer", "coder", "reviewer"]
+        if TeamMember.executor in input_data.team_members:
+            team_members.append("executor")
         results = await run_full_workflow(input_data.requirements, team_members, tracer)
         
         # Complete workflow execution
@@ -168,6 +172,36 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
                     )
                     results.append(coder_result)
                     
+                    # Execute tests and code if executor is in team members
+                    if "executor" in team_members:
+                        print("🐳 Executing code in Docker container...")
+                        session_id = generate_session_id()
+                        
+                        step_id = tracer.start_step("execution", "executor_agent", {
+                            "session_id": session_id,
+                            "code": code_output[:200] + "..."
+                        })
+                        
+                        # Prepare execution input with session ID
+                        execution_input = f"""SESSION_ID: {session_id}
+
+Execute the following code:
+
+{code_output}
+"""
+                        
+                        execution_result = await run_team_member("executor_agent", execution_input)
+                        execution_output = str(execution_result)
+                        
+                        tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
+                        
+                        # Add execution results to the results list
+                        results.append(TeamMemberResult(
+                            team_member=TeamMember.executor,
+                            output=execution_output,
+                            name="executor"
+                        ))
+                    
                 except Exception as e:
                     error_msg = f"Incremental coding phase error: {str(e)}"
                     print(f"❌ {error_msg}")
@@ -184,6 +218,36 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
                         output=code_output,
                         name="coder"
                     ))
+                    
+                    # Execute tests and code in fallback path if executor is in team members
+                    if "executor" in team_members:
+                        print("🐳 Executing code in Docker container (fallback path)...")
+                        session_id = generate_session_id()
+                        
+                        step_id = tracer.start_step("execution_fallback", "executor_agent", {
+                            "session_id": session_id,
+                            "code": code_output[:200] + "..."
+                        })
+                        
+                        # Prepare execution input with session ID
+                        execution_input = f"""SESSION_ID: {session_id}
+
+Execute the following code:
+
+{code_output}
+"""
+                        
+                        execution_result = await run_team_member("executor_agent", execution_input)
+                        execution_output = str(execution_result)
+                        
+                        tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
+                        
+                        # Add execution results to the results list
+                        results.append(TeamMemberResult(
+                            team_member=TeamMember.executor,
+                            output=execution_output,
+                            name="executor"
+                        ))
                 
                 # Step 4: Final Review
                 if "reviewer" in team_members:

@@ -5,15 +5,18 @@ Manages Docker containers for code execution with session-based persistence.
 """
 
 import docker
-import tempfile
 import hashlib
 import asyncio
 import re
 import shutil
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import aiodocker
+
+# Import GENERATED_CODE_PATH from workflow_config
+from workflows.workflow_config import GENERATED_CODE_PATH
 
 @dataclass
 class EnvironmentSpec:
@@ -110,10 +113,19 @@ class DockerEnvironmentManager:
     async def _build_container(self, env_spec: EnvironmentSpec, 
                               code_content: str, container_key: str) -> Dict:
         """Build a new Docker container"""
-        # Create build context
-        with tempfile.TemporaryDirectory() as build_dir:
-            build_path = Path(build_dir)
-            
+        # Create build context in the GENERATED_CODE_PATH directory
+        # Create a session-specific directory structure
+        generated_path = Path(GENERATED_CODE_PATH)
+        generated_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create a unique directory for this session and build
+        build_path = generated_path / f"{self.session_id}_{container_key}"
+        # Remove directory if it already exists (to avoid conflicts)
+        if build_path.exists():
+            shutil.rmtree(build_path)
+        build_path.mkdir(parents=True)
+        
+        try:
             # Create Dockerfile
             dockerfile_content = self._generate_dockerfile(env_spec)
             dockerfile_path = build_path / "Dockerfile"
@@ -135,7 +147,7 @@ class DockerEnvironmentManager:
             
             try:
                 image, build_logs = self.docker_client.images.build(
-                    path=str(build_dir),
+                    path=str(build_path),
                     tag=image_tag,
                     rm=True,
                     forcerm=True,
@@ -164,7 +176,8 @@ class DockerEnvironmentManager:
                     "session_id": self.session_id,
                     "env_hash": self._generate_environment_hash(env_spec),
                     "container_key": container_key,
-                    "executor": "true"
+                    "executor": "true",
+                    "build_path": str(build_path)  # Store build path in container label
                 },
                 # Resource limits
                 mem_limit="512m",
@@ -178,8 +191,14 @@ class DockerEnvironmentManager:
                 "container_id": container.id,
                 "container_name": container.name,
                 "image_tag": image_tag,
+                "build_path": str(build_path),  # Return build path for reference
                 "status": "running"
             }
+        except Exception as e:
+            # Clean up the directory if build fails
+            if build_path.exists():
+                shutil.rmtree(build_path)
+            raise e
     
     def _generate_dockerfile(self, env_spec: EnvironmentSpec) -> str:
         """Generate minimal Dockerfile based on requirements"""
@@ -235,30 +254,34 @@ class DockerEnvironmentManager:
         
         return files
     
-    def _write_dependency_files(self, build_path: Path, env_spec: EnvironmentSpec, 
-                               code_files: List[Dict]):
-        """Write dependency files if not provided"""
-        filenames = [f['filename'] for f in code_files]
-        
-        if env_spec.language == "python" and "requirements.txt" not in filenames:
-            # Create basic requirements.txt from imports
-            imports = set()
-            for file_info in code_files:
-                if file_info['filename'].endswith('.py'):
-                    content = file_info['content']
-                    # Extract imports (simplified)
-                    import_lines = re.findall(r'^(?:from|import)\s+(\w+)', content, re.MULTILINE)
-                    imports.update(import_lines)
-            
-            # Filter standard library modules
-            third_party = [imp for imp in imports if imp not in [
-                'os', 'sys', 'json', 're', 'datetime', 'pathlib', 'typing',
-                'unittest', 'asyncio', 'tempfile', 'shutil', 'hashlib'
-            ]]
-            
-            if third_party:
-                req_content = "\n".join(third_party)
-                (build_path / "requirements.txt").write_text(req_content)
+    def _write_dependency_files(self, build_path: Path, env_spec: EnvironmentSpec, code_files: List[Dict[str, str]]) -> None:
+        """Write dependency files based on language"""
+        if env_spec.language == "python":
+            req_path = build_path / "requirements.txt"
+            if env_spec.dependencies:
+                req_path.write_text("\n".join(env_spec.dependencies))
+            else:
+                # Create empty requirements.txt file to satisfy Dockerfile COPY command
+                req_path.write_text("# No dependencies specified")
+        elif env_spec.language == "nodejs" and env_spec.dependencies:
+            pkg_path = build_path / "package.json"
+            pkg_data = {
+                "name": "code-execution",
+                "version": "1.0.0",
+                "private": True,
+                "dependencies": {}
+            }
+            for dep in env_spec.dependencies:
+                if ">" in dep or "=" in dep:
+                    # Handle version specification
+                    parts = re.split(r"[>=<~^]", dep, 1)
+                    name = parts[0].strip()
+                    version = dep[len(name):].strip()
+                    pkg_data["dependencies"][name] = version
+                else:
+                    pkg_data["dependencies"][dep] = "*"
+                    
+            pkg_path.write_text(json.dumps(pkg_data, indent=2))
     
     async def execute_in_container(self, container_id: str, 
                                   commands: List[str]) -> Dict:

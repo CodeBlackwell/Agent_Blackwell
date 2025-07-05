@@ -16,3 +16,7 @@ EXECUTION_CONFIG = {
     "timeout": 60,
     "validation_threshold": 0.8
 }
+
+# Generated code output path
+# Controls where the executor agent saves generated project files
+GENERATED_CODE_PATH = "./generated"  # Path relative to project root

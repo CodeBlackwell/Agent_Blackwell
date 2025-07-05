@@ -5,3 +5,5 @@ starter.txt
 logs
 orchestrator/generated
 *DS_Store
+# Generated test artifacts
+generated/

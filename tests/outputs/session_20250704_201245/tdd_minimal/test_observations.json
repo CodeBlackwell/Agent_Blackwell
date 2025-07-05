@@ -1,0 +1,72 @@
+{
+  "test_id": "tdd_minimal_1751674365",
+  "scenario": {
+    "name": "Hello World API",
+    "complexity": "minimal",
+    "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response"
+  },
+  "workflow_type": "tdd",
+  "status": "success",
+  "duration": 48.07427406311035,
+  "observations": {
+    "agents_involved": [
+      "planner",
+      "designer",
+      "test_writer",
+      "coder",
+      "reviewer"
+    ],
+    "agent_interaction_sequence": [
+      "planner_agent",
+      "designer_agent",
+      "test_writer_agent",
+      "coder_agent",
+      "reviewer_agent"
+    ],
+    "review_patterns": {
+      "total_reviews": 3,
+      "approval_rate": 0.0,
+      "revision_requests": 0,
+      "auto_approvals": 3
+    },
+    "retry_patterns": {},
+    "performance_patterns": {
+      "slowest_agent": {
+        "name": "planner_agent",
+        "avg_time": 12.864017
+      },
+      "fastest_agent": {
+        "name": "reviewer_agent",
+        "avg_time": 4.094004
+      },
+      "timing_variance": 8.770013
+    },
+    "notable_events": [
+      "Auto-approvals occurred: 3"
+    ]
+  },
+  "metrics": {
+    "total_steps": 5,
+    "completed_steps": 5,
+    "success_rate": 100.0,
+    "total_reviews": 3,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 12191,
+    "output_by_agent": {
+      "planner": 2519,
+      "designer": 3278,
+      "test_writer": 1816,
+      "coder": 2989,
+      "reviewer": 1589
+    },
+    "agent_timings": {
+      "planner_agent": 12.864017,
+      "designer_agent": 12.191064,
+      "test_writer_agent": 5.890309,
+      "coder_agent": 7.004646,
+      "reviewer_agent": 4.094004
+    }
+  },
+  "error": null
+}

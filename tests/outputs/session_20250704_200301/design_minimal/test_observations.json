@@ -1,0 +1,49 @@
+{
+  "test_id": "design_minimal_1751673785",
+  "scenario": {
+    "name": "Hello World API",
+    "complexity": "minimal",
+    "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response"
+  },
+  "workflow_type": "design",
+  "status": "success",
+  "duration": 0.018194198608398438,
+  "observations": {
+    "agents_involved": [
+      "designer"
+    ],
+    "agent_interaction_sequence": [
+      "designer_agent"
+    ],
+    "review_patterns": {},
+    "retry_patterns": {},
+    "performance_patterns": {
+      "slowest_agent": {
+        "name": "designer_agent",
+        "avg_time": 0.017882
+      },
+      "fastest_agent": {
+        "name": "designer_agent",
+        "avg_time": 0.017882
+      },
+      "timing_variance": 0.0
+    },
+    "notable_events": []
+  },
+  "metrics": {
+    "total_steps": 1,
+    "completed_steps": 1,
+    "success_rate": 100.0,
+    "total_reviews": 0,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 389,
+    "output_by_agent": {
+      "designer": 389
+    },
+    "agent_timings": {
+      "designer_agent": 0.017882
+    }
+  },
+  "error": null
+}

@@ -1,0 +1,4 @@
+AGENT: planner
+============================================================
+
+[Message(role='user', parts=[MessagePart(name=None, content_type='text/plain', content='Error from planner_agent: All connection attempts failed', content_encoding='plain', content_url=None, metadata=None)], created_at=datetime.datetime(2025, 7, 5, 0, 3, 4, 489689, tzinfo=datetime.timezone.utc), completed_at=datetime.datetime(2025, 7, 5, 0, 3, 4, 489692, tzinfo=datetime.timezone.utc))]

@@ -1,0 +1,70 @@
+{
+  "execution_id": "0196ee0f-a93d-4f78-a842-347354075a8f",
+  "workflow_type": "design",
+  "start_time": "2025-07-04T20:03:05.492068",
+  "end_time": "2025-07-04T20:03:05.510077",
+  "total_duration_seconds": 0.018009,
+  "status": "completed",
+  "steps": [
+    {
+      "step_id": "design_0_200305",
+      "step_name": "design",
+      "agent_name": "designer_agent",
+      "status": "completed",
+      "start_time": "2025-07-04T20:03:05.492132",
+      "end_time": "2025-07-04T20:03:05.510014",
+      "duration_seconds": 0.017882,
+      "input_data": {
+        "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+        "workflow_type": "individual",
+        "step_type": "design"
+      },
+      "output_data": {
+        "output": "[Message(role='user', parts=[MessagePart(name=None, content_type='text/plain', content='Error from designer_agent: All connection attempts failed', content_encoding='plain', content_url=None, metadata...",
+        "step_completed": "design",
+        "success": true
+      },
+      "error_message": null,
+      "metadata": {}
+    }
+  ],
+  "step_count": 1,
+  "completed_steps": 1,
+  "failed_steps": 0,
+  "reviews": [],
+  "total_reviews": 0,
+  "approved_reviews": 0,
+  "revision_requests": 0,
+  "auto_approvals": 0,
+  "retries": [],
+  "total_retries": 0,
+  "test_executions": [],
+  "total_tests": 0,
+  "passed_tests": 0,
+  "failed_tests": 0,
+  "agent_performance": {
+    "designer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 0.017882,
+      "average_duration": 0.017882,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    }
+  },
+  "final_output": {
+    "workflow_type": "design",
+    "results_count": 1,
+    "team_members": [
+      "designer"
+    ]
+  },
+  "error_summary": null,
+  "metadata": {
+    "input_requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+    "workflow_type": "design"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "test_id": "tdd_standard_1751681035",
+  "scenario": {
+    "name": "TODO List API",
+    "complexity": "standard",
+    "requirements": "Create a complete TODO list REST API with the following endpoints:\n        - GET /todos - List all todos\n        - POST /todos - Create a new todo\n        - GET /todos/:id - Get a specific todo\n        - PUT /todos/:id - Update a todo\n        - DELETE /todos/:id - Delete a todo\n        Include proper error handling and validation."
+  },
+  "workflow_type": "tdd",
+  "status": "success",
+  "duration": 64.20681095123291,
+  "observations": {
+    "agents_involved": [
+      "planner",
+      "designer",
+      "test_writer",
+      "coder",
+      "reviewer"
+    ],
+    "agent_interaction_sequence": [
+      "planner_agent",
+      "designer_agent",
+      "test_writer_agent",
+      "coder_agent",
+      "reviewer_agent"
+    ],
+    "review_patterns": {
+      "total_reviews": 3,
+      "approval_rate": 0.0,
+      "revision_requests": 0,
+      "auto_approvals": 3
+    },
+    "retry_patterns": {},
+    "performance_patterns": {
+      "slowest_agent": {
+        "name": "coder_agent",
+        "avg_time": 17.971587
+      },
+      "fastest_agent": {
+        "name": "reviewer_agent",
+        "avg_time": 4.092945
+      },
+      "timing_variance": 13.878642
+    },
+    "notable_events": [
+      "Auto-approvals occurred: 3"
+    ]
+  },
+  "metrics": {
+    "total_steps": 5,
+    "completed_steps": 5,
+    "success_rate": 100.0,
+    "total_reviews": 3,
+    "review_approval_rate": 0.0,
+    "total_retries": 0,
+    "total_output_size": 20392,
+    "output_by_agent": {
+      "planner": 3165,
+      "designer": 6414,
+      "test_writer": 2808,
+      "coder": 6333,
+      "reviewer": 1672
+    },
+    "agent_timings": {
+      "planner_agent": 10.247148,
+      "designer_agent": 15.656076,
+      "test_writer_agent": 8.77151,
+      "coder_agent": 17.971587,
+      "reviewer_agent": 4.092945
+    }
+  },
+  "error": null
+}

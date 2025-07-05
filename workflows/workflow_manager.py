@@ -17,7 +17,7 @@ def verify_imports():
         "workflows.tdd.tdd_workflow": ["execute_tdd_workflow"],
         "workflows.full.full_workflow": ["execute_full_workflow"],
         "workflows.individual.individual_workflow": ["execute_individual_workflow"],
-        "workflows.monitoring.workflow_tracer": ["WorkflowExecutionTracer", "WorkflowExecutionReport"]
+        "workflows.monitoring": ["WorkflowExecutionTracer", "WorkflowExecutionReport"]
     }
     
     all_imports_successful = True
@@ -209,10 +209,10 @@ async def execute_workflow(input_data: CodingTeamInput,
             'team_members': [result.name for result in validated_results if hasattr(result, 'name')]
         }
         print(f"DEBUG: Final output metadata: {final_output}")
-        tracer.complete_execution(output=final_output)
+        tracer.complete_execution(final_output=final_output)
         
         # Generate report
-        report = tracer.generate_report()
+        report = tracer.get_report()
         print(f"DEBUG: Generated execution report")
         
         return validated_results, report

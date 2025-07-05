@@ -1,0 +1,226 @@
+{
+  "execution_id": "a653bfd8-23a4-45ac-8475-df85f8a5f0f1",
+  "workflow_type": "tdd",
+  "start_time": "2025-07-04T21:55:10.337171",
+  "end_time": "2025-07-04T21:55:57.757375",
+  "total_duration_seconds": 47.420204,
+  "status": "completed",
+  "steps": [
+    {
+      "step_id": "planning_0_215510",
+      "step_name": "planning",
+      "agent_name": "planner_agent",
+      "status": "completed",
+      "start_time": "2025-07-04T21:55:10.876752",
+      "end_time": "2025-07-04T21:55:22.692552",
+      "duration_seconds": 11.8158,
+      "input_data": {
+        "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response"
+      },
+      "output_data": {
+        "output": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal of this project is to create a basic \"Hello World\" REST ..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "design_1_215525",
+      "step_name": "design",
+      "agent_name": "designer_agent",
+      "status": "completed",
+      "start_time": "2025-07-04T21:55:25.169195",
+      "end_time": "2025-07-04T21:55:34.760897",
+      "duration_seconds": 9.591702,
+      "input_data": {
+        "plan_input": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal of this project is to create a basic \"Hello World\" REST ...",
+        "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response"
+      },
+      "output_data": {
+        "output": "[Message(role='agent/designer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# System Architecture Overview\\nThe system will consist of a single REST API service..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "test_writing_2_215536",
+      "step_name": "test_writing",
+      "agent_name": "test_writer_agent",
+      "status": "completed",
+      "start_time": "2025-07-04T21:55:36.521079",
+      "end_time": "2025-07-04T21:55:42.081131",
+      "duration_seconds": 5.560052,
+      "input_data": {
+        "plan_input": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal of this project is to create a basic \"Hello World\" REST ...",
+        "design_input": "[Message(role='agent/designer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# System Architecture Overview\\nThe system will consist of a single REST API service..."
+      },
+      "output_data": {
+        "output": "[Message(role='agent/test_writer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\nFILENAME: tests/api.test.py\\n```python\\nimport unittest\\nfrom app import app  # A..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "coding_3_215546",
+      "step_name": "coding",
+      "agent_name": "coder_agent",
+      "status": "completed",
+      "start_time": "2025-07-04T21:55:46.690729",
+      "end_time": "2025-07-04T21:55:52.967859",
+      "duration_seconds": 6.27713,
+      "input_data": {
+        "test_input": "[Message(role='agent/test_writer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\nFILENAME: tests/api.test.py\\n```python\\nimport unittest\\nfrom app import app  # A...",
+        "design_input": "[Message(role='agent/designer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# System Architecture Overview\\nThe system will consist of a single REST API service..."
+      },
+      "output_data": {
+        "output": "[Message(role='agent/coder_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\u2705 PROJECT CREATED: app_generated_20250704_215552\\n\ud83d\udcc1 Location: /Users/lechristopherblackwe..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "final_review_4_215552",
+      "step_name": "final_review",
+      "agent_name": "reviewer_agent",
+      "status": "completed",
+      "start_time": "2025-07-04T21:55:52.967936",
+      "end_time": "2025-07-04T21:55:57.755489",
+      "duration_seconds": 4.787553,
+      "input_data": {
+        "code_input": "[Message(role='agent/coder_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\u2705 PROJECT CREATED: app_generated_20250704_215552\\n\ud83d\udcc1 Location: /Users/lechristopherblackwe...",
+        "context": "TDD workflow final review"
+      },
+      "output_data": {
+        "output": "[Message(role='agent/reviewer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n### Code Review\\n\\n#### Code Quality\\n- **Structure**: The project structure is clea..."
+      },
+      "error_message": null,
+      "metadata": {}
+    }
+  ],
+  "step_count": 5,
+  "completed_steps": 5,
+  "failed_steps": 0,
+  "reviews": [
+    {
+      "review_id": "review_0_215525",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal of this project is to create a basic \"Hello World\" REST ...",
+      "decision": "auto_approved",
+      "feedback": "Auto-approved due to review error: 'list' object has no attribute 'upper'",
+      "timestamp": "2025-07-04T21:55:25.169169",
+      "retry_count": 0,
+      "auto_approved": true,
+      "metadata": {
+        "target_agent": "planner_agent"
+      }
+    },
+    {
+      "review_id": "review_1_215536",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[Message(role='agent/designer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# System Architecture Overview\\nThe system will consist of a single REST API service...",
+      "decision": "auto_approved",
+      "feedback": "Auto-approved due to review error: 'list' object has no attribute 'upper'",
+      "timestamp": "2025-07-04T21:55:36.521054",
+      "retry_count": 0,
+      "auto_approved": true,
+      "metadata": {
+        "target_agent": "designer_agent"
+      }
+    },
+    {
+      "review_id": "review_2_215546",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[Message(role='agent/test_writer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\nFILENAME: tests/api.test.py\\n```python\\nimport unittest\\nfrom app import app  # A...",
+      "decision": "auto_approved",
+      "feedback": "Auto-approved due to review error: 'list' object has no attribute 'upper'",
+      "timestamp": "2025-07-04T21:55:46.690705",
+      "retry_count": 0,
+      "auto_approved": true,
+      "metadata": {
+        "target_agent": "test_writer_agent"
+      }
+    }
+  ],
+  "total_reviews": 3,
+  "approved_reviews": 0,
+  "revision_requests": 0,
+  "auto_approvals": 3,
+  "retries": [],
+  "total_retries": 0,
+  "test_executions": [],
+  "total_tests": 0,
+  "passed_tests": 0,
+  "failed_tests": 0,
+  "agent_performance": {
+    "planner_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 11.8158,
+      "average_duration": 11.8158,
+      "reviews_received": 1,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "designer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 9.591702,
+      "average_duration": 9.591702,
+      "reviews_received": 1,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "test_writer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 5.560052,
+      "average_duration": 5.560052,
+      "reviews_received": 1,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "coder_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 6.27713,
+      "average_duration": 6.27713,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "reviewer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 4.787553,
+      "average_duration": 4.787553,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    }
+  },
+  "final_output": {
+    "workflow_type": "tdd",
+    "results_count": 5,
+    "team_members": [
+      "planner",
+      "designer",
+      "test_writer",
+      "coder",
+      "reviewer"
+    ]
+  },
+  "error_summary": null,
+  "metadata": {
+    "input_requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+    "workflow_type": "tdd"
+  }
+}

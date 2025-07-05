@@ -14,6 +14,7 @@ The system follows a **modular, single-server architecture** with these key comp
 2. **Workflow Manager** (`workflows/workflow_manager.py`): Dispatches requests to appropriate workflow modules
 3. **Specialized Agents** (in `agents/` directory): Each agent handles specific development tasks
 4. **Shared Data Models** (`shared/data_models.py`): Common data structures for agent communication
+5. **REST API** (`api/orchestrator_api.py`): External interface for submitting workflow requests
 
 ## Key Commands
 
@@ -27,8 +28,11 @@ source .venv/bin/activate
 # Install dependencies
 uv pip install -r requirements.txt
 
-# Start the orchestrator server
+# Start the orchestrator server (ACP server on port 8080)
 python orchestrator/orchestrator_agent.py
+
+# Start the REST API server (HTTP API on port 8000)
+python api/orchestrator_api.py
 ```
 
 ### Testing Commands
@@ -164,3 +168,61 @@ Here's my plan for the calculator API:
 ✅ COMPLETED in 2.34 seconds
 ================================================================================
 ```
+
+## REST API Integration
+
+The system now includes a REST API that exposes the orchestrator functionality for external applications.
+
+### API Endpoints
+
+- **POST /execute-workflow**: Submit code generation requests
+- **GET /workflow-status/{session_id}**: Track workflow progress and retrieve results
+- **GET /workflow-types**: List available workflow types
+- **GET /health**: Health check endpoint
+
+### Key Integration Points
+
+1. **Direct Workflow Execution**: The API uses `execute_workflow()` from `workflows/workflow_manager.py` directly, bypassing the orchestrator tool layer
+2. **Async Background Processing**: Workflows run in background tasks to prevent HTTP timeouts
+3. **Session-based Tracking**: Each workflow gets a unique session ID for monitoring
+4. **In-memory Storage**: MVP uses in-memory storage for workflow status (replace with persistent storage for production)
+
+### Common Integration Issues and Fixes
+
+1. **Import Error: `run_agent`**
+   - Issue: `workflows/incremental/feature_orchestrator.py` tried to import non-existent `run_agent`
+   - Fix: Changed to `run_team_member` from `orchestrator/orchestrator_agent.py`
+
+2. **Method Signature Error: `complete_step()`**
+   - Issue: `WorkflowExecutionTracer.complete_step()` was called with invalid `success` parameter
+   - Fix: Changed to use `error` parameter instead: `tracer.complete_step(step_id, {"error": msg}, error=msg)`
+
+3. **Report Serialization Error**
+   - Issue: `WorkflowExecutionReport` has no `to_dict()` method
+   - Fix: Use `to_json()` method instead for serialization
+
+4. **Missing Dependencies**
+   - Issue: Docker Python package not installed
+   - Fix: `uv pip install docker`
+
+### Testing the API
+
+```bash
+# Quick test
+curl -X POST http://localhost:8000/execute-workflow \
+  -H "Content-Type: application/json" \
+  -d '{"requirements": "Create a simple calculator", "workflow_type": "full"}'
+
+# Monitor progress
+curl http://localhost:8000/workflow-status/{session_id}
+
+# Run demo script
+python api/demo_api_usage.py
+```
+
+### Important Notes
+
+- Always ensure both servers are running (orchestrator on 8080, API on 8000)
+- Generated code is saved in `generated/app_generated_[timestamp]/`
+- The API calls workflow functions directly, not through the orchestrator tool
+- Workflow execution includes fallback to standard coder when incremental coding fails

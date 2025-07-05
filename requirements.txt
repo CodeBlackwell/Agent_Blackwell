@@ -6,3 +6,8 @@ asyncio
 beeai_framework
 docker>=6.0.0
 aiodocker>=0.21.0
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0

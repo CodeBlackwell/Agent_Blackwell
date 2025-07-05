@@ -205,7 +205,7 @@ Execute the following code:
                 except Exception as e:
                     error_msg = f"Incremental coding phase error: {str(e)}"
                     print(f"❌ {error_msg}")
-                    tracer.complete_step(step_id, {"error": error_msg}, success=False)
+                    tracer.complete_step(step_id, {"error": error_msg}, error=error_msg)
                     # Fall back to standard coder implementation
                     print("⚠️ Falling back to standard implementation...")
                     

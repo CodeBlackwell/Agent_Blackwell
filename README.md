@@ -37,6 +37,116 @@ This architecture allows for a flexible and extensible system where workflows ca
 - **Centralized Configuration**: All LLM configurations, including prompts and model parameters, are managed in a central location for consistency and easy maintenance.
 - **Comprehensive Testing**: The system includes a full suite of tests for each agent and workflow, ensuring reliability and stability.
 
+## 🌐 REST API
+
+The system exposes a REST API for submitting code generation requests and tracking their progress. This allows external applications to leverage the multi-agent system's capabilities.
+
+### API Endpoints
+
+#### POST /execute-workflow
+Submit a new workflow execution request.
+
+**Request Body:**
+```json
+{
+  "requirements": "Create a Python function that adds two numbers",
+  "workflow_type": "full",
+  "max_retries": 3,
+  "timeout_seconds": 300
+}
+```
+
+**Response:**
+```json
+{
+  "session_id": "uuid-here",
+  "status": "pending",
+  "message": "Workflow execution started. Track progress at /workflow-status/{session_id}"
+}
+```
+
+#### GET /workflow-status/{session_id}
+Track the progress and retrieve results of a workflow execution.
+
+**Response:**
+```json
+{
+  "session_id": "uuid-here",
+  "status": "completed",
+  "workflow_type": "full",
+  "started_at": "2025-07-05T16:41:46.524476+00:00",
+  "completed_at": "2025-07-05T16:42:19.984355+00:00",
+  "result": {
+    "agent_results": [
+      {
+        "agent": "planner",
+        "output_preview": "Project plan...",
+        "output_length": 2509
+      }
+    ],
+    "agent_count": 4,
+    "total_output_size": 11113
+  }
+}
+```
+
+#### GET /workflow-types
+List available workflow types.
+
+**Response:**
+```json
+[
+  {
+    "name": "tdd",
+    "description": "Test-Driven Development workflow",
+    "requires_step_type": false
+  },
+  {
+    "name": "full",
+    "description": "Full workflow: Planning → Design → Implementation → Review",
+    "requires_step_type": false
+  }
+]
+```
+
+#### GET /health
+Health check endpoint.
+
+### API Usage Example
+
+```python
+import httpx
+import asyncio
+
+async def generate_code():
+    async with httpx.AsyncClient() as client:
+        # Submit workflow
+        response = await client.post(
+            "http://localhost:8000/execute-workflow",
+            json={
+                "requirements": "Create a Calculator class with add, subtract, multiply, divide",
+                "workflow_type": "full"
+            }
+        )
+        
+        session_id = response.json()["session_id"]
+        
+        # Poll for completion
+        while True:
+            status = await client.get(f"http://localhost:8000/workflow-status/{session_id}")
+            data = status.json()
+            
+            if data["status"] in ["completed", "failed"]:
+                print(f"Workflow {data['status']}")
+                break
+                
+            await asyncio.sleep(2)
+
+asyncio.run(generate_code())
+```
+
+Generated code is saved in the `generated/` directory.
+
 ## 🧪 Testing
 
 The system includes a comprehensive testing suite for both individual agents and workflows.
@@ -156,15 +266,29 @@ python tests/test_workflows.py --workflow tdd --complexity standard
     ```
 4.  Create a `.env` file with your API keys (you can use `.env.example` as a template).
 
-### Running the Server
+### Running the System
 
-To start the orchestrator server, run the following command:
+The system provides two ways to interact with the orchestrator:
+
+#### 1. ACP Server (Port 8080)
+
+To start the orchestrator server for agent communication:
 
 ```bash
 python orchestrator/orchestrator_agent.py
 ```
 
-The server will be available at `http://localhost:8080`.
+The ACP server will be available at `http://localhost:8080`.
+
+#### 2. REST API (Port 8000)
+
+To start the REST API server for external applications:
+
+```bash
+python api/orchestrator_api.py
+```
+
+The API server will be available at `http://localhost:8000`.
 
 ## 📁 Project Structure
 
@@ -178,6 +302,10 @@ The server will be available at `http://localhost:8080`.
 │   ├── coder/                    # Coder agent module
 │   ├── test_writer/              # Test writer agent module
 │   └── reviewer/                 # Reviewer agent module
+├── api/
+│   ├── orchestrator_api.py       # REST API server
+│   ├── test_orchestrator_api.py  # API tests
+│   └── test_api_client.py        # Demo API client
 ├── workflows/
 │   ├── tdd/                      # TDD workflow implementation
 │   ├── full/                     # Full workflow implementation

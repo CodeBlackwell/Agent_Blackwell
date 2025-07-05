@@ -35,6 +35,22 @@ class TeamMember(Enum):
     REVIEWER = reviewer
 
 
+class WorkflowType(Enum):
+    """Types of workflows available"""
+    TDD = "tdd"
+    FULL = "full"
+    INDIVIDUAL = "individual"
+
+
+class StepType(Enum):
+    """Types of individual steps available"""
+    PLANNING = "planning"
+    DESIGN = "design"
+    TEST_WRITING = "test_writing"
+    IMPLEMENTATION = "implementation"
+    REVIEW = "review"
+
+
 class WorkflowStep(Enum):
     """Available workflow steps"""
     # Full workflows

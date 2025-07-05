@@ -92,12 +92,12 @@ TEST_CATEGORIES = {
             "api/test_api_client.py"
         ]
     },
-    "output": {
+    "realtime": {
         "emoji": "📺",
-        "name": "Output Tests",
+        "name": "Real-time Output Tests",
         "description": "Real-time output display tests",
         "runner": "python",
-        "files": ["test_realtime_output.py"]
+        "files": ["tests/integration/test_realtime_output.py"]
     }
 }
 

@@ -1,0 +1,85 @@
+{
+  "session_id": "20250705_071648",
+  "duration": 92.873615026474,
+  "total_tests": 5,
+  "success_count": 4,
+  "failed_count": 1,
+  "timeout_count": 0,
+  "success_rate": 80.0,
+  "observations": {
+    "unique_agents": [
+      "coder",
+      "test_writer",
+      "planner",
+      "reviewer",
+      "designer"
+    ],
+    "total_steps": 8,
+    "total_reviews": 3,
+    "total_retries": 0,
+    "agent_participation": {
+      "planner": 2,
+      "designer": 2,
+      "test_writer": 1,
+      "coder": 2,
+      "reviewer": 1
+    },
+    "notable_events": [
+      "Auto-approvals occurred: 3"
+    ]
+  },
+  "test_results": [
+    {
+      "test_id": "tdd_minimal_1751725008",
+      "workflow_type": "tdd",
+      "complexity": "minimal",
+      "status": "success",
+      "duration": 48.8498969078064,
+      "agents_involved": [
+        "planner",
+        "designer",
+        "test_writer",
+        "coder",
+        "reviewer"
+      ]
+    },
+    {
+      "test_id": "full_minimal_1751725057",
+      "workflow_type": "full",
+      "complexity": "minimal",
+      "status": "failed",
+      "duration": 19.827831029891968,
+      "agents_involved": []
+    },
+    {
+      "test_id": "planning_minimal_1751725078",
+      "workflow_type": "planning",
+      "complexity": "minimal",
+      "status": "success",
+      "duration": 6.716294050216675,
+      "agents_involved": [
+        "planner"
+      ]
+    },
+    {
+      "test_id": "design_minimal_1751725086",
+      "workflow_type": "design",
+      "complexity": "minimal",
+      "status": "success",
+      "duration": 5.384189128875732,
+      "agents_involved": [
+        "designer"
+      ]
+    },
+    {
+      "test_id": "implementation_minimal_1751725092",
+      "workflow_type": "implementation",
+      "complexity": "minimal",
+      "status": "success",
+      "duration": 7.07716178894043,
+      "agents_involved": [
+        "coder"
+      ]
+    }
+  ]
+}

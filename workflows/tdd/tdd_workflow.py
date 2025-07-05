@@ -28,6 +28,9 @@ from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionRepor
 # Import configuration
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 
+# Import output handler
+from workflows.agent_output_handler import get_output_handler
+
 # Import executor components
 from agents.executor.executor_agent import generate_session_id
 
@@ -88,6 +91,11 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
         # Handle planning revisions if needed
         retry_count = 0
         while not approved and retry_count < input_data.max_retries:
+            # Get output handler for retry notification
+            output_handler = get_output_handler()
+            if output_handler:
+                output_handler.on_retry("planner_agent", retry_count + 1, f"Planning revision needed: {feedback}")
+            
             tracer.record_retry(
                 attempt_number=retry_count + 1,
                 reason=f"Planning revision needed: {feedback}"

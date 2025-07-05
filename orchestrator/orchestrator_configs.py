@@ -50,3 +50,14 @@ You are the orchestrator of a coding team consisting of:
     Present results in a clear, organized manner.
     """
 }
+
+# Output display configuration
+OUTPUT_DISPLAY_CONFIG = {
+    "mode": "detailed",  # Options: "detailed", "summary"
+    "max_input_chars": 1000,  # Maximum characters to show for input
+    "max_output_chars": 2000,  # Maximum characters to show for output
+    "export_interactions": True,  # Whether to export interactions to JSON
+}
+
+# Export the configuration
+__all__ = ['orchestrator_config', 'OUTPUT_DISPLAY_CONFIG']

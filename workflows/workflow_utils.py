@@ -3,6 +3,7 @@ Utility functions for workflow implementations.
 """
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 from workflows.monitoring import WorkflowExecutionTracer, ReviewDecision
+from workflows.agent_output_handler import get_output_handler
 from typing import Optional
 
 async def review_output(content: str, context: str = "", max_retries: int = MAX_REVIEW_RETRIES, 
@@ -37,8 +38,23 @@ async def review_output(content: str, context: str = "", max_retries: int = MAX_
     
     retry_count = 0
     
+    # Get output handler for review notifications
+    output_handler = get_output_handler()
+    
+    # Notify review start
+    if output_handler:
+        output_handler.on_review_start(context or "output", target_agent or "unknown")
+    
     try:
-        review_response = await run_team_member_with_tracking("reviewer_agent", review_prompt, "review_output")
+        review_result = await run_team_member_with_tracking("reviewer_agent", review_prompt, f"review_{context}")
+        
+        # Extract the actual response text
+        review_response = ""
+        if review_result and len(review_result) > 0:
+            if hasattr(review_result[0], 'parts') and len(review_result[0].parts) > 0:
+                review_response = review_result[0].parts[0].content
+            else:
+                review_response = str(review_result[0])
         
         if "APPROVED" in review_response.upper():
             # Record successful review
@@ -51,6 +67,11 @@ async def review_output(content: str, context: str = "", max_retries: int = MAX_
                     retry_count=retry_count,
                     target_agent=target_agent
                 )
+            
+            # Notify review complete
+            if output_handler:
+                output_handler.on_review_complete(True, "Approved by reviewer")
+                
             return True, "Approved by reviewer"
             
         elif "REVISION NEEDED" in review_response.upper():
@@ -66,6 +87,11 @@ async def review_output(content: str, context: str = "", max_retries: int = MAX_
                     retry_count=retry_count,
                     target_agent=target_agent
                 )
+            
+            # Notify review complete
+            if output_handler:
+                output_handler.on_review_complete(False, feedback)
+                
             return False, feedback
             
         else:

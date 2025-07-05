@@ -48,10 +48,13 @@ from agents.reviewer.reviewer_agent import reviewer_agent
 from orchestrator.regression_test_runner_tool import TestRunnerTool
 
 # Import the enhanced orchestrator config
-from orchestrator.orchestrator_configs import orchestrator_config
+from orchestrator.orchestrator_configs import orchestrator_config, OUTPUT_DISPLAY_CONFIG
 
 # Import monitoring system
 from workflows.monitoring import WorkflowExecutionTracer, StepStatus, ReviewDecision
+
+# Import real-time output handler
+from workflows.agent_output_handler import RealTimeOutputHandler, get_output_handler, set_output_handler
 
 # Load environment variables from .env file
 load_dotenv()
@@ -220,8 +223,17 @@ current_progress_report: Optional[ProgressReport] = None
 # ============================================================================
 
 async def run_team_member_with_tracking(agent: str, input: str, objective_name: str) -> List[Message]:
-    """Enhanced team member execution with progress tracking"""
+    """Enhanced team member execution with progress tracking and real-time output"""
     global current_progress_report
+    
+    # Get the output handler
+    output_handler = get_output_handler()
+    
+    # Determine step number based on completed objectives
+    step_number = 1
+    if current_progress_report:
+        completed_count = sum(1 for obj in current_progress_report.objectives if obj.status in ["completed", "failed"])
+        step_number = completed_count + 1
     
     if current_progress_report:
         # Find or create objective
@@ -245,18 +257,43 @@ async def run_team_member_with_tracking(agent: str, input: str, objective_name: 
         objective.start_time = time.time()
     
     try:
+        # Display agent start in real-time
+        start_time = output_handler.on_agent_start(agent, input, step_number)
+        
         # Execute the agent
         result = await run_team_member(agent, input)
+        
+        # Extract output text
+        output_text = ""
+        if result and len(result) > 0:
+            if hasattr(result[0], 'parts') and len(result[0].parts) > 0:
+                output_text = result[0].parts[0].content
+            else:
+                output_text = str(result[0])
+        
+        # Display agent completion in real-time
+        metadata = {"objective": objective_name}
+        if current_progress_report and objective:
+            metadata["duration"] = time.time() - objective.start_time
+        
+        output_handler.on_agent_complete(
+            agent_name=agent,
+            input_text=input,
+            output_text=output_text,
+            start_time=start_time,
+            step_number=step_number,
+            metadata=metadata
+        )
         
         if current_progress_report and objective:
             # Update status to completed
             objective.status = "completed"
             objective.end_time = time.time()
-            objective.output_length = len(str(result[0])) if result else 0
+            objective.output_length = len(output_text)
             
             # Analyze output for challenges
-            output_text = str(result[0]).lower() if result else ""
-            if any(keyword in output_text for keyword in ["error", "issue", "problem", "challenge"]):
+            output_text_lower = output_text.lower()
+            if any(keyword in output_text_lower for keyword in ["error", "issue", "problem", "challenge"]):
                 objective.challenges.append("Potential issues detected in output")
         
         return result
@@ -269,6 +306,16 @@ async def run_team_member_with_tracking(agent: str, input: str, objective_name: 
             
             # Add to global challenges
             current_progress_report.challenges.append(f"{agent} failed: {str(e)}")
+        
+        # Display error in output handler
+        output_handler.on_agent_complete(
+            agent_name=agent,
+            input_text=input,
+            output_text=f"ERROR: {str(e)}",
+            start_time=start_time if 'start_time' in locals() else time.time(),
+            step_number=step_number,
+            metadata={"error": str(e), "objective": objective_name}
+        )
         
         raise e
 
@@ -406,8 +453,21 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInputModel, ToolRunOptions, CodingTe
             start_time=time.time()
         )
         
+        # Initialize real-time output handler with configuration
+        display_mode = OUTPUT_DISPLAY_CONFIG.get("mode", "detailed")
+        max_input_chars = OUTPUT_DISPLAY_CONFIG.get("max_input_chars", 1000)
+        max_output_chars = OUTPUT_DISPLAY_CONFIG.get("max_output_chars", 2000)
+        output_handler = RealTimeOutputHandler(
+            display_mode=display_mode,
+            max_input_chars=max_input_chars,
+            max_output_chars=max_output_chars
+        )
+        set_output_handler(output_handler)
+        
         print(f"🚀 Starting Enhanced Workflow: {input.workflow_type}")
         print(f"📋 Session ID: {session_id}")
+        print(f"📺 Output Mode: {display_mode}")
+        print()
         
         try:
             # Import here to avoid circular imports
@@ -443,13 +503,26 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInputModel, ToolRunOptions, CodingTe
                 final_output={
                     "results_count": len(results),
                     "session_id": session_id,
-                    "workflow_type": input.workflow.value
+                    "workflow_type": input.workflow_type
                 }
             )
             
             # Generate comprehensive reports
             progress_report = current_progress_report.generate_report()
             monitoring_report = execution_report.to_json() if execution_report else None
+            
+            # Add output handler summary
+            handler_summary = output_handler.generate_summary()
+            print(handler_summary)
+            
+            # Optionally export interactions
+            export_path = f"logs/{session_id}_interactions.json"
+            try:
+                import os
+                os.makedirs(os.path.dirname(export_path), exist_ok=True)
+                output_handler.export_interactions(export_path)
+            except Exception as e:
+                print(f"Failed to export interactions: {e}")
             
             # Create enhanced success metrics with monitoring data
             success_metrics = {

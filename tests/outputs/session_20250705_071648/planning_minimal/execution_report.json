@@ -1,0 +1,70 @@
+{
+  "execution_id": "aa859d5a-c7a2-451f-bf7b-f4348928ae6b",
+  "workflow_type": "planning",
+  "start_time": "2025-07-05T07:17:58.705378",
+  "end_time": "2025-07-05T07:18:05.421409",
+  "total_duration_seconds": 6.716031,
+  "status": "completed",
+  "steps": [
+    {
+      "step_id": "planning_0_071758",
+      "step_name": "planning",
+      "agent_name": "planner_agent",
+      "status": "completed",
+      "start_time": "2025-07-05T07:17:58.705449",
+      "end_time": "2025-07-05T07:18:05.420874",
+      "duration_seconds": 6.715425,
+      "input_data": {
+        "requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+        "workflow_type": "individual",
+        "step_type": "planning"
+      },
+      "output_data": {
+        "output": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal of this project is to create a basic \"Hello World\" REST ...",
+        "step_completed": "planning",
+        "success": true
+      },
+      "error_message": null,
+      "metadata": {}
+    }
+  ],
+  "step_count": 1,
+  "completed_steps": 1,
+  "failed_steps": 0,
+  "reviews": [],
+  "total_reviews": 0,
+  "approved_reviews": 0,
+  "revision_requests": 0,
+  "auto_approvals": 0,
+  "retries": [],
+  "total_retries": 0,
+  "test_executions": [],
+  "total_tests": 0,
+  "passed_tests": 0,
+  "failed_tests": 0,
+  "agent_performance": {
+    "planner_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 6.715425,
+      "average_duration": 6.715425,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    }
+  },
+  "final_output": {
+    "workflow_type": "planning",
+    "results_count": 1,
+    "team_members": [
+      "planner"
+    ]
+  },
+  "error_summary": null,
+  "metadata": {
+    "input_requirements": "Create a basic 'Hello World' REST API endpoint that returns a JSON response",
+    "workflow_type": "planning"
+  }
+}

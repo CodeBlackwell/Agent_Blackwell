@@ -3,11 +3,15 @@ Feature parser for extracting implementation plans from designer output.
 Follows ACP patterns for shared utilities.
 """
 import re
+import logging
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 from enum import Enum
 
 from shared.data_models import BaseModel
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class ComplexityLevel(Enum):
@@ -48,10 +52,10 @@ class FeatureParser:
     # Regex patterns for feature extraction
     FEATURE_PATTERN = r'FEATURE\[(\d+)\]:\s*([^\n]+)'
     FIELD_PATTERNS = {
-        'description': r'Description:\s*(.+?)(?=\n(?:Files|Validation|Dependencies|Complexity|FEATURE\[|$))',
-        'files': r'Files:\s*(.+?)(?=\n(?:Validation|Dependencies|Complexity|FEATURE\[|$))',
-        'validation': r'Validation:\s*(.+?)(?=\n(?:Dependencies|Complexity|FEATURE\[|$))',
-        'dependencies': r'Dependencies:\s*(.+?)(?=\n(?:Complexity|FEATURE\[|$))',
+        'description': r'Description:\s*([^\n]+(?:\n(?!(?:Files|Validation|Dependencies|Complexity|FEATURE\[))[^\n]+)*)',
+        'files': r'Files:\s*([^\n]+)',
+        'validation': r'Validation:\s*([^\n]+(?:\n(?!(?:Dependencies|Complexity|FEATURE\[))[^\n]+)*)',
+        'dependencies': r'Dependencies:\s*([^\n]+)',
         'complexity': r'(?:Estimated\s*)?Complexity:\s*(\w+)'
     }
     
@@ -67,21 +71,27 @@ class FeatureParser:
         self.features = []
         self.feature_map = {}
         
+        logger.debug("Starting feature parsing...")
+        
         # Try markdown format first (### Feature N: Title)
         if "### Feature" in designer_output:
+            logger.debug("Detected markdown format")
             return self._parse_markdown_format(designer_output)
         
         # Check if implementation plan exists
         if "IMPLEMENTATION PLAN" not in designer_output:
+            logger.debug("No IMPLEMENTATION PLAN found, using auto-generation")
             # Fallback to auto-generation
             return self._generate_default_features(designer_output)
         
         # Extract implementation plan section
         plan_start = designer_output.find("IMPLEMENTATION PLAN")
         plan_section = designer_output[plan_start:]
+        logger.debug(f"Found IMPLEMENTATION PLAN at position {plan_start}")
         
         # Find all features - first get titles
         feature_matches = list(re.finditer(self.FEATURE_PATTERN, plan_section))
+        logger.info(f"Found {len(feature_matches)} features to parse")
         
         for i, match in enumerate(feature_matches):
             feature_id = f"FEATURE[{match.group(1)}]"
@@ -95,11 +105,14 @@ class FeatureParser:
                 end_pos = len(plan_section)
             
             feature_content = plan_section[start_pos:end_pos]
+            logger.debug(f"Parsing {feature_id}: {feature_title} (content length: {len(feature_content)})")
             
             # Extract feature fields
             feature = self._parse_feature(feature_id, feature_title, feature_content)
             self.features.append(feature)
             self.feature_map[feature_id] = feature
+        
+        logger.info(f"Successfully parsed {len(self.features)} features")
         
         # Sort by dependencies
         return self._topological_sort()
@@ -109,11 +122,13 @@ class FeatureParser:
         fields = {}
         
         for field_name, pattern in self.FIELD_PATTERNS.items():
-            match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
+            match = re.search(pattern, content, re.MULTILINE)
             if match:
                 fields[field_name] = match.group(1).strip()
+                logger.debug(f"  {feature_id} - Found {field_name}: {fields[field_name][:50]}...")
             else:
                 fields[field_name] = self._get_default_value(field_name)
+                logger.debug(f"  {feature_id} - Using default for {field_name}: {fields[field_name]}")
         
         # Parse specific fields
         files = [f.strip() for f in fields['files'].split(',')]

@@ -49,7 +49,11 @@ async def execute_incremental_workflow(
         input_data.requirements,
         "incremental_planning"
     )
-    planning_output = str(planning_result)
+    # Extract the actual content from the Message object
+    if isinstance(planning_result, list) and len(planning_result) > 0:
+        planning_output = planning_result[0].parts[0].content
+    else:
+        planning_output = str(planning_result)
     planner_result = TeamMemberResult(
         team_member=TeamMember.planner,
         output=planning_output,
@@ -72,7 +76,11 @@ async def execute_incremental_workflow(
         f"Based on this plan, create a detailed technical design:\n\n{planner_result.output}",
         "incremental_design"
     )
-    design_output = str(design_result)
+    # Extract the actual content from the Message object
+    if isinstance(design_result, list) and len(design_result) > 0:
+        design_output = design_result[0].parts[0].content
+    else:
+        design_output = str(design_result)
     designer_result = TeamMemberResult(
         team_member=TeamMember.designer,
         output=design_output,
@@ -138,7 +146,11 @@ async def execute_incremental_workflow(
         f"Review this incremental implementation:\n\n{coder_result.output}",
         "incremental_review"
     )
-    review_output = str(review_result)
+    # Extract the actual content from the Message object
+    if isinstance(review_result, list) and len(review_result) > 0:
+        review_output = review_result[0].parts[0].content
+    else:
+        review_output = str(review_result)
     reviewer_result = TeamMemberResult(
         team_member=TeamMember.reviewer,
         output=review_output,

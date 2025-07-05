@@ -49,7 +49,7 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     # Correctly reference the async review_output function
     review_output = utils_module.review_output
     # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member
+    from orchestrator.orchestrator_agent import run_team_member_with_tracking
     
     # Create tracer if not provided
     if tracer is None:
@@ -64,9 +64,10 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     try:
         # Planning phase
         step_id = tracer.start_step("planning", "planner_agent", {"requirements": input_data.requirements})
-        planning_result = await run_team_member(
+        planning_result = await run_team_member_with_tracking(
             "planner_agent",
-            input_data.requirements
+            input_data.requirements,
+            "tdd_planning"
         )
         planning_output = str(planning_result)
         results.append(TeamMemberResult(
@@ -94,9 +95,10 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
             
             # Retry planning with feedback
             step_id = tracer.start_step(f"planning_retry_{retry_count+1}", "planner_agent", {"feedback": feedback})
-            planning_result = await run_team_member(
+            planning_result = await run_team_member_with_tracking(
                 "planner_agent",
-                f"{input_data.requirements}\n\nFeedback from review: {feedback}"
+                f"{input_data.requirements}\n\nFeedback from review: {feedback}",
+                f"tdd_planning_retry_{retry_count+1}"
             )
             planning_output = str(planning_result)
             results.append(TeamMemberResult(
@@ -121,7 +123,7 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
             "requirements": input_data.requirements
         })
         design_input = f"Plan:\n{planning_output}\n\nRequirements: {input_data.requirements}"
-        design_result = await run_team_member("designer_agent", design_input)
+        design_result = await run_team_member_with_tracking("designer_agent", design_input, "tdd_design")
         design_output = str(design_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.designer,
@@ -144,7 +146,7 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
             "design_input": design_output[:200] + "..."
         })
         test_input = f"Requirements: {input_data.requirements}\n\nPlan: {planning_output}\n\nDesign: {design_output}"
-        test_result = await run_team_member("test_writer_agent", test_input)
+        test_result = await run_team_member_with_tracking("test_writer_agent", test_input, "tdd_test_writing")
         test_output = str(test_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.test_writer,
@@ -167,7 +169,7 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
             "design_input": design_output[:200] + "..."
         })
         coding_input = f"Requirements: {input_data.requirements}\n\nPlan: {planning_output}\n\nDesign: {design_output}\n\nTests: {test_output}"
-        code_result = await run_team_member("coder_agent", coding_input)
+        code_result = await run_team_member_with_tracking("coder_agent", coding_input, "tdd_coding")
         code_output = str(code_result)
         results.append(TeamMemberResult(
             team_member=TeamMember.coder,
@@ -197,7 +199,7 @@ Execute the following code and tests:
 {test_output}
 """
             
-            execution_result = await run_team_member("executor_agent", execution_input)
+            execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "tdd_execution")
             execution_output = str(execution_result)
             
             tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
@@ -229,7 +231,7 @@ Please review the code, tests, AND execution results."""
             "context": "TDD workflow final review"
         })
         # review_input is already set conditionally above based on whether executor is present
-        review_result = await run_team_member("reviewer_agent", review_input)
+        review_result = await run_team_member_with_tracking("reviewer_agent", review_input, "tdd_final_review")
         review_result_output = str(review_result)  # Convert result to string
         results.append(TeamMemberResult(
             team_member=TeamMember.reviewer,

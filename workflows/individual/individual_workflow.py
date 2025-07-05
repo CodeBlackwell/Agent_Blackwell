@@ -67,7 +67,7 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
         List of team member results (containing single result)
     """
     # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member
+    from orchestrator.orchestrator_agent import run_team_member_with_tracking
     
     results = []
     
@@ -97,7 +97,7 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
         )
         
         try:
-            result = await run_team_member(agent_name, requirements)
+            result = await run_team_member_with_tracking(agent_name, requirements, f"individual_{workflow_step}")
             output = str(result)
             
             # Complete monitoring step

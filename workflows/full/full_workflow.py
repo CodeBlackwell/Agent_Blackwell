@@ -68,7 +68,7 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
         List of team member results
     """
     # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member
+    from orchestrator.orchestrator_agent import run_team_member_with_tracking
 
     # Import review_output from the renamed workflow_utils.py file
     from workflows import workflow_utils
@@ -85,7 +85,7 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
         print("📋 Planning phase...")
         step_id = tracer.start_step("planning", "planner_agent", {"requirements": requirements})
         
-        planning_result = await run_team_member("planner_agent", requirements)
+        planning_result = await run_team_member_with_tracking("planner_agent", requirements, "full_planning")
         plan_output = str(planning_result)
         
         tracer.complete_step(step_id, {"output": plan_output[:200] + "..."})
@@ -112,7 +112,7 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
             })
             
             design_input = f"Plan:\n{plan_output}\n\nRequirements: {requirements}"
-            design_result = await run_team_member("designer_agent", design_input)
+            design_result = await run_team_member_with_tracking("designer_agent", design_input, "full_design")
             design_output = str(design_result)
             
             tracer.complete_step(step_id, {"output": design_output[:200] + "..."})
@@ -190,7 +190,7 @@ Execute the following code:
 {code_output}
 """
                         
-                        execution_result = await run_team_member("executor_agent", execution_input)
+                        execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution")
                         execution_output = str(execution_result)
                         
                         tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
@@ -210,7 +210,7 @@ Execute the following code:
                     print("⚠️ Falling back to standard implementation...")
                     
                     code_input = f"Plan:\n{plan_output}\n\nDesign:\n{design_output}\n\nRequirements: {requirements}"
-                    code_result = await run_team_member("coder_agent", code_input)
+                    code_result = await run_team_member_with_tracking("coder_agent", code_input, "full_coding")
                     code_output = str(code_result)
                     
                     results.append(TeamMemberResult(
@@ -237,7 +237,7 @@ Execute the following code:
 {code_output}
 """
                         
-                        execution_result = await run_team_member("executor_agent", execution_input)
+                        execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution_fallback")
                         execution_output = str(execution_result)
                         
                         tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
@@ -258,7 +258,7 @@ Execute the following code:
                     })
                     
                     review_input = f"Requirements: {requirements}\n\nPlan:\n{plan_output}\n\nDesign:\n{design_output}\n\nImplementation:\n{code_output}"
-                    review_result = await run_team_member("reviewer_agent", review_input)
+                    review_result = await run_team_member_with_tracking("reviewer_agent", review_input, "full_final_review")
                     review_result_output = str(review_result)
                     
                     tracer.complete_step(step_id, {"output": review_result_output[:200] + "..."})

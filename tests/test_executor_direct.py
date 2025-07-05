@@ -7,6 +7,7 @@ import sys
 import tempfile
 import shutil
 import subprocess
+import json
 from pathlib import Path
 
 # Add the project root to path
@@ -14,8 +15,9 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import Docker manager directly
-from agents.executor.docker_manager import DockerEnvironmentManager, EnvironmentSpec
-from agents.executor.executor_agent import generate_session_id
+from agents.executor.docker_manager import DockerEnvironmentManager
+from agents.executor.environment_spec import EnvironmentSpec
+from agents.executor.session_utils import generate_session_id
 
 # Add simple logging for Docker operations
 DOCKER_DEBUG = True
@@ -144,6 +146,20 @@ async def main():
             if execution['stderr']:
                 print(f"STDERR:\n{execution['stderr']}\n")
                 
+        # Check for proof of execution document
+        print("\n📄 Checking for proof of execution document...")
+        if 'build_path' in container_info:
+            proof_path = Path(container_info['build_path']) / "proof_of_execution.json"
+            if proof_path.exists():
+                print(f"✅ Found proof document at: {proof_path}")
+                with open(proof_path, 'r') as f:
+                    proof_entries = json.load(f)
+                print(f"📊 Total entries: {len(proof_entries)}")
+                for entry in proof_entries:
+                    print(f"  - {entry.get('stage', 'unknown')} ({entry.get('status', 'unknown')})")
+            else:
+                print("⚠️ No proof of execution document found!")
+        
         # Clean up
         print("\n🧹 Cleaning up container...")
         await docker_manager.cleanup_session(session_id)

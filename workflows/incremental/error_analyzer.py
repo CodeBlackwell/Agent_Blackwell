@@ -408,6 +408,9 @@ class ErrorAnalyzer:
         # Find similar names using string similarity
         similar = []
         for existing_name in all_names:
+            # Skip if it's the same name we're looking for
+            if existing_name.lower() == name.lower():
+                continue
             ratio = difflib.SequenceMatcher(None, name.lower(), existing_name.lower()).ratio()
             if ratio > 0.8:  # 80% similarity threshold
                 similar.append(existing_name)

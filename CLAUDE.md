@@ -38,24 +38,21 @@ python api/orchestrator_api.py
 ### Testing Commands
 
 ```bash
-# Run all agent tests
-python tests/run_agent_tests.py
+# 🚀 RECOMMENDED: Use the unified test runner
+./test_runner.py              # Run all tests
+./test_runner.py unit         # Run only unit tests  
+./test_runner.py -p           # Run all tests in parallel
+./test_runner.py --quick      # Run fast tests only
+./test_runner.py -l           # List all test categories
 
-# Run specific agent test
-python tests/run_agent_tests.py planner
-
-# Run workflow tests (minimal complexity)
-python tests/test_workflows.py
-
-# Run specific workflow with specific complexity
-python tests/test_workflows.py --workflow tdd --complexity minimal
-
-# List available tests
-python tests/test_workflows.py --list
-
-# Run executor integration tests
-python tests/test_executor_direct.py
+# Individual test commands (if needed)
+python tests/run_agent_tests.py      # Run agent tests
+python tests/test_workflows.py       # Run workflow tests
+pytest tests/unit/                   # Run unit tests
+pytest tests/integration/            # Run integration tests
 ```
+
+See [TEST_GUIDE.md](TEST_GUIDE.md) for comprehensive testing documentation.
 
 ### Visualization Commands
 
@@ -98,9 +95,11 @@ python workflows/enhanced_workflow_visualizer.py
    - Follow existing patterns for consistency
 
 3. **Testing**:
+   - Use the unified test runner: `./test_runner.py`
    - Test individual agents with `test_[agent]_debug.py` files
    - Use workflow tests to validate end-to-end flows
    - All test artifacts saved in `tests/outputs/`
+   - See comprehensive [TEST_GUIDE.md](TEST_GUIDE.md) for details
 
 4. **Error Handling**:
    - Max review retries: 3 (auto-approves after)
@@ -226,3 +225,101 @@ python api/demo_api_usage.py
 - Generated code is saved in `generated/app_generated_[timestamp]/`
 - The API calls workflow functions directly, not through the orchestrator tool
 - Workflow execution includes fallback to standard coder when incremental coding fails
+
+## 🧪 Comprehensive Testing
+
+The codebase includes a robust testing framework with multiple test types and a unified test runner.
+
+### Unified Test Runner
+
+The `test_runner.py` script provides a centralized, user-friendly interface for all tests:
+
+```bash
+# Run all tests
+./test_runner.py
+
+# Run specific test categories
+./test_runner.py unit              # Unit tests only
+./test_runner.py unit integration  # Unit and integration tests
+./test_runner.py workflow agent    # Workflow and agent tests
+
+# Advanced options
+./test_runner.py -p               # Run tests in parallel
+./test_runner.py --quick          # Quick tests only (unit)
+./test_runner.py -v               # Verbose output
+./test_runner.py --ci             # CI mode (no emojis)
+./test_runner.py -l               # List all test categories
+```
+
+### Test Categories
+
+1. **🔬 Unit Tests** (`tests/unit/`)
+   - Framework: pytest
+   - Fast, isolated component tests
+   - Focus: Error analyzer, feature parser, retry strategies, etc.
+
+2. **🔗 Integration Tests** (`tests/integration/`)
+   - Framework: pytest
+   - Component interaction tests
+   - Focus: Workflow integration, API integration
+
+3. **🔄 Workflow Tests** (`tests/test_workflows.py`)
+   - Framework: Standalone scripts
+   - End-to-end workflow validation
+   - Supports different complexity levels
+
+4. **🤖 Agent Tests** (`tests/run_agent_tests.py`)
+   - Framework: Custom test runner
+   - Individual agent functionality
+   - Debug scripts for each agent
+
+5. **⚡ Executor Tests** (`tests/test_executor_*.py`)
+   - Framework: Mixed (unittest/standalone)
+   - Code execution validation
+   - Docker integration tests
+
+6. **🌐 API Tests** (`api/test_*.py`)
+   - Framework: Mixed (pytest/standalone)
+   - REST endpoint validation
+   - Client integration tests
+
+### Testing Best Practices
+
+1. **Before Running Tests**:
+   - Start orchestrator server: `python orchestrator/orchestrator_agent.py`
+   - Start API server (for API tests): `python api/orchestrator_api.py`
+   - Ensure virtual environment is activated
+   - Check Docker is running (for executor tests)
+
+2. **Test Output**:
+   - Results saved to `test_results_[TIMESTAMP].json`
+   - Detailed logs in `tests/outputs/`
+   - Session artifacts in `tests/outputs/session_[TIMESTAMP]/`
+
+3. **Debugging Tests**:
+   ```bash
+   # Run specific test with verbose output
+   pytest -vv tests/unit/incremental/test_error_analyzer.py
+   
+   # Run specific test method
+   pytest tests/unit/incremental/test_error_analyzer.py::TestErrorContext::test_method
+   
+   # Show test coverage
+   pytest --cov=agents --cov=workflows --cov-report=html
+   ```
+
+4. **CI/CD Integration**:
+   ```bash
+   # Use CI mode for automated pipelines
+   ./test_runner.py --ci
+   ```
+
+### Adding New Tests
+
+When adding new tests:
+- Unit tests: Add to `tests/unit/` using pytest
+- Integration tests: Add to `tests/integration/`
+- Agent tests: Create debug script in agent directory
+- Update `TEST_CATEGORIES` in `test_runner.py` for new categories
+
+For complete testing documentation, see [TEST_GUIDE.md](TEST_GUIDE.md).

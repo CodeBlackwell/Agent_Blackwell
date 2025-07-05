@@ -46,12 +46,12 @@ class FeatureParser:
     """
     
     # Regex patterns for feature extraction
-    FEATURE_PATTERN = r'FEATURE\[(\d+)\]:\s*(.+?)(?=FEATURE\[\d+\]:|IMPLEMENTATION PLAN END|$)'
+    FEATURE_PATTERN = r'FEATURE\[(\d+)\]:\s*([^\n]+)'
     FIELD_PATTERNS = {
-        'description': r'Description:\s*(.+?)(?=\n[A-Z]|\n\n|$)',
-        'files': r'Files:\s*(.+?)(?=\n[A-Z]|\n\n|$)',
-        'validation': r'Validation:\s*(.+?)(?=\n[A-Z]|\n\n|$)',
-        'dependencies': r'Dependencies:\s*(.+?)(?=\n[A-Z]|\n\n|$)',
+        'description': r'Description:\s*(.+?)(?=\n(?:Files|Validation|Dependencies|Complexity|FEATURE\[|$))',
+        'files': r'Files:\s*(.+?)(?=\n(?:Validation|Dependencies|Complexity|FEATURE\[|$))',
+        'validation': r'Validation:\s*(.+?)(?=\n(?:Dependencies|Complexity|FEATURE\[|$))',
+        'dependencies': r'Dependencies:\s*(.+?)(?=\n(?:Complexity|FEATURE\[|$))',
         'complexity': r'(?:Estimated\s*)?Complexity:\s*(\w+)'
     }
     
@@ -67,6 +67,10 @@ class FeatureParser:
         self.features = []
         self.feature_map = {}
         
+        # Try markdown format first (### Feature N: Title)
+        if "### Feature" in designer_output:
+            return self._parse_markdown_format(designer_output)
+        
         # Check if implementation plan exists
         if "IMPLEMENTATION PLAN" not in designer_output:
             # Fallback to auto-generation
@@ -76,13 +80,21 @@ class FeatureParser:
         plan_start = designer_output.find("IMPLEMENTATION PLAN")
         plan_section = designer_output[plan_start:]
         
-        # Find all features
-        feature_matches = re.finditer(self.FEATURE_PATTERN, plan_section, re.DOTALL)
+        # Find all features - first get titles
+        feature_matches = list(re.finditer(self.FEATURE_PATTERN, plan_section))
         
-        for match in feature_matches:
+        for i, match in enumerate(feature_matches):
             feature_id = f"FEATURE[{match.group(1)}]"
             feature_title = match.group(2).strip()
-            feature_content = match.group(0)
+            
+            # Get full content from this feature to the next (or end)
+            start_pos = match.start()
+            if i + 1 < len(feature_matches):
+                end_pos = feature_matches[i + 1].start()
+            else:
+                end_pos = len(plan_section)
+            
+            feature_content = plan_section[start_pos:end_pos]
             
             # Extract feature fields
             feature = self._parse_feature(feature_id, feature_title, feature_content)
@@ -130,10 +142,11 @@ class FeatureParser:
     def _parse_complexity(self, complexity_str: str) -> ComplexityLevel:
         """Parse complexity level"""
         complexity_lower = complexity_str.lower()
-        if 'low' in complexity_lower:
-            return ComplexityLevel.LOW
-        elif 'high' in complexity_lower:
+        # Check for "high" before other terms since "very high" contains "high"
+        if 'high' in complexity_lower:
             return ComplexityLevel.HIGH
+        elif 'low' in complexity_lower:
+            return ComplexityLevel.LOW
         else:
             return ComplexityLevel.MEDIUM
     
@@ -224,3 +237,56 @@ class FeatureParser:
             'complexity': "medium"
         }
         return defaults.get(field_name, "")
+    
+    def _parse_markdown_format(self, designer_output: str) -> List[Feature]:
+        """Parse markdown format features (### Feature N: Title)"""
+        # Pattern for markdown features
+        md_pattern = r'### Feature (\d+):\s*([^\n]+)'
+        feature_sections = re.split(r'(?=### Feature \d+:)', designer_output)
+        
+        for section in feature_sections:
+            if not section.strip() or '### Feature' not in section:
+                continue
+                
+            # Extract feature header
+            header_match = re.match(md_pattern, section)
+            if not header_match:
+                continue
+                
+            feature_num = header_match.group(1)
+            feature_title = header_match.group(2).strip()
+            
+            # Extract fields in markdown format
+            id_match = re.search(r'\*\*ID\*\*:\s*([^\n]+)', section)
+            desc_match = re.search(r'\*\*Description\*\*:\s*([^\n]+)', section)
+            complex_match = re.search(r'\*\*Complexity\*\*:\s*([^\n]+)', section)
+            files_match = re.search(r'\*\*Files\*\*:\s*([^\n]+)', section)
+            valid_match = re.search(r'\*\*Validation\*\*:\s*([^\n]+)', section)
+            deps_match = re.search(r'\*\*Dependencies\*\*:\s*([^\n]+)', section)
+            
+            feature_id = id_match.group(1).strip() if id_match else f"FEATURE[{feature_num}]"
+            description = desc_match.group(1).strip() if desc_match else feature_title
+            complexity_str = complex_match.group(1).strip() if complex_match else "medium"
+            files_str = files_match.group(1).strip() if files_match else "implementation files"
+            validation = valid_match.group(1).strip() if valid_match else "Code executes without errors"
+            deps_str = deps_match.group(1).strip() if deps_match else "None"
+            
+            # Parse fields
+            files = [f.strip() for f in files_str.split(',')]
+            dependencies = self._parse_dependencies(deps_str)
+            complexity = self._parse_complexity(complexity_str)
+            
+            feature = Feature(
+                id=feature_id,
+                title=feature_title,
+                description=description,
+                files=files,
+                validation_criteria=validation,
+                dependencies=dependencies,
+                complexity=complexity
+            )
+            
+            self.features.append(feature)
+            self.feature_map[feature_id] = feature
+        
+        return self._topological_sort()

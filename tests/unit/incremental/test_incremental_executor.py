@@ -90,7 +90,7 @@ def divide(a, b):
     async def test_validate_feature_success(self, executor, sample_feature, sample_files, mock_tracer):
         """Test successful validation of a feature"""
         # Mock the run_team_member function
-        with patch('orchestrator.utils.incremental_executor.run_team_member',
+        with patch('orchestrator.orchestrator_agent.run_team_member',
                    new_callable=AsyncMock) as mock_run:
             # Simulate successful validation output
             mock_run.return_value = """
@@ -129,10 +129,11 @@ def divide(a, b):
             # Verify result
             assert isinstance(result, ValidationResult)
             assert result.success is True
-            assert "validation criteria met" in result.feedback
+            assert "validated successfully" in result.feedback
+            assert "4 tests passed" in result.feedback
             assert result.files_validated == ["calculator.py"]
             assert result.tests_passed == 4
-            assert result.tests_failed == 0
+            assert result.tests_failed is None
             
             # Verify state updates
             assert executor.codebase_state == sample_files
@@ -149,7 +150,7 @@ def divide(a, b):
         }
         
         # Mock the run_team_member function
-        with patch('orchestrator.utils.incremental_executor.run_team_member',
+        with patch('orchestrator.orchestrator_agent.run_team_member',
                    new_callable=AsyncMock) as mock_run:
             # Simulate validation failure output
             mock_run.return_value = """

@@ -60,11 +60,8 @@ class ProgressMetrics:
     
     def get_progress_rate(self) -> float:
         """Calculate rate of progress (0-1)."""
-        if not self.test_results:
-            return 0.0
-        
         # If we have test results, track improvement in passing tests
-        if len(self.test_results) >= 2:
+        if self.test_results and len(self.test_results) >= 2:
             initial_passed = self.test_results[0][0] if self.test_results[0] else 0
             latest_passed = self.test_results[-1][0] if self.test_results[-1] else 0
             total_tests = self.test_results[-1][0] + self.test_results[-1][1]

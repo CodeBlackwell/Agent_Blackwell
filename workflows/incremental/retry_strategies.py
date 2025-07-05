@@ -39,6 +39,15 @@ class RetryContext:
         if not self.error_categories:
             return "unknown"
         
+        # Check for test progress first (important for test-related errors)
+        if self.test_progress and len(self.test_progress) > 1:
+            initial_passed = self.test_progress[0][0] if self.test_progress[0] else 0
+            latest_passed = self.test_progress[-1][0] if self.test_progress[-1] else 0
+            if latest_passed > initial_passed:
+                return "making_progress"
+            elif latest_passed == initial_passed and "test" in self.error_categories[-1]:
+                return "no_test_progress"
+        
         # Check for repeating errors
         if len(set(self.error_categories)) == 1:
             return "repeated_same_error"
@@ -47,15 +56,6 @@ class RetryContext:
         if len(self.error_categories) > 2:
             if self.error_categories[-1] == self.error_categories[-3]:
                 return "cycling_errors"
-        
-        # Check for progress
-        if self.test_progress and len(self.test_progress) > 1:
-            initial_passed = self.test_progress[0][0] if self.test_progress[0] else 0
-            latest_passed = self.test_progress[-1][0] if self.test_progress[-1] else 0
-            if latest_passed > initial_passed:
-                return "making_progress"
-            elif latest_passed == initial_passed:
-                return "no_test_progress"
         
         return "varied_errors"
 

@@ -1,0 +1,501 @@
+{
+  "TDD Workflow": {
+    "nodes": [
+      {
+        "id": "test_writer_agent",
+        "label": "Test Writer Agent",
+        "details": {
+          "docstring": "Docstring for test_writer_agent goes here.",
+          "source_code": "Source code for test_writer_agent goes here."
+        }
+      },
+      {
+        "id": "input",
+        "label": "Input",
+        "details": {
+          "docstring": "Docstring for input goes here.",
+          "source_code": "Source code for input goes here."
+        }
+      },
+      {
+        "id": "executor_agent",
+        "label": "Executor Agent",
+        "details": {
+          "docstring": "Docstring for executor_agent goes here.",
+          "source_code": "Source code for executor_agent goes here."
+        }
+      },
+      {
+        "id": "coder_agent",
+        "label": "Coder Agent",
+        "details": {
+          "docstring": "Docstring for coder_agent goes here.",
+          "source_code": "Source code for coder_agent goes here."
+        }
+      },
+      {
+        "id": "designer_agent",
+        "label": "Designer Agent",
+        "details": {
+          "docstring": "Docstring for designer_agent goes here.",
+          "source_code": "Source code for designer_agent goes here."
+        }
+      },
+      {
+        "id": "reviewer_agent",
+        "label": "Reviewer Agent",
+        "details": {
+          "docstring": "Docstring for reviewer_agent goes here.",
+          "source_code": "Source code for reviewer_agent goes here."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "input",
+        "to": "designer_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "initial_input"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "designer_agent",
+        "to": "reviewer_agent",
+        "label": "review",
+        "flow_type": "review",
+        "details": {
+          "data_schema": {
+            "stage": "design",
+            "output": "design_output"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "reviewer_agent",
+        "to": "designer_agent",
+        "label": "feedback",
+        "flow_type": "feedback",
+        "details": {
+          "data_schema": {
+            "decision": "revision_needed",
+            "stage": "design"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "test_writer_agent",
+        "to": "reviewer_agent",
+        "label": "review",
+        "flow_type": "review",
+        "details": {
+          "data_schema": {
+            "stage": "test_writing",
+            "output": "test_output"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "designer_agent",
+        "to": "test_writer_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "sequential"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "test_writer_agent",
+        "to": "coder_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "sequential"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "coder_agent",
+        "to": "executor_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "sequential"
+          },
+          "transformations": []
+        }
+      }
+    ]
+  },
+  "Full Workflow": {
+    "nodes": [
+      {
+        "id": "input",
+        "label": "Input",
+        "details": {
+          "docstring": "Docstring for input goes here.",
+          "source_code": "Source code for input goes here."
+        }
+      },
+      {
+        "id": "executor_agent",
+        "label": "Executor Agent",
+        "details": {
+          "docstring": "Docstring for executor_agent goes here.",
+          "source_code": "Source code for executor_agent goes here."
+        }
+      },
+      {
+        "id": "coder_agent",
+        "label": "Coder Agent",
+        "details": {
+          "docstring": "Docstring for coder_agent goes here.",
+          "source_code": "Source code for coder_agent goes here."
+        }
+      },
+      {
+        "id": "designer_agent",
+        "label": "Designer Agent",
+        "details": {
+          "docstring": "Docstring for designer_agent goes here.",
+          "source_code": "Source code for designer_agent goes here."
+        }
+      },
+      {
+        "id": "reviewer_agent",
+        "label": "Reviewer Agent",
+        "details": {
+          "docstring": "Docstring for reviewer_agent goes here.",
+          "source_code": "Source code for reviewer_agent goes here."
+        }
+      },
+      {
+        "id": "planner_agent",
+        "label": "Planner Agent",
+        "details": {
+          "docstring": "Docstring for planner_agent goes here.",
+          "source_code": "Source code for planner_agent goes here."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "input",
+        "to": "planner_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "initial_input"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "planner_agent",
+        "to": "reviewer_agent",
+        "label": "review",
+        "flow_type": "review",
+        "details": {
+          "data_schema": {
+            "stage": "planning",
+            "output": "plan_output"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "designer_agent",
+        "to": "reviewer_agent",
+        "label": "review",
+        "flow_type": "review",
+        "details": {
+          "data_schema": {
+            "stage": "design",
+            "output": "design_output"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "planner_agent",
+        "to": "designer_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "sequential"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "designer_agent",
+        "to": "executor_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "sequential"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "executor_agent",
+        "to": "coder_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "sequential"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "coder_agent",
+        "to": "executor_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "sequential"
+          },
+          "transformations": []
+        }
+      }
+    ]
+  },
+  "Individual Workflow": {
+    "nodes": [
+      {
+        "id": "test_writer_agent",
+        "label": "Test Writer Agent",
+        "details": {
+          "docstring": "Docstring for test_writer_agent goes here.",
+          "source_code": "Source code for test_writer_agent goes here."
+        }
+      },
+      {
+        "id": "output",
+        "label": "Output",
+        "details": {
+          "docstring": "Docstring for output goes here.",
+          "source_code": "Source code for output goes here."
+        }
+      },
+      {
+        "id": "input",
+        "label": "Input",
+        "details": {
+          "docstring": "Docstring for input goes here.",
+          "source_code": "Source code for input goes here."
+        }
+      },
+      {
+        "id": "executor_agent",
+        "label": "Executor Agent",
+        "details": {
+          "docstring": "Docstring for executor_agent goes here.",
+          "source_code": "Source code for executor_agent goes here."
+        }
+      },
+      {
+        "id": "coder_agent",
+        "label": "Coder Agent",
+        "details": {
+          "docstring": "Docstring for coder_agent goes here.",
+          "source_code": "Source code for coder_agent goes here."
+        }
+      },
+      {
+        "id": "designer_agent",
+        "label": "Designer Agent",
+        "details": {
+          "docstring": "Docstring for designer_agent goes here.",
+          "source_code": "Source code for designer_agent goes here."
+        }
+      },
+      {
+        "id": "reviewer_agent",
+        "label": "Reviewer Agent",
+        "details": {
+          "docstring": "Docstring for reviewer_agent goes here.",
+          "source_code": "Source code for reviewer_agent goes here."
+        }
+      },
+      {
+        "id": "planner_agent",
+        "label": "Planner Agent",
+        "details": {
+          "docstring": "Docstring for planner_agent goes here.",
+          "source_code": "Source code for planner_agent goes here."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "input",
+        "to": "planner_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "individual_step: planning"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "planner_agent",
+        "to": "output",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "result"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "input",
+        "to": "designer_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "individual_step: design"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "designer_agent",
+        "to": "output",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "result"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "input",
+        "to": "test_writer_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "individual_step: test_writing"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "test_writer_agent",
+        "to": "output",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "result"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "input",
+        "to": "coder_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "individual_step: implementation"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "coder_agent",
+        "to": "output",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "result"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "input",
+        "to": "reviewer_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "individual_step: review"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "reviewer_agent",
+        "to": "output",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "result"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "input",
+        "to": "executor_agent",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "individual_step: execution"
+          },
+          "transformations": []
+        }
+      },
+      {
+        "from": "executor_agent",
+        "to": "output",
+        "label": "data flow",
+        "flow_type": null,
+        "details": {
+          "data_schema": {
+            "type": "result"
+          },
+          "transformations": []
+        }
+      }
+    ]
+  },
+  "Incremental Workflow": {
+    "nodes": [],
+    "edges": []
+  }
+}

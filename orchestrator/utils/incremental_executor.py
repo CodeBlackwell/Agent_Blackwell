@@ -63,10 +63,12 @@ class IncrementalExecutor:
         )
         
         # Record validation attempt if tracer is available
+        validation_id = None
         if self.tracer:
-            validation_id = self.tracer.record_execution(
-                execution_name=f"validate_{feature.id}",
-                execution_type="feature_validation"
+            validation_id = self.tracer.start_step(
+                step_name=f"validate_{feature.id}",
+                agent_name="executor_agent",
+                input_data={"feature": feature.id, "complexity": feature.complexity.value}
             )
         
         try:
@@ -82,11 +84,13 @@ class IncrementalExecutor:
             )
             
             # Update tracer
-            if self.tracer:
-                self.tracer.record_result(
-                    execution_id=validation_id,
-                    success=validation_result.success,
-                    details=validation_result.execution_details
+            if self.tracer and validation_id:
+                self.tracer.complete_step(
+                    step_id=validation_id,
+                    output_data={
+                        "success": validation_result.success,
+                        "details": validation_result.execution_details
+                    }
                 )
             
             # Track successful features
@@ -103,11 +107,14 @@ class IncrementalExecutor:
                 files_validated=list(new_files.keys())
             )
             
-            if self.tracer:
-                self.tracer.record_result(
-                    execution_id=validation_id,
-                    success=False,
-                    details=error_result.execution_details
+            if self.tracer and validation_id:
+                self.tracer.complete_step(
+                    step_id=validation_id,
+                    output_data={
+                        "success": False,
+                        "details": error_result.execution_details
+                    },
+                    error=str(e)
                 )
             
             return error_result

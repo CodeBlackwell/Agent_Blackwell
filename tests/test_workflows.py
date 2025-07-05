@@ -622,6 +622,7 @@ class ModernWorkflowTester:
             test_plan = [
                 ("tdd", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
                 ("full", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
+                ("incremental", [TestComplexity.MINIMAL, TestComplexity.STANDARD]),
                 ("planning", [TestComplexity.MINIMAL]),
                 ("design", [TestComplexity.MINIMAL]),
                 ("implementation", [TestComplexity.MINIMAL]),
@@ -631,6 +632,7 @@ class ModernWorkflowTester:
             test_plan = [
                 ("tdd", complexities),
                 ("full", complexities),
+                ("incremental", complexities),
                 ("planning", complexities),
                 ("design", complexities),
                 ("implementation", complexities),
@@ -764,7 +766,7 @@ async def main():
     parser = argparse.ArgumentParser(description='Modern Workflow Testing Framework')
     
     # Add workflow type options
-    parser.add_argument('--workflow', '-w', choices=['tdd', 'full', 'planning', 'design', 'implementation', 'all'],
+    parser.add_argument('--workflow', '-w', choices=['tdd', 'full', 'incremental', 'planning', 'design', 'implementation', 'all'],
                         default='all', help='Specific workflow type to test (default: all)')
     
     # Add complexity options

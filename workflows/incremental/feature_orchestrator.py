@@ -524,7 +524,12 @@ async def execute_features_incrementally(
                 retry_count += 1
                 if retry_count < max_retries:
                     # Create retry context for decision
-                    error_history = [v.feedback for v in stagnation_detector.feature_metrics.get(feature.id, {}).get('failed_validations', [])]
+                    # Get error history from stagnation detector
+                    error_history = []
+                    if feature.id in stagnation_detector.feature_metrics:
+                        metrics = stagnation_detector.feature_metrics[feature.id]
+                        if hasattr(metrics, 'failed_validations'):
+                            error_history = [v.get('error', 'Unknown error') for v in metrics.failed_validations]
                     error_categories = []
                     for err in error_history:
                         if "syntax" in err.lower():

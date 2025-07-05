@@ -10,7 +10,7 @@ from shared.data_models import (
 from workflows.workflow_config import MAX_REVIEW_RETRIES
 from workflows.incremental.feature_orchestrator import run_incremental_coding_phase
 # Import executor components
-from agents.executor.executor_agent import generate_session_id
+from agents.executor.session_utils import generate_session_id
 
 async def execute_full_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """

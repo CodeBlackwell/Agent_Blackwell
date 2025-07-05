@@ -8,7 +8,7 @@ from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
 )
 # Import executor components
-from agents.executor.executor_agent import generate_session_id
+from agents.executor.session_utils import generate_session_id
 
 async def execute_individual_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """

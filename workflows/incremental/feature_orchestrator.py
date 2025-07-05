@@ -353,7 +353,7 @@ async def execute_features_incrementally(
     Execute features incrementally with retry logic.
     Follows ACP patterns for orchestrated execution.
     """
-    from orchestrator.orchestrator_agent import run_agent
+    from orchestrator.orchestrator_agent import run_team_member
     # Dynamic import to avoid circular dependency
     from orchestrator.utils.incremental_executor import IncrementalExecutor
     
@@ -393,7 +393,7 @@ async def execute_features_incrementally(
             )
             
             # Get code from coder agent
-            code_result = await run_agent("coder", coder_input)
+            code_result = await run_team_member("coder_agent", coder_input)
             code_output = str(code_result)
             
             # Parse files from output

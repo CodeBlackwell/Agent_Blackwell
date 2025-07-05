@@ -22,6 +22,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
+import json
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -36,7 +37,6 @@ from beeai_framework.utils.dicts import exclude_none
 
 # Import from agents package
 from agents.agent_configs import executor_config
-from agents.executor.docker_manager import DockerEnvironmentManager, EnvironmentSpec
 from agents.executor.environment_analyzer import parse_environment_spec
 from workflows.workflow_config import GENERATED_CODE_PATH
 
@@ -86,23 +86,52 @@ Provide:
 Be constructive and specific in feedback.
 """
 
-def extract_session_id(input_text: str) -> Optional[str]:
-    """Extract session ID from input text if present"""
-    lines = input_text.split('\n')
-    for line in lines:
-        if 'SESSION_ID:' in line:
-            return line.split('SESSION_ID:')[1].strip()
-    return None
+# Import session utilities
+from agents.executor.session_utils import extract_session_id, generate_session_id
 
-def generate_session_id() -> str:
-    """Generate a unique session ID"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    random_hash = hashlib.md5(os.urandom(16)).hexdigest()[:8]
-    return f"exec_{timestamp}_{random_hash}"
+def create_proof_of_execution_entry(session_id: str, stage: str, details: Dict, status: str = "started") -> Dict:
+    """Create a proof of execution entry"""
+    return {
+        "timestamp": datetime.now().isoformat(),
+        "session_id": session_id,
+        "stage": stage,
+        "status": status,
+        "details": details
+    }
+
+def write_proof_of_execution(session_id: str, entry: Dict, build_path: Optional[Path] = None):
+    """Write proof of execution entry to file"""
+    # Determine the path for the proof document
+    if build_path:
+        proof_path = build_path / "proof_of_execution.json"
+    else:
+        # Fallback to generated code path
+        generated_path = Path(GENERATED_CODE_PATH)
+        session_dir = generated_path / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        proof_path = session_dir / "proof_of_execution.json"
+    
+    # Read existing entries or create new list
+    entries = []
+    if proof_path.exists():
+        try:
+            with open(proof_path, 'r') as f:
+                entries = json.load(f)
+        except:
+            entries = []
+    
+    # Append new entry
+    entries.append(entry)
+    
+    # Write back to file
+    with open(proof_path, 'w') as f:
+        json.dump(entries, f, indent=2)
+    
+    print(f"📝 Proof of execution updated: {proof_path}")
 
 def format_docker_execution_response(session_id: str, env_spec: Dict, 
                                    container_info: Dict, execution_result: Dict, 
-                                   analysis: str) -> str:
+                                   analysis: str, build_path: Optional[Path] = None) -> str:
     """Format the execution response"""
     response = []
     
@@ -113,6 +142,13 @@ def format_docker_execution_response(session_id: str, env_spec: Dict,
     response.append(f"🔗 Session ID: {session_id}")
     response.append(f"🐳 Container: {container_info['container_name']}")
     response.append(f"📦 Environment: {env_spec.get('language', 'unknown')}:{env_spec.get('version', 'latest')}")
+    
+    # Add proof of execution document path
+    if build_path:
+        proof_path = build_path / "proof_of_execution.json"
+    else:
+        proof_path = Path(GENERATED_CODE_PATH) / session_id / "proof_of_execution.json"
+    response.append(f"📄 Proof of Execution: {proof_path}")
     response.append("")
     
     # Execution Details
@@ -152,6 +188,10 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
     generated_path.mkdir(parents=True, exist_ok=True)
     print(f"📂 Generated code will be saved to: {generated_path.absolute()}")
     
+    # Initialize variables for tracking execution
+    session_id = None
+    build_path = None
+    
     # Initialize OpenAI client
     llm = ChatModel.from_name(executor_config["model"])
     
@@ -165,9 +205,31 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
     session_id = extract_session_id(input_text) or generate_session_id()
     print(f"📋 Session ID: {session_id}")
     
+    # Write initial proof of execution entry
+    initial_entry = create_proof_of_execution_entry(
+        session_id,
+        "executor_initialization",
+        {
+            "input_length": len(input_text),
+            "timestamp_start": datetime.now().isoformat(),
+            "generated_path": str(generated_path.absolute())
+        },
+        "started"
+    )
+    write_proof_of_execution(session_id, initial_entry)
+    
     try:
         # Step 1: Analyze environment requirements using LLM
         print("🔍 Analyzing environment requirements...")
+        
+        # Log environment analysis start
+        env_analysis_entry = create_proof_of_execution_entry(
+            session_id,
+            "environment_analysis",
+            {"action": "Starting environment analysis"},
+            "started"
+        )
+        write_proof_of_execution(session_id, env_analysis_entry)
         agent = ReActAgent(
             llm=llm,
             tools=[],
@@ -197,8 +259,36 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
         analysis_response = await agent.run(prompt=analysis_prompt)
         environment_spec = parse_environment_spec(analysis_response.result.text)
         
+        # Log environment analysis completion
+        env_complete_entry = create_proof_of_execution_entry(
+            session_id,
+            "environment_analysis",
+            {
+                "language": getattr(environment_spec, 'language', 'unknown'),
+                "version": getattr(environment_spec, 'version', 'unknown'),
+                "base_image": getattr(environment_spec, 'base_image', 'unknown'),
+                "dependencies_count": len(getattr(environment_spec, 'dependencies', [])),
+                "execution_commands": getattr(environment_spec, 'execution_commands', [])
+            },
+            "completed"
+        )
+        write_proof_of_execution(session_id, env_complete_entry)
+        
         # Step 2: Build or retrieve Docker environment
         print("🔨 Setting up Docker environment...")
+        
+        # Log Docker setup start
+        docker_setup_entry = create_proof_of_execution_entry(
+            session_id,
+            "docker_setup",
+            {"action": "Initializing Docker environment"},
+            "started"
+        )
+        write_proof_of_execution(session_id, docker_setup_entry)
+        
+        # Import here to avoid circular import
+        from agents.executor.docker_manager import DockerEnvironmentManager
+        
         docker_manager = DockerEnvironmentManager(session_id)
         await docker_manager.initialize()
         
@@ -208,15 +298,80 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
             input_text
         )
         
+        # Store build path for proof of execution
+        if 'build_path' in container_info:
+            build_path = Path(container_info['build_path'])
+        
+        # Log Docker container creation
+        docker_complete_entry = create_proof_of_execution_entry(
+            session_id,
+            "docker_setup",
+            {
+                "container_id": container_info['container_id'][:12],
+                "container_name": container_info['container_name'],
+                "image_tag": container_info.get('image_tag', 'unknown'),
+                "build_path": str(build_path) if build_path else None,
+                "reused_existing": 'Reusing existing' in container_info.get('status', '')
+            },
+            "completed"
+        )
+        write_proof_of_execution(session_id, docker_complete_entry, build_path)
+        
         # Step 3: Execute code in the container
         print("▶️  Executing code in container...")
+        
+        # Log execution start
+        exec_start_entry = create_proof_of_execution_entry(
+            session_id,
+            "code_execution",
+            {
+                "container_id": container_info['container_id'][:12],
+                "commands_to_execute": environment_spec.execution_commands,
+                "commands_count": len(environment_spec.execution_commands)
+            },
+            "started"
+        )
+        write_proof_of_execution(session_id, exec_start_entry, build_path)
+        
         execution_result = await docker_manager.execute_in_container(
             container_info['container_id'],
             environment_spec.execution_commands
         )
         
+        # Log detailed execution results
+        exec_complete_entry = create_proof_of_execution_entry(
+            session_id,
+            "code_execution",
+            {
+                "overall_success": execution_result.get("overall_success", False),
+                "executions": [
+                    {
+                        "command": exec_data["command"],
+                        "exit_code": exec_data["exit_code"],
+                        "success": exec_data["success"],
+                        "stdout_length": len(exec_data.get("stdout", "")),
+                        "stderr_length": len(exec_data.get("stderr", "")),
+                        "stdout_preview": exec_data.get("stdout", "")[:500] if exec_data.get("stdout") else "",
+                        "stderr_preview": exec_data.get("stderr", "")[:500] if exec_data.get("stderr") else ""
+                    }
+                    for exec_data in execution_result.get("executions", [])
+                ]
+            },
+            "completed"
+        )
+        write_proof_of_execution(session_id, exec_complete_entry, build_path)
+        
         # Step 4: Analyze results with LLM
         print("📊 Analyzing execution results...")
+        
+        # Log analysis start
+        analysis_start_entry = create_proof_of_execution_entry(
+            session_id,
+            "result_analysis",
+            {"action": "Starting execution result analysis"},
+            "started"
+        )
+        write_proof_of_execution(session_id, analysis_start_entry, build_path)
         result_agent = ReActAgent(
             llm=llm,
             tools=[],
@@ -251,19 +406,58 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
         
         final_analysis = await result_agent.run(prompt=result_prompt)
         
+        # Log analysis completion
+        analysis_complete_entry = create_proof_of_execution_entry(
+            session_id,
+            "result_analysis",
+            {
+                "analysis_length": len(final_analysis.result.text),
+                "analysis_preview": final_analysis.result.text[:500]
+            },
+            "completed"
+        )
+        write_proof_of_execution(session_id, analysis_complete_entry, build_path)
+        
         # Format response
         response = format_docker_execution_response(
             session_id,
             environment_spec.__dict__ if hasattr(environment_spec, '__dict__') else environment_spec,
             container_info,
             execution_result,
-            final_analysis.result.text
+            final_analysis.result.text,
+            build_path
         )
+        
+        # Final success entry
+        final_entry = create_proof_of_execution_entry(
+            session_id,
+            "executor_completion",
+            {
+                "status": "success",
+                "proof_document_path": str(build_path / "proof_of_execution.json") if build_path else f"{GENERATED_CODE_PATH}/{session_id}/proof_of_execution.json"
+            },
+            "completed"
+        )
+        write_proof_of_execution(session_id, final_entry, build_path)
         
         yield MessagePart(content=response)
         
     except Exception as e:
         print(f"❌ Executor error: {e}")
+        
+        # Log error
+        if session_id:
+            error_entry = create_proof_of_execution_entry(
+                session_id,
+                "executor_error",
+                {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "error_traceback": str(e.__traceback__) if hasattr(e, '__traceback__') else None
+                },
+                "failed"
+            )
+            write_proof_of_execution(session_id, error_entry, build_path)
         error_response = f"""
 ❌ DOCKER EXECUTION ERROR
 

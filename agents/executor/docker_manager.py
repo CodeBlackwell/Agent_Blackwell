@@ -10,25 +10,16 @@ import asyncio
 import re
 import shutil
 import os
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
 import aiodocker
 
 # Import GENERATED_CODE_PATH from workflow_config
 from workflows.workflow_config import GENERATED_CODE_PATH
 
-@dataclass
-class EnvironmentSpec:
-    """Specification for a Docker environment"""
-    language: str
-    version: str
-    base_image: str
-    dependencies: List[str]
-    system_packages: List[str]
-    build_commands: List[str]
-    execution_commands: List[str]
-    working_dir: str = "/app"
+# Import EnvironmentSpec from shared module
+from agents.executor.environment_spec import EnvironmentSpec
 
 class DockerEnvironmentManager:
     """Manages Docker environments for code execution"""

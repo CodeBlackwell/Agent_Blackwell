@@ -32,7 +32,7 @@ from workflows.workflow_config import MAX_REVIEW_RETRIES
 from workflows.agent_output_handler import get_output_handler
 
 # Import executor components
-from agents.executor.executor_agent import generate_session_id
+from agents.executor.session_utils import generate_session_id
 
 
 

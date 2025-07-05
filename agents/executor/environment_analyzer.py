@@ -6,7 +6,7 @@ Parses LLM analysis to determine Docker environment requirements.
 
 import re
 from typing import Dict, List
-from agents.executor.docker_manager import EnvironmentSpec
+from agents.executor.environment_spec import EnvironmentSpec
 
 def parse_environment_spec(llm_analysis: str) -> EnvironmentSpec:
     """Parse LLM analysis into environment specification"""
@@ -73,25 +73,29 @@ def parse_environment_spec(llm_analysis: str) -> EnvironmentSpec:
     
     # Extract dependencies mentioned in analysis
     if "dependencies:" in analysis_lower:
-        deps_section = llm_analysis.split("dependencies:")[1].split("\n")[0:10]
-        for line in deps_section:
-            if line.strip() and not line.strip().startswith('-'):
-                break
-            if line.strip().startswith('-'):
-                dep = line.strip().lstrip('-').strip()
-                if dep and len(dep) < 50:  # Sanity check
-                    dependencies.append(dep)
+        parts = llm_analysis.split("dependencies:")
+        if len(parts) > 1:
+            deps_section = parts[1].split("\n")[0:10]
+            for line in deps_section:
+                if line.strip() and not line.strip().startswith('-'):
+                    break
+                if line.strip().startswith('-'):
+                    dep = line.strip().lstrip('-').strip()
+                    if dep and len(dep) < 50:  # Sanity check
+                        dependencies.append(dep)
     
     # Extract system packages
     if "system packages:" in analysis_lower:
-        sys_section = llm_analysis.split("system packages:")[1].split("\n")[0:10]
-        for line in sys_section:
-            if line.strip() and not line.strip().startswith('-'):
-                break
-            if line.strip().startswith('-'):
-                pkg = line.strip().lstrip('-').strip()
-                if pkg and len(pkg) < 50:  # Sanity check
-                    system_packages.append(pkg)
+        parts = llm_analysis.split("system packages:")
+        if len(parts) > 1:
+            sys_section = parts[1].split("\n")[0:10]
+            for line in sys_section:
+                if line.strip() and not line.strip().startswith('-'):
+                    break
+                if line.strip().startswith('-'):
+                    pkg = line.strip().lstrip('-').strip()
+                    if pkg and len(pkg) < 50:  # Sanity check
+                        system_packages.append(pkg)
     
     # Common system packages for different scenarios
     if language == "python":
@@ -102,17 +106,19 @@ def parse_environment_spec(llm_analysis: str) -> EnvironmentSpec:
             
     # Extract custom commands if specified
     if "execution commands:" in analysis_lower:
-        exec_section = llm_analysis.split("execution commands:")[1].split("\n")[0:10]
-        custom_commands = []
-        for line in exec_section:
-            if line.strip() and not line.strip().startswith('-'):
-                break
-            if line.strip().startswith('-'):
-                cmd = line.strip().lstrip('-').strip()
-                if cmd and len(cmd) < 200:  # Sanity check
-                    custom_commands.append(cmd)
-        if custom_commands:
-            execution_commands = custom_commands
+        parts = llm_analysis.split("execution commands:")
+        if len(parts) > 1:
+            exec_section = parts[1].split("\n")[0:10]
+            custom_commands = []
+            for line in exec_section:
+                if line.strip() and not line.strip().startswith('-'):
+                    break
+                if line.strip().startswith('-'):
+                    cmd = line.strip().lstrip('-').strip()
+                    if cmd and len(cmd) < 200:  # Sanity check
+                        custom_commands.append(cmd)
+            if custom_commands:
+                execution_commands = custom_commands
     
     # Ensure we have at least one execution command
     if not execution_commands:

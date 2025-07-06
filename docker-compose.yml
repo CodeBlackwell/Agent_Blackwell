@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: .
+      target: orchestrator
+    container_name: multi-agent-orchestrator
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./generated:/app/generated
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  api:
+    build:
+      context: .
+      target: api
+    container_name: multi-agent-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./generated:/app/generated
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ORCHESTRATOR_URL=http://orchestrator:8080
+    depends_on:
+      - orchestrator
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+    container_name: multi-agent-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://localhost:8000
+    depends_on:
+      - api
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  agent-network:
+    driver: bridge
+
+volumes:
+  generated:
+  logs:

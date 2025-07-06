@@ -23,6 +23,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from shared.data_models import CodingTeamInput, CodingTeamResult, WorkflowType, StepType, TeamMemberResult
 from workflows import execute_workflow
 from workflows.monitoring import WorkflowExecutionTracer
+from agents.executor.docker_manager import DockerEnvironmentManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -164,6 +165,28 @@ async def execute_workflow_async(
         workflow_executions[session_id]["status"] = "completed"
         workflow_executions[session_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
         
+        # Docker cleanup
+        try:
+            # Extract session ID from executor results for cleanup
+            docker_session_id = None
+            for result in agent_results:
+                if result.name == 'executor' and result.output:
+                    import re
+                    session_match = re.search(r'SESSION_ID:\s*(\S+)', result.output)
+                    if session_match:
+                        docker_session_id = session_match.group(1)
+                        break
+            
+            if docker_session_id:
+                logger.info(f"Initiating Docker cleanup for session: {docker_session_id}")
+                docker_manager = DockerEnvironmentManager(docker_session_id)
+                await docker_manager.initialize()
+                await docker_manager.cleanup_session(docker_session_id)
+                logger.info(f"Docker cleanup completed for session: {docker_session_id}")
+        except Exception as cleanup_error:
+            logger.warning(f"Docker cleanup failed: {str(cleanup_error)}")
+            # Don't fail the workflow due to cleanup errors
+        
         logger.info(f"Workflow execution completed for session {session_id}")
         
     except Exception as e:
@@ -171,6 +194,17 @@ async def execute_workflow_async(
         workflow_executions[session_id]["status"] = "failed"
         workflow_executions[session_id]["error"] = str(e)
         workflow_executions[session_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Attempt cleanup even on failure
+        try:
+            # Use the tracer's execution_id as the session ID for cleanup
+            if 'tracer' in locals() and hasattr(tracer, 'execution_id'):
+                logger.info(f"Running cleanup after failure for execution: {tracer.execution_id}")
+                docker_manager = DockerEnvironmentManager(tracer.execution_id)
+                await docker_manager.initialize()
+                await docker_manager.cleanup_session(tracer.execution_id)
+        except Exception as cleanup_error:
+            logger.warning(f"Docker cleanup after failure failed: {str(cleanup_error)}")
 
 # API Endpoints
 @app.get("/")

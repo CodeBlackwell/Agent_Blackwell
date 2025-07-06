@@ -1,11 +1,10 @@
 """
 Workflow manager for coordinating different workflow implementations.
 """
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Optional, Tuple
 import asyncio
 import traceback
 import importlib
-import sys
 
 # Import verification function
 def verify_imports():
@@ -54,7 +53,6 @@ verify_imports()
 from shared.data_models import (
     TeamMember, 
     TeamMemberResult, 
-    WorkflowStep, 
     CodingTeamInput
 )
 
@@ -64,6 +62,9 @@ from workflows.full.full_workflow import execute_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
 from workflows.incremental.incremental_workflow import execute_incremental_workflow
 from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
+
+# Import Docker manager for cleanup
+from agents.executor.docker_manager import DockerEnvironmentManager
 
 
 async def execute_workflow(input_data: CodingTeamInput, 
@@ -300,6 +301,34 @@ async def execute_workflow(input_data: CodingTeamInput,
         report = tracer.get_report()
         print(f"DEBUG: Generated execution report")
         
+        # Docker container cleanup
+        session_id_for_cleanup = None
+        
+        # Try to get session ID from proof data first
+        if proof_data and proof_data.get('session_id'):
+            session_id_for_cleanup = proof_data.get('session_id')
+        # Otherwise try to extract from executor output
+        elif validated_results:
+            for result in validated_results:
+                if hasattr(result, 'name') and result.name == 'executor' and hasattr(result, 'output'):
+                    import re
+                    session_match = re.search(r'SESSION_ID:\s*(\S+)', str(result.output))
+                    if session_match:
+                        session_id_for_cleanup = session_match.group(1)
+                        break
+        
+        # Perform cleanup if we have a session ID
+        if session_id_for_cleanup:
+            try:
+                print(f"\n🧹 Initiating Docker cleanup for session: {session_id_for_cleanup}")
+                docker_manager = DockerEnvironmentManager(session_id_for_cleanup)
+                await docker_manager.initialize()
+                await docker_manager.cleanup_session(session_id_for_cleanup)
+                print(f"✅ Docker cleanup completed for session: {session_id_for_cleanup}")
+            except Exception as cleanup_error:
+                print(f"⚠️  Docker cleanup failed: {str(cleanup_error)}")
+                # Don't fail the workflow due to cleanup errors
+        
         return validated_results, report
         
     except asyncio.TimeoutError:
@@ -314,6 +343,22 @@ async def execute_workflow(input_data: CodingTeamInput,
         if tracer:
             tracer.complete_execution(error=str(e))
         raise
+    
+    finally:
+        # Ensure Docker cleanup happens even on errors
+        # This is a backup cleanup in case the main cleanup didn't run
+        try:
+            # Only run if we haven't already cleaned up
+            if 'session_id_for_cleanup' not in locals() or not session_id_for_cleanup:
+                # Try to find any executor sessions from tracer
+                if hasattr(tracer, 'execution_id'):
+                    print(f"\n🧹 Running backup Docker cleanup for execution: {tracer.execution_id}")
+                    docker_manager = DockerEnvironmentManager(tracer.execution_id)
+                    await docker_manager.initialize()
+                    await docker_manager.cleanup_session(tracer.execution_id)
+        except Exception as cleanup_error:
+            print(f"⚠️  Backup Docker cleanup failed: {str(cleanup_error)}")
+            # Silent fail - don't break workflow due to cleanup
 
 
 # Legacy support functions

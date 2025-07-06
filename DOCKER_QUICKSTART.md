@@ -43,7 +43,7 @@ Get the Multi-Agent Coding System running in 3 minutes with Docker!
 ### Via Command Line
 ```bash
 # Quick test
-docker-compose exec orchestrator python hello_agents.py
+docker compose exec orchestrator python hello_agents.py
 
 # API test
 curl -X POST http://localhost:8000/execute-workflow \

@@ -7,3 +7,9 @@ orchestrator/generated
 *DS_Store
 # Generated test artifacts
 generated/
+# Log files
+*.log
+orchestrator.log
+api.log
+# Test outputs
+tests/outputs/

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Development Team Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            max-width: 70%;
+        }
+
+        .user-message {
+            background-color: #3498db;
+            color: white;
+            margin-left: auto;
+        }
+
+        .system-message {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .chat-input button {
+            margin-left: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .chat-input button:hover {
+            background-color: #2980b9;
+        }
+
+        .chat-input button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .monitoring-section {
+            flex: 1;
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .monitoring-header {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .agent-message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background-color: #34495e;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+
+        .agent-name {
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 0.25rem;
+        }
+
+        .agent-output {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .workflow-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .workflow-selector select {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-pending { background-color: #f39c12; }
+        .status-running { background-color: #3498db; }
+        .status-completed { background-color: #27ae60; }
+        .status-failed { background-color: #e74c3c; }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background-color: #e74c3c;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AI Development Team Interface</h1>
+        <p>Chat with your AI development team and monitor their progress</p>
+    </div>
+
+    <div class="container">
+        <div class="chat-section">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message system-message">
+                    Welcome! I'm your AI development team coordinator. Describe what you'd like to build, and I'll orchestrate our team of specialized agents to help you.
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <div style="flex: 1;">
+                    <div class="workflow-selector">
+                        <select id="workflowType">
+                            <option value="full">Full Workflow (Plan → Design → Code → Review)</option>
+                            <option value="tdd">TDD Workflow (Plan → Design → Tests → Code → Execute → Review)</option>
+                            <option value="individual">Individual Step</option>
+                        </select>
+                        <select id="stepType" style="display: none;">
+                            <option value="">Select Step</option>
+                            <option value="planning">Planning Only</option>
+                            <option value="design">Design Only</option>
+                            <option value="test_writing">Test Writing Only</option>
+                            <option value="implementation">Implementation Only</option>
+                            <option value="review">Review Only</option>
+                        </select>
+                    </div>
+                    <input type="text" id="chatInput" placeholder="Describe what you want to build..." />
+                </div>
+                <button id="sendButton" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+        <div class="monitoring-section">
+            <div class="monitoring-header">
+                Agent Activity Monitor
+            </div>
+            <div id="agentMonitor">
+                <div style="text-align: center; color: #7f8c8d; margin-top: 2rem;">
+                    Agent activity will appear here when you start a workflow...
+                </div>
+            </div>
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p style="margin-top: 0.5rem;">Processing your request...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let currentSessionId = null;
+        let pollInterval = null;
+
+        // Handle workflow type change
+        document.getElementById('workflowType').addEventListener('change', function(e) {
+            const stepTypeSelect = document.getElementById('stepType');
+            if (e.target.value === 'individual') {
+                stepTypeSelect.style.display = 'block';
+            } else {
+                stepTypeSelect.style.display = 'none';
+                stepTypeSelect.value = '';
+            }
+        });
+
+        // Handle enter key in input
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const requirements = input.value.trim();
+            
+            if (!requirements) return;
+
+            const workflowType = document.getElementById('workflowType').value;
+            const stepType = document.getElementById('stepType').value;
+
+            // Validate individual workflow
+            if (workflowType === 'individual' && !stepType) {
+                alert('Please select a step type for individual workflow');
+                return;
+            }
+
+            // Add user message to chat
+            addChatMessage(requirements, 'user');
+            input.value = '';
+
+            // Disable input while processing
+            setInputEnabled(false);
+            showLoading(true);
+
+            try {
+                // Start workflow execution
+                const response = await fetch(`${API_BASE_URL}/execute-workflow`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        requirements: requirements,
+                        workflow_type: workflowType,
+                        step_type: stepType || null,
+                        max_retries: 3,
+                        timeout_seconds: 300
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                currentSessionId = data.session_id;
+
+                addChatMessage(`Workflow started! Session ID: ${currentSessionId}`, 'system');
+                
+                // Start polling for status
+                startPolling();
+
+            } catch (error) {
+                console.error('Error:', error);
+                addChatMessage(`Error: ${error.message}`, 'system');
+                showLoading(false);
+                setInputEnabled(true);
+            }
+        }
+
+        function startPolling() {
+            // Clear any existing interval
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+
+            // Poll every 2 seconds
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/workflow-status/${currentSessionId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    updateMonitoringDisplay(data);
+
+                    // Stop polling if workflow is complete
+                    if (data.status === 'completed' || data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        showLoading(false);
+                        setInputEnabled(true);
+
+                        if (data.status === 'completed') {
+                            addChatMessage('Workflow completed successfully! Check the monitoring panel for details.', 'system');
+                        } else {
+                            addChatMessage(`Workflow failed: ${data.error || 'Unknown error'}`, 'system');
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    showLoading(false);
+                    setInputEnabled(true);
+                }
+            }, 2000);
+        }
+
+        function updateMonitoringDisplay(data) {
+            const monitor = document.getElementById('agentMonitor');
+            
+            if (data.result && data.result.agent_results) {
+                monitor.innerHTML = '';
+                
+                data.result.agent_results.forEach(agent => {
+                    const agentDiv = document.createElement('div');
+                    agentDiv.className = 'agent-message';
+                    
+                    agentDiv.innerHTML = `
+                        <div class="agent-name">
+                            <span class="status-indicator status-completed"></span>
+                            ${agent.agent.toUpperCase()}
+                        </div>
+                        <div class="agent-output">${escapeHtml(agent.output_preview)}</div>
+                        <div style="font-size: 11px; color: #7f8c8d; margin-top: 0.5rem;">
+                            Output length: ${agent.output_length} characters
+                        </div>
+                    `;
+                    
+                    monitor.appendChild(agentDiv);
+                });
+
+                // Add execution report if available
+                if (data.result.execution_report) {
+                    const reportDiv = document.createElement('div');
+                    reportDiv.className = 'agent-message';
+                    reportDiv.style.borderLeftColor = '#27ae60';
+                    
+                    reportDiv.innerHTML = `
+                        <div class="agent-name">
+                            <span class="status-indicator status-completed"></span>
+                            EXECUTION SUMMARY
+                        </div>
+                        <div class="agent-output">Total agents involved: ${data.result.agent_count}
+Total output size: ${data.result.total_output_size} characters</div>
+                    `;
+                    
+                    monitor.appendChild(reportDiv);
+                }
+            } else if (data.progress) {
+                // Show progress indicator
+                const progressHtml = `
+                    <div class="agent-message">
+                        <div class="agent-name">
+                            <span class="status-indicator status-running"></span>
+                            WORKFLOW PROGRESS
+                        </div>
+                        <div class="agent-output">Status: ${data.status}
+Current Step: ${data.progress.current_step || 'Initializing...'}
+Total Steps: ${data.progress.total_steps || 'Calculating...'}</div>
+                    </div>
+                `;
+                monitor.innerHTML = progressHtml + monitor.innerHTML;
+            }
+        }
+
+        function addChatMessage(message, type) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function setInputEnabled(enabled) {
+            document.getElementById('chatInput').disabled = !enabled;
+            document.getElementById('sendButton').disabled = !enabled;
+            document.getElementById('workflowType').disabled = !enabled;
+            document.getElementById('stepType').disabled = !enabled;
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loadingIndicator');
+            if (show) {
+                loading.classList.add('active');
+            } else {
+                loading.classList.remove('active');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

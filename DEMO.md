@@ -5,14 +5,15 @@ This document provides a comprehensive guide to demonstrating the Multi-Agent Co
 ## 📋 Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Quick Start Demos](#quick-start-demos)
-3. [API Demonstrations](#api-demonstrations)
-4. [Workflow Demonstrations](#workflow-demonstrations)
-5. [Test Suite Demonstrations](#test-suite-demonstrations)
-6. [Advanced Features](#advanced-features)
-7. [Visualization Tools](#visualization-tools)
-8. [Web Frontend Interface](#web-frontend-interface)
-9. [Real-World Examples](#real-world-examples)
+2. [Docker Deployment](#docker-deployment)
+3. [Quick Start Demos](#quick-start-demos)
+4. [API Demonstrations](#api-demonstrations)
+5. [Workflow Demonstrations](#workflow-demonstrations)
+6. [Test Suite Demonstrations](#test-suite-demonstrations)
+7. [Advanced Features](#advanced-features)
+8. [Visualization Tools](#visualization-tools)
+9. [Web Frontend Interface](#web-frontend-interface)
+10. [Real-World Examples](#real-world-examples)
 
 ---
 
@@ -39,6 +40,189 @@ Before running any demos, ensure you have:
    ```bash
    python api/orchestrator_api.py
    ```
+
+---
+
+## 🐳 Docker Deployment
+
+The entire Multi-Agent Coding System can be run using Docker, providing a consistent environment across all platforms.
+
+### Quick Start with Docker
+
+1. **Clone the repository and navigate to it**
+   ```bash
+   git clone <repository-url>
+   cd rebuild
+   ```
+
+2. **Copy and configure environment variables**
+   ```bash
+   cp docker.env.example .env
+   # Edit .env with your API keys
+   ```
+
+3. **Start all services with Docker Compose**
+   ```bash
+   docker-compose up
+   ```
+
+   This starts:
+   - Orchestrator service on http://localhost:8080
+   - API service on http://localhost:8000
+   - Frontend service on http://localhost:3000
+
+4. **Access the web interface**
+   ```bash
+   open http://localhost:3000  # macOS
+   # or
+   xdg-open http://localhost:3000  # Linux
+   ```
+
+### Docker Commands for DEMO Examples
+
+#### Running Example Scripts
+```bash
+# Hello World example
+docker-compose exec orchestrator python hello_agents.py
+
+# Simple example with parameters
+docker-compose exec orchestrator python simple_example.py --workflow tdd --task "Create a calculator"
+
+# Interactive quickstart
+docker-compose exec orchestrator python quickstart.py
+```
+
+#### Running Tests
+```bash
+# Run all tests
+docker-compose exec orchestrator ./test_runner.py
+
+# Run specific test categories
+docker-compose exec orchestrator ./test_runner.py unit
+docker-compose exec orchestrator ./test_runner.py integration
+```
+
+#### API Testing with Docker
+```bash
+# Test API from outside container
+curl -X POST http://localhost:8000/execute-workflow \
+  -H "Content-Type: application/json" \
+  -d '{"requirements": "Create a temperature converter", "workflow_type": "tdd"}'
+
+# Run API demo script
+docker-compose exec api python api/demo_api_usage.py
+```
+
+### Docker Service Management
+
+#### Start services individually
+```bash
+# Start only the orchestrator
+docker-compose up orchestrator
+
+# Start orchestrator and API
+docker-compose up orchestrator api
+
+# Start in detached mode
+docker-compose up -d
+```
+
+#### View logs
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f orchestrator
+docker-compose logs -f api
+```
+
+#### Stop services
+```bash
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (clean slate)
+docker-compose down -v
+```
+
+### Docker Volume Management
+
+Generated code and logs are persisted in Docker volumes:
+
+```bash
+# View generated code
+ls -la ./generated/
+
+# View logs
+ls -la ./logs/
+
+# Access files from container
+docker-compose exec orchestrator ls -la /app/generated/
+```
+
+### Building and Rebuilding
+
+```bash
+# Rebuild after code changes
+docker-compose build
+
+# Rebuild specific service
+docker-compose build orchestrator
+
+# Force rebuild without cache
+docker-compose build --no-cache
+```
+
+### Docker Troubleshooting
+
+**"Cannot connect to Docker daemon" error**
+- Ensure Docker Desktop is running
+- Check Docker socket permissions
+- Try: `docker-compose down -v && docker-compose up`
+
+**"Port already in use" error**
+- Check for conflicting services: `lsof -i :8080` (or :8000, :3000)
+- Stop conflicting services or change ports in docker-compose.yml
+
+**"Module not found" errors**
+- Rebuild the image: `docker-compose build --no-cache`
+- Check requirements.txt is up to date
+
+**Performance issues**
+- Allocate more resources to Docker Desktop
+- Use `.dockerignore` to exclude large files
+- Consider using Docker BuildKit: `DOCKER_BUILDKIT=1 docker-compose build`
+
+### Advanced Docker Usage
+
+#### Running with custom environment
+```bash
+# Use different env file
+docker-compose --env-file docker.prod.env up
+
+# Override specific variables
+OPENAI_API_KEY=your-key docker-compose up
+```
+
+#### Exec into running container
+```bash
+# Interactive shell
+docker-compose exec orchestrator /bin/bash
+
+# Run Python shell
+docker-compose exec orchestrator python
+```
+
+#### Health checks
+```bash
+# Check service health
+docker-compose ps
+
+# Manual health check
+curl http://localhost:8080/health
+curl http://localhost:8000/health
+```
 
 ---
 
@@ -242,7 +426,7 @@ python tests/integration/test_realtime_output.py
 ### 2. Proof of Execution Tracking
 ```bash
 # Test proof integration
-python test_proof_integration.py
+python tests/integration/test_proof_integration.py
 
 # Read proof documents
 python tests/test_proof_reading_integration.py
@@ -252,10 +436,10 @@ python tests/test_proof_reading_integration.py
 ### 3. Dynamic App Naming
 ```bash
 # Test dynamic naming convention
-python test_dynamic_naming.py
+python tests/integration/test_dynamic_naming.py
 
 # See it in action with workflows
-python test_naming_integration.py
+python tests/integration/test_naming_integration.py
 ```
 **Shows**: How app directories are named based on requirements (e.g., `20250105_143022_calculator_api_abc123/`).
 

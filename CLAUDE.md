@@ -57,11 +57,14 @@ See [TEST_GUIDE.md](TEST_GUIDE.md) for comprehensive testing documentation.
 ### Visualization Commands
 
 ```bash
-# Generate workflow visualizations
-python workflows/workflow_visualizer.py
+# Generate workflow visualizations (focused version - system overview & flow graphs only)
+python workflows/workflow_visualizer_v4.py
 
-# Generate enhanced visualizations with schema details
-python workflows/enhanced_workflow_visualizer.py
+# Options:
+python workflows/workflow_visualizer_v4.py --help                # Show all options
+python workflows/workflow_visualizer_v4.py --system-only         # System overview only
+python workflows/workflow_visualizer_v4.py --workflow tdd        # Single workflow flow
+python workflows/workflow_visualizer_v4.py --output-dir custom   # Custom output directory
 ```
 
 ## Workflow Types

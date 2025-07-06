@@ -43,6 +43,8 @@ from agents.designer.designer_agent import designer_agent
 from agents.coder.coder_agent import coder_agent
 from agents.test_writer.test_writer_agent import test_writer_agent
 from agents.reviewer.reviewer_agent import reviewer_agent
+from agents.feature_coder.feature_coder_agent import feature_coder_agent
+from agents.validator.validator_agent import validator_agent
 
 # Import the modular tools
 from orchestrator.regression_test_runner_tool import TestRunnerTool
@@ -338,7 +340,9 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "coder_agent": 8080,
         "test_writer_agent": 8080,
         "reviewer_agent": 8080,
+        "feature_coder_agent": 8080,
         "executor_agent": 8080,
+        "validator_agent": 8080,
     }
     
     agent_name_mapping = {
@@ -347,7 +351,9 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "coder_agent": "coder_agent_wrapper",
         "test_writer_agent": "test_writer_agent_wrapper",
         "reviewer_agent": "reviewer_agent_wrapper",
-        "executor_agent": "executor_agent_wrapper"
+        "executor_agent": "executor_agent_wrapper",
+        "feature_coder_agent": "feature_coder_agent_wrapper",
+        "validator_agent": "validator_agent_wrapper"
     }
     
     internal_agent_name = agent_name_mapping.get(agent, agent)
@@ -382,6 +388,11 @@ async def coder_agent_wrapper(input: list[Message]) -> AsyncGenerator:
         yield part
 
 @server.agent()
+async def feature_coder_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    async for part in feature_coder_agent(input):
+        yield part
+
+@server.agent()
 async def test_writer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
     async for part in test_writer_agent(input):
         yield part
@@ -395,6 +406,11 @@ async def reviewer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
 async def executor_agent_wrapper(input: list[Message]) -> AsyncGenerator:
     from agents.executor.executor_agent import executor_agent
     async for part in executor_agent(input):
+        yield part
+
+@server.agent()
+async def validator_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    async for part in validator_agent(input):
         yield part
 
 # ============================================================================

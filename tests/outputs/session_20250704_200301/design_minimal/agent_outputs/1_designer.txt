@@ -1,4 +1,0 @@
-AGENT: designer
-============================================================
-
-[Message(role='user', parts=[MessagePart(name=None, content_type='text/plain', content='Error from designer_agent: All connection attempts failed', content_encoding='plain', content_url=None, metadata=None)], created_at=datetime.datetime(2025, 7, 5, 0, 3, 5, 509903, tzinfo=datetime.timezone.utc), completed_at=datetime.datetime(2025, 7, 5, 0, 3, 5, 509909, tzinfo=datetime.timezone.utc))]

@@ -21,3 +21,11 @@ reviewer_config = {
 executor_config = {
     "model": "openai:gpt-3.5-turbo",
 }
+
+feature_coder_config = {
+    "model": "openai:gpt-4o-mini",
+}
+
+validator_config = {
+    "model": "openai:gpt-3.5-turbo",  # Use fast model for validation
+}

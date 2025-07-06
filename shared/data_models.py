@@ -104,6 +104,7 @@ class TeamMemberResult:
     team_member: TeamMember
     output: str
     name: Optional[str] = None  # For backward compatibility
+    metadata: Optional[Dict[str, Any]] = None  # Additional metadata
     
     def __post_init__(self):
         if not self.name and self.team_member:

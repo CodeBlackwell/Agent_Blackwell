@@ -1,4 +1,0 @@
-AGENT: reviewer
-============================================================
-
-[Message(role='agent/reviewer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='Please provide access to the code repository or share the relevant code files for a detailed review of the full-stack e-commerce application implementation.', content_encoding='plain', content_url=None, metadata=None)], created_at=datetime.datetime(2025, 7, 3, 21, 22, 25, 643849, tzinfo=TzInfo(UTC)), completed_at=datetime.datetime(2025, 7, 3, 21, 22, 25, 644888, tzinfo=TzInfo(UTC)))]

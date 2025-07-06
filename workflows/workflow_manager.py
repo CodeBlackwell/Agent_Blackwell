@@ -17,6 +17,7 @@ def verify_imports():
         "workflows.full.full_workflow": ["execute_full_workflow"],
         "workflows.individual.individual_workflow": ["execute_individual_workflow"],
         "workflows.incremental.incremental_workflow": ["execute_incremental_workflow"],
+        "workflows.mvp_incremental.mvp_incremental": ["execute_mvp_incremental_workflow"],
         "workflows.monitoring": ["WorkflowExecutionTracer", "WorkflowExecutionReport"]
     }
     
@@ -61,6 +62,7 @@ from workflows.tdd.tdd_workflow import execute_tdd_workflow
 from workflows.full.full_workflow import execute_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
 from workflows.incremental.incremental_workflow import execute_incremental_workflow
+from workflows.mvp_incremental.mvp_incremental import execute_mvp_incremental_workflow
 from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 
 # Import Docker manager for cleanup
@@ -152,6 +154,10 @@ async def execute_workflow(input_data: CodingTeamInput,
             print(f"DEBUG: Executing incremental workflow")
             results = await execute_incremental_workflow(input_data, tracer)
             print(f"DEBUG: Incremental workflow completed, results type: {type(results)}")
+        elif workflow_type == "mvp_incremental" or workflow_type == "mvp_incremental_workflow":
+            print(f"DEBUG: Executing MVP incremental workflow")
+            results = await execute_mvp_incremental_workflow(input_data, tracer)
+            print(f"DEBUG: MVP incremental workflow completed, results type: {type(results)}")
         elif workflow_type in ["individual", "planning", "design", "test_writing", "implementation", "review"]:
             # For individual workflows, set the step type if not already set
             if workflow_type != "individual" and not input_data.step_type:
@@ -161,7 +167,7 @@ async def execute_workflow(input_data: CodingTeamInput,
             results = await execute_individual_workflow(input_data, tracer)
             print(f"DEBUG: Individual workflow completed, results type: {type(results)}")
         else:
-            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, individual, planning, design, test_writing, implementation, review"
+            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, mvp_incremental, individual, planning, design, test_writing, implementation, review"
             print(f"ERROR: {error_msg}")
             tracer.complete_execution(error=error_msg)
             raise ValueError(error_msg)

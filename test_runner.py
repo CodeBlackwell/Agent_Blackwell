@@ -98,6 +98,31 @@ TEST_CATEGORIES = {
         "description": "Real-time output display tests",
         "runner": "python",
         "files": ["tests/integration/test_realtime_output.py"]
+    },
+    "naming": {
+        "emoji": "🏷️",
+        "name": "Naming & Proof Tests",
+        "description": "Dynamic naming and proof of execution tests",
+        "runner": "python",
+        "files": [
+            "tests/integration/test_proof_integration.py",
+            "tests/integration/test_dynamic_naming.py",
+            "tests/integration/test_naming_integration.py"
+        ]
+    },
+    "frontend": {
+        "emoji": "🖥️",
+        "name": "Frontend Tests",
+        "description": "Web frontend functionality tests",
+        "runner": "python",
+        "script": "tests/frontend/test_frontend.py"
+    },
+    "orchestrator": {
+        "emoji": "🎭",
+        "name": "Orchestrator Client Tests",
+        "description": "Orchestrator client functionality tests",
+        "runner": "python",
+        "script": "tests/orchestrator/test_orchestrator_client.py"
     }
 }
 

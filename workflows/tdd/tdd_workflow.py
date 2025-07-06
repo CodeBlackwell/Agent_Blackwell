@@ -187,7 +187,7 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
         tracer.complete_step(step_id, {"output": code_output[:200] + "..."})
         
         # Step 4.5: Execute tests and code
-        session_id = generate_session_id()
+        session_id = generate_session_id(input_data.requirements)
         
         if TeamMember.executor in input_data.team_members:
             print("🐳 Executing tests and code...")
@@ -209,6 +209,14 @@ Execute the following code and tests:
             
             execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "tdd_execution")
             execution_output = str(execution_result)
+            
+            # Extract proof of execution details
+            from agents.executor.proof_reader import extract_proof_from_executor_output
+            proof_details = extract_proof_from_executor_output(execution_output, session_id)
+            
+            # Append proof details to execution output
+            if proof_details and "No proof of execution found" not in proof_details:
+                execution_output += f"\n\n{proof_details}"
             
             tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
             

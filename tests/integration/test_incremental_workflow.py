@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 import json
+import pytest
 
 # Add the project root to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -17,6 +18,7 @@ from shared.data_models import CodingTeamInput
 from workflows.workflow_manager import execute_workflow
 
 
+@pytest.mark.asyncio
 async def test_incremental_calculator():
     """Test the incremental workflow with a moderate calculator project"""
     

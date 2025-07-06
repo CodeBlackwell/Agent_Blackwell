@@ -208,12 +208,91 @@ async def execute_workflow(input_data: CodingTeamInput,
         
         print(f"DEBUG: Processed {len(validated_results)} validated results")
         
+        # Extract proof of execution data from executor results
+        proof_path = None
+        proof_data = None
+        
+        for result in validated_results:
+            if hasattr(result, 'name') and result.name == 'executor' and hasattr(result, 'output'):
+                output_str = str(result.output)
+                
+                # Look for proof document path in output
+                if "Proof of Execution Document:" in output_str:
+                    lines = output_str.split('\n')
+                    for line in lines:
+                        if "Proof of Execution Document:" in line:
+                            proof_path = line.split("Proof of Execution Document:")[-1].strip()
+                            break
+                
+                # Extract session ID to find proof if path not found
+                if not proof_path and "SESSION_ID:" in output_str:
+                    import re
+                    session_match = re.search(r'SESSION_ID:\s*(\S+)', output_str)
+                    if session_match:
+                        session_id = session_match.group(1)
+                        from workflows.workflow_config import GENERATED_CODE_PATH
+                        import os
+                        potential_path = os.path.join(GENERATED_CODE_PATH, session_id, "proof_of_execution.json")
+                        if os.path.exists(potential_path):
+                            proof_path = potential_path
+                
+                # Read proof data if we have a path
+                if proof_path:
+                    try:
+                        import json
+                        import os
+                        if os.path.exists(proof_path):
+                            with open(proof_path, 'r') as f:
+                                proof_entries = json.load(f)
+                                # Extract key information from proof entries
+                                proof_data = {
+                                    'session_id': None,
+                                    'container_id': None,
+                                    'execution_success': False,
+                                    'stages': [],
+                                    'total_duration': 0
+                                }
+                                
+                                for entry in proof_entries:
+                                    stage = entry.get('stage', '')
+                                    proof_data['stages'].append({
+                                        'stage': stage,
+                                        'timestamp': entry.get('timestamp'),
+                                        'status': entry.get('status')
+                                    })
+                                    
+                                    if stage == 'executor_initialization':
+                                        proof_data['session_id'] = entry.get('details', {}).get('session_id')
+                                    elif stage == 'docker_setup':
+                                        proof_data['container_id'] = entry.get('details', {}).get('container_id')
+                                    elif stage == 'code_execution':
+                                        proof_data['execution_success'] = entry.get('details', {}).get('overall_success', False)
+                                
+                                print(f"DEBUG: Successfully extracted proof data from {proof_path}")
+                    except Exception as e:
+                        print(f"DEBUG: Failed to read proof data: {str(e)}")
+                
+                break  # Found executor result, no need to continue
+        
+        # Update tracer report with proof data
+        if proof_path or proof_data:
+            tracer.report.proof_of_execution_path = proof_path
+            tracer.report.proof_of_execution_data = proof_data
+            print(f"DEBUG: Added proof of execution data to report")
+        
         # Complete successful execution
         final_output = {
             'workflow_type': workflow_type,
             'results_count': len(validated_results),
             'team_members': [result.name for result in validated_results if hasattr(result, 'name')]
         }
+        
+        # Add proof info to final output if available
+        if proof_path:
+            final_output['proof_of_execution_path'] = proof_path
+        if proof_data:
+            final_output['execution_verified'] = proof_data.get('execution_success', False)
+            
         print(f"DEBUG: Final output metadata: {final_output}")
         tracer.complete_execution(final_output=final_output)
         

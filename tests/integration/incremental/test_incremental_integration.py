@@ -5,6 +5,7 @@ Integration test for incremental coding following ACP patterns
 import sys
 import os
 import asyncio
+import pytest
 
 # Add project root to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
@@ -25,10 +26,10 @@ def test_imports():
         from workflows.incremental.feature_orchestrator import FeatureOrchestrator
         print("✅ Feature orchestrator imports successfully")
         
-        return True
+        assert True  # Use assert instead of return
     except ImportError as e:
         print(f"❌ Import error: {e}")
-        return False
+        pytest.fail(f"Import error: {e}")
 
 
 def test_feature_parser():
@@ -50,14 +51,12 @@ def test_feature_parser():
     parser = FeatureParser()
     features = parser.parse(test_output)
     
-    if features and len(features) == 1:
-        print("✅ Feature parser works correctly")
-        return True
-    else:
-        print("❌ Feature parser failed")
-        return False
+    assert features is not None, "Features should not be None"
+    assert len(features) == 1, f"Expected 1 feature, got {len(features)}"
+    print("✅ Feature parser works correctly")
 
 
+@pytest.mark.asyncio
 async def test_orchestrator_initialization():
     """Test orchestrator can be initialized"""
     try:
@@ -71,10 +70,10 @@ async def test_orchestrator_initialization():
         orchestrator = FeatureOrchestrator(tracer)
         
         print("✅ Orchestrator initialization successful")
-        return True
+        assert True  # Test passed
     except Exception as e:
         print(f"❌ Orchestrator initialization failed: {e}")
-        return False
+        pytest.fail(f"Orchestrator initialization failed: {e}")
 
 
 async def main():

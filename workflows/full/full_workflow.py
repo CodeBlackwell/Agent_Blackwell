@@ -175,7 +175,7 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
                     # Execute tests and code if executor is in team members
                     if "executor" in team_members:
                         print("🐳 Executing code in Docker container...")
-                        session_id = generate_session_id()
+                        session_id = generate_session_id(input_data.requirements)
                         
                         step_id = tracer.start_step("execution", "executor_agent", {
                             "session_id": session_id,
@@ -192,6 +192,14 @@ Execute the following code:
                         
                         execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution")
                         execution_output = str(execution_result)
+                        
+                        # Extract proof of execution details
+                        from agents.executor.proof_reader import extract_proof_from_executor_output
+                        proof_details = extract_proof_from_executor_output(execution_output, session_id)
+                        
+                        # Append proof details to execution output
+                        if proof_details and "No proof of execution found" not in proof_details:
+                            execution_output += f"\n\n{proof_details}"
                         
                         tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
                         
@@ -222,7 +230,7 @@ Execute the following code:
                     # Execute tests and code in fallback path if executor is in team members
                     if "executor" in team_members:
                         print("🐳 Executing code in Docker container (fallback path)...")
-                        session_id = generate_session_id()
+                        session_id = generate_session_id(input_data.requirements)
                         
                         step_id = tracer.start_step("execution_fallback", "executor_agent", {
                             "session_id": session_id,
@@ -239,6 +247,14 @@ Execute the following code:
                         
                         execution_result = await run_team_member_with_tracking("executor_agent", execution_input, "full_execution_fallback")
                         execution_output = str(execution_result)
+                        
+                        # Extract proof of execution details
+                        from agents.executor.proof_reader import extract_proof_from_executor_output
+                        proof_details = extract_proof_from_executor_output(execution_output, session_id)
+                        
+                        # Append proof details to execution output
+                        if proof_details and "No proof of execution found" not in proof_details:
+                            execution_output += f"\n\n{proof_details}"
                         
                         tracer.complete_step(step_id, {"output": execution_output[:200] + "..."})
                         

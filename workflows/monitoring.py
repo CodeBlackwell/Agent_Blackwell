@@ -141,6 +141,10 @@ class WorkflowExecutionReport:
     final_output: Optional[Dict[str, Any]] = None
     error_summary: Optional[str] = None
     
+    # Execution evidence
+    proof_of_execution_path: Optional[str] = None
+    proof_of_execution_data: Optional[Dict[str, Any]] = None
+    
     # Metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
     
@@ -218,6 +222,8 @@ class WorkflowExecutionReport:
             'agent_performance': self.agent_performance,
             'final_output': self.final_output,
             'error_summary': self.error_summary,
+            'proof_of_execution_path': self.proof_of_execution_path,
+            'proof_of_execution_data': self.proof_of_execution_data,
             'metadata': self.metadata
         }
         

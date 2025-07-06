@@ -202,7 +202,27 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
             input_text += part.content + "\n"
     
     # Extract or generate session ID
-    session_id = extract_session_id(input_text) or generate_session_id()
+    existing_session_id = extract_session_id(input_text)
+    if existing_session_id:
+        session_id = existing_session_id
+    else:
+        # Try to extract requirements from input for dynamic naming
+        requirements = None
+        if "requirements:" in input_text.lower():
+            # Simple extraction of requirements
+            lines = input_text.split('\n')
+            for i, line in enumerate(lines):
+                if "requirements:" in line.lower():
+                    # Get the next few lines as requirements
+                    req_lines = []
+                    for j in range(i+1, min(i+4, len(lines))):
+                        if lines[j].strip():
+                            req_lines.append(lines[j].strip())
+                    requirements = ' '.join(req_lines) if req_lines else None
+                    break
+        
+        session_id = generate_session_id(requirements)
+    
     print(f"📋 Session ID: {session_id}")
     
     # Write initial proof of execution entry

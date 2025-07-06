@@ -9,7 +9,7 @@ from shared.data_models import (
     TeamMemberResult, 
     TeamMember
 )
-from orchestrator.orchestrator_agent import run_team_member_with_tracking, get_output_handler
+# Dynamic imports to avoid circular dependency - moved inside function
 from workflows.monitoring import WorkflowExecutionTracer
 from .feature_orchestrator import FeatureOrchestrator
 
@@ -31,6 +31,9 @@ async def execute_incremental_workflow(
     Returns:
         List of team member results
     """
+    # Dynamic imports to avoid circular dependency
+    from orchestrator.orchestrator_agent import run_team_member_with_tracking, get_output_handler
+    
     if not tracer:
         tracer = WorkflowExecutionTracer("incremental")
     

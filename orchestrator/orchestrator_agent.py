@@ -119,6 +119,8 @@ class ProgressReport:
     test_results: TestResults = field(default_factory=TestResults)
     challenges: List[str] = field(default_factory=list)
     performance_metrics: Dict[str, Any] = field(default_factory=dict)
+    proof_of_execution_path: Optional[str] = None
+    execution_verified: bool = False
     
     @property
     def duration(self) -> float:
@@ -206,6 +208,14 @@ class ProgressReport:
             report.append("-" * 40)
             for key, value in self.performance_metrics.items():
                 report.append(f"• {key}: {value}")
+            report.append("")
+        
+        # Proof of Execution
+        if self.proof_of_execution_path:
+            report.append("🔐 PROOF OF EXECUTION")
+            report.append("-" * 40)
+            report.append(f"📄 Document Path: {self.proof_of_execution_path}")
+            report.append(f"✅ Execution Verified: {'Yes' if self.execution_verified else 'No'}")
             report.append("")
         
         # Footer
@@ -496,6 +506,12 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInputModel, ToolRunOptions, CodingTe
             
             # Generate performance metrics
             await self._calculate_performance_metrics(results)
+            
+            # Extract proof of execution data from execution report
+            if execution_report and hasattr(execution_report, 'proof_of_execution_path'):
+                current_progress_report.proof_of_execution_path = execution_report.proof_of_execution_path
+                if hasattr(execution_report, 'proof_of_execution_data') and execution_report.proof_of_execution_data:
+                    current_progress_report.execution_verified = execution_report.proof_of_execution_data.get('execution_success', False)
             
             # Complete progress tracking
             current_progress_report.end_time = time.time()

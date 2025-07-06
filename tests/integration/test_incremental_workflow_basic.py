@@ -5,6 +5,11 @@ Tests basic end-to-end functionality and fallback behavior.
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from typing import List
+import sys
+import os
+
+# Add project root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from workflows.incremental.incremental_workflow import execute_incremental_workflow
 from shared.data_models import (
@@ -108,7 +113,7 @@ def subtract(request: CalculationRequest):
                                                          mock_designer_output, mock_codebase):
         """Test simple end-to-end incremental workflow execution"""
         # Mock the agent calls
-        with patch('workflows.incremental.incremental_workflow.run_team_member_with_tracking',
+        with patch('orchestrator.orchestrator_agent.run_team_member_with_tracking',
                    new_callable=AsyncMock) as mock_run_agent:
             
             # Setup agent responses in order
@@ -185,7 +190,7 @@ def subtract(request: CalculationRequest):
     async def test_incremental_workflow_fallback_to_standard(self, sample_input):
         """Test that workflow handles failures gracefully and can fall back"""
         # Mock the agent calls
-        with patch('workflows.incremental.incremental_workflow.run_team_member_with_tracking',
+        with patch('orchestrator.orchestrator_agent.run_team_member_with_tracking',
                    new_callable=AsyncMock) as mock_run_agent:
             
             # Setup agent responses

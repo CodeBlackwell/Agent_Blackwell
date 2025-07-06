@@ -76,6 +76,14 @@ class IncrementalExecutor:
             result = await run_team_member("executor_agent", executor_input)
             execution_output = str(result)
             
+            # Extract proof of execution details
+            from agents.executor.proof_reader import extract_proof_from_executor_output
+            proof_details = extract_proof_from_executor_output(execution_output, self.session_id)
+            
+            # Append proof details to execution output if found
+            if proof_details and "No proof of execution found" not in proof_details:
+                execution_output += f"\n\n{proof_details}"
+            
             # Parse results
             validation_result = self._parse_validation_output(
                 execution_output,

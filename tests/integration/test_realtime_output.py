@@ -7,15 +7,21 @@ Run this to see step-by-step agent interactions.
 import asyncio
 import sys
 from pathlib import Path
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from acp_sdk import Message
-from acp_sdk.models import MessagePart
-from acp_sdk.client import Client
+try:
+    from acp_sdk import Message
+    from acp_sdk.models import MessagePart
+    from acp_sdk.client import Client
+except ImportError:
+    # Skip tests if acp_sdk is not available
+    pytestmark = pytest.mark.skip(reason="acp_sdk not available")
 
+@pytest.mark.asyncio
 async def test_realtime_output():
     """Test the real-time output display with a simple workflow"""
     
@@ -69,6 +75,7 @@ async def test_realtime_output():
     
     return 0
 
+@pytest.mark.asyncio
 async def test_summary_mode():
     """Test with summary mode for more condensed output"""
     

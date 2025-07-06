@@ -68,13 +68,8 @@ TEST_SCENARIOS = {
     TestComplexity.STANDARD: TestScenario(
         name="TODO List API",
         complexity=TestComplexity.STANDARD,
-        requirements="""Create a complete TODO list REST API with the following endpoints:
-        - GET /todos - List all todos
-        - POST /todos - Create a new todo
-        - GET /todos/:id - Get a specific todo
-        - PUT /todos/:id - Update a todo
-        - DELETE /todos/:id - Delete a todo
-        Include proper error handling and validation.""",
+        # Request a game of snake
+        requirements="Create a RESTful API for a classic Snake game with endpoints for game state management, player movement control, and score tracking",
         timeout=300
     ),
     TestComplexity.COMPLEX: TestScenario(

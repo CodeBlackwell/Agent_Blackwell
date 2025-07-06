@@ -7,6 +7,11 @@ import asyncio
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime, timezone
 from typing import Dict, Any
+import sys
+import os
+
+# Add project root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from fastapi.testclient import TestClient
 from api.orchestrator_api import app, workflow_executions
@@ -85,7 +90,7 @@ class TestAPIIncrementalBasic:
     def test_submit_incremental_workflow_via_api(self, client, mock_agent_results, mock_execution_report):
         """Test submitting incremental workflow through API"""
         # Mock execute_workflow to return our test data
-        with patch('api.orchestrator_api.wf_execute_workflow', new_callable=AsyncMock) as mock_execute:
+        with patch('api.orchestrator_api.execute_workflow', new_callable=AsyncMock) as mock_execute:
             mock_execute.return_value = (mock_agent_results, mock_execution_report)
             
             # Submit workflow request

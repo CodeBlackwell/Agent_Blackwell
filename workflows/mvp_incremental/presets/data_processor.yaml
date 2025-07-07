@@ -1,0 +1,61 @@
+# Data Processor Preset
+# Optimized for data processing and ETL pipelines
+
+name: "Data Processor"
+description: "Configuration for building data processing and transformation tools"
+
+# Retry configuration for data processing
+retry_config:
+  max_retries: 4  # Data processing often needs refinement
+  extract_error_context: true
+  modify_prompt_on_retry: true
+  
+# Test execution configuration
+test_execution:
+  run_tests: false  # Data processors often use sample data instead
+  test_command: "pytest"
+  test_timeout: 90  # Data tests can be slow
+  fix_on_failure: true
+  max_fix_attempts: 3
+  
+# Validation settings
+validation:
+  strict_mode: true
+  check_imports: true
+  check_syntax: true
+  run_basic_tests: false
+  validate_with_sample_data: true
+  
+# Common error patterns for data processing
+expected_errors:
+  - pattern: "pandas.*KeyError"
+    hint: "Check column names and data structure"
+  - pattern: "ValueError.*shape"
+    hint: "Ensure data dimensions match"
+  - pattern: "MemoryError"
+    hint: "Implement chunking for large datasets"
+  - pattern: "FileNotFoundError"
+    hint: "Add file path validation"
+    
+# Feature breakdown hints
+feature_hints:
+  - "Start with data loading and validation"
+  - "Implement data cleaning functions"
+  - "Add transformation logic"
+  - "Include error handling for bad data"
+  - "Implement progress tracking for large files"
+  - "Add data export functionality"
+  
+# Recommended project structure
+project_structure:
+  - "loader.py      # Data loading utilities"
+  - "cleaner.py     # Data cleaning functions"
+  - "transformer.py # Data transformation logic"
+  - "exporter.py    # Export functionality"
+  - "pipeline.py    # Main pipeline orchestration"
+  - "config.py      # Configuration management"
+  
+# Phase configuration
+phases:
+  run_tests: false
+  run_integration_verification: true

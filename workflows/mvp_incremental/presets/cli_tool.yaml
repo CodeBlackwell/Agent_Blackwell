@@ -1,0 +1,55 @@
+# CLI Tool Preset
+# Optimized for command-line applications
+
+name: "CLI Tool"
+description: "Configuration for building command-line tools and utilities"
+
+# Retry configuration for CLI tools
+retry_config:
+  max_retries: 2  # CLI tools are usually simpler
+  extract_error_context: true
+  modify_prompt_on_retry: true
+  
+# Test execution configuration
+test_execution:
+  run_tests: true
+  test_command: "pytest"
+  test_timeout: 30
+  fix_on_failure: true
+  max_fix_attempts: 1
+  
+# Validation settings
+validation:
+  strict_mode: false  # More lenient for scripts
+  check_imports: true
+  check_syntax: true
+  run_basic_tests: true
+  
+# Common error patterns for CLI tools
+expected_errors:
+  - pattern: "ImportError.*argparse"
+    hint: "Import argparse for command-line parsing"
+  - pattern: "SystemExit"
+    hint: "Handle sys.exit() in tests appropriately"
+  - pattern: "FileNotFoundError"
+    hint: "Add file existence checks"
+    
+# Feature breakdown hints
+feature_hints:
+  - "Start with argument parsing"
+  - "Implement core functionality"
+  - "Add error handling and validation"
+  - "Include help documentation"
+  - "Add progress indicators for long operations"
+  
+# Recommended project structure
+project_structure:
+  - "cli.py         # Main CLI entry point"
+  - "core.py        # Core functionality"
+  - "utils.py       # Utility functions"
+  - "tests/         # Test files"
+  
+# Phase configuration
+phases:
+  run_tests: true
+  run_integration_verification: false  # CLI tools don't usually need full integration

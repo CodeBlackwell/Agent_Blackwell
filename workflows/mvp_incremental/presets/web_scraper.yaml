@@ -1,0 +1,61 @@
+# Web Scraper Preset
+# Optimized for web scraping applications
+
+name: "Web Scraper"
+description: "Configuration for building web scraping tools"
+
+# Retry configuration for web scrapers
+retry_config:
+  max_retries: 5  # Web scraping often needs multiple attempts
+  extract_error_context: true
+  modify_prompt_on_retry: true
+  
+# Test execution configuration
+test_execution:
+  run_tests: false  # Scrapers usually tested with mock data
+  test_command: "pytest"
+  test_timeout: 45
+  fix_on_failure: true
+  max_fix_attempts: 2
+  
+# Validation settings
+validation:
+  strict_mode: false  # Web content is unpredictable
+  check_imports: true
+  check_syntax: true
+  run_basic_tests: false
+  validate_with_mock_data: true
+  
+# Common error patterns for scrapers
+expected_errors:
+  - pattern: "requests.*ConnectionError"
+    hint: "Add retry logic and connection error handling"
+  - pattern: "AttributeError.*NoneType"
+    hint: "Check if elements exist before accessing"
+  - pattern: "TimeoutError"
+    hint: "Increase timeout or add timeout handling"
+  - pattern: "HTTPError.*403"
+    hint: "Add user-agent headers and respect robots.txt"
+    
+# Feature breakdown hints
+feature_hints:
+  - "Start with basic HTTP requests"
+  - "Implement HTML parsing logic"
+  - "Add CSS/XPath selectors"
+  - "Include rate limiting"
+  - "Add error handling for missing elements"
+  - "Implement data extraction and storage"
+  - "Add user-agent rotation if needed"
+  
+# Recommended project structure
+project_structure:
+  - "scraper.py     # Main scraping logic"
+  - "parser.py      # HTML parsing utilities"
+  - "storage.py     # Data storage functions"
+  - "config.py      # Configuration and selectors"
+  - "utils.py       # Helper functions"
+  
+# Phase configuration
+phases:
+  run_tests: false
+  run_integration_verification: true

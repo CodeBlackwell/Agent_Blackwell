@@ -7,15 +7,22 @@
 │  ┌─────────┐    ┌─────────┐    ┌─────────────┐    ┌─────────┐   │
 │  │ PLANNER │───▶│DESIGNER │───▶│ INCREMENTAL │───▶│ FINAL   │   │
 │  │         │    │         │    │   CODER     │    │ OUTPUT  │   │
-│  └─────────┘    └─────────┘    └──────┬──────┘    └─────────┘   │
-│                                       │                         │
-│                                  ┌────▼────┐                    │
-│                                  │VALIDATOR│                    │
-│                                  └─────────┘                    │
+│  └────┬────┘    └────┬────┘    └──────┬──────┘    └─────────┘   │
+│       │              │                 │                        │
+│       ▼              ▼                 ▼                        │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐                    │
+│  │REVIEWER │    │REVIEWER │    │VALIDATOR│                    │
+│  └─────────┘    └─────────┘    └────┬────┘                    │
+│                                     │                          │
+│                                     ▼                          │
+│                               ┌─────────┐                      │
+│                               │REVIEWER │                      │
+│                               └─────────┘                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## 📖 Table of Contents
+- [Quick Start](#quick-start)
 - [Overview](#overview)
 - [ELI5 - Explain Like I'm Five](#eli5---explain-like-im-five)
 - [Features](#features)
@@ -25,6 +32,35 @@
 - [Configuration](#configuration)
 - [Testing](#testing)
 - [Phases of Development](#phases-of-development)
+- [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+
+## 🚀 Quick Start
+
+### Interactive Demo (Recommended)
+```bash
+# Run the interactive demo
+python demo_mvp_incremental.py
+```
+
+### Quick Examples
+```bash
+# Build a calculator with tests
+python demo_mvp_incremental.py --preset calculator
+
+# Create a TODO API with all phases
+python demo_mvp_incremental.py --preset todo-api --all-phases
+
+# Custom requirements
+python demo_mvp_incremental.py --requirements "Create a web scraper for news articles"
+```
+
+### Run Example Scripts
+```bash
+# See various features in action
+python workflows/mvp_incremental/examples/calculator_with_tests.py
+python workflows/mvp_incremental/examples/todo_api_with_validation.py
+```
 
 ## Overview
 
@@ -64,6 +100,9 @@ This way, even if one tower falls down, you don't have to rebuild the whole cast
 - **Session Persistence**: Maintains Docker container sessions for validation
 - **Incremental Building**: Each feature builds upon previous ones
 - **Comprehensive Reporting**: Detailed metrics and summaries
+- **Quality Reviews**: Automated code reviews at each phase
+- **Review-Guided Retries**: Combines technical and qualitative analysis for retry decisions
+- **Review Summary Document**: Auto-generated README with insights and recommendations
 
 ## Architecture
 
@@ -113,16 +152,32 @@ For each feature:
     ┌─────────────────────────────────────┐
     │  1. Code Feature                    │
     │       ↓                             │
-    │  2. Validate in Docker              │
+    │  2. Review Implementation           │
     │       ↓                             │
-    │  3. Pass? ─── Yes ──▶ Next Feature │
+    │  3. Validate in Docker              │
+    │       ↓                             │
+    │  4. Pass? ─── Yes ──▶ Next Feature │
     │       │                             │
     │       No                            │
     │       ↓                             │
-    │  4. Analyze Error                   │
+    │  5. Review Validation Result        │
     │       ↓                             │
-    │  5. Retry with Fix                  │
+    │  6. Analyze Error + Review Feedback │
+    │       ↓                             │
+    │  7. Retry with Fix + Suggestions    │
     └─────────────────────────────────────┘
+```
+
+### 4. Final Phase
+```
+All Features Complete ──▶ Final Review ──▶ Generate Review Summary
+                                              │
+                                              ▼
+                                         README.md with:
+                                         • Project Overview
+                                         • Quality Assessment
+                                         • Recommendations
+                                         • Technical Debt
 ```
 
 ## Usage
@@ -181,29 +236,39 @@ retry_config = RetryConfig(
 
 ```bash
 # Test individual phases
-python test_phase1_validation.py  # Basic feature breakdown
-python test_phase2_validation.py  # Validation integration
-python test_phase3_validation.py  # Dependency ordering
-python test_phase4_validation.py  # Retry logic
-python test_phase5_validation.py  # Error analysis
-python test_phase6_validation.py  # Progress monitoring
+python tests/integration/incremental/test_phase2_summary.py        # Validation integration
+python tests/integration/incremental/test_phase3_validation.py     # Dependency ordering
+python tests/integration/incremental/test_phase4_validation.py     # Retry logic
+python tests/integration/incremental/test_phase5_validation.py     # Error analysis
+python tests/integration/incremental/test_phase6_validation.py     # Progress monitoring
+python tests/integration/incremental/test_phase7_validation.py     # Feature reviewer
+python tests/integration/incremental/test_phase8_validation.py     # Review integration
+python tests/integration/incremental/test_phase8_review_integration.py  # Review module
 
-# Run comprehensive tests
-python tests/test_mvp_incremental_phase6.py
+# Run comprehensive workflow test
+python tests/test_workflows.py mvp_incremental
 ```
 
 ### Test Structure
 ```
 tests/
-├── test_mvp_incremental_phase1.py
-├── test_mvp_incremental_phase2.py
-├── test_mvp_incremental_phase3.py
-├── test_mvp_incremental_phase4.py
-├── test_mvp_incremental_phase5.py
-└── test_mvp_incremental_phase6.py
+├── integration/
+│   ├── incremental/
+│   │   ├── test_phase2_summary.py
+│   │   ├── test_phase3_validation.py
+│   │   ├── test_phase4_validation.py
+│   │   ├── test_phase4_retry_trigger.py
+│   │   ├── test_phase5_validation.py
+│   │   ├── test_phase6_validation.py
+│   │   ├── test_phase6_progress_simple.py
+│   │   ├── test_phase7_validation.py
+│   │   ├── test_phase8_validation.py
+│   │   └── test_phase8_review_integration.py
+│   └── ...
+└── test_workflows.py
 ```
 
-## Phases of Development
+## Phases of Development (All 10 Phases Complete! 🎉)
 
 ### Phase 1: Basic Feature Breakdown ✅
 - Parse design into individual features
@@ -236,15 +301,79 @@ tests/
 - Comprehensive metrics export
 - Visual progress bars
 
-### Phase 7: Advanced Features 🚧
-- Stagnation detection
-- Parallel feature implementation
-- Advanced error recovery strategies
+### Phase 7: Feature Reviewer Agent ✅
+- Specialized agent for reviewing individual features
+- Context-aware reviews for incremental development
+- Actionable feedback generation
+- Integration with existing codebase considerations
+
+### Phase 8: Review Integration ✅
+- Reviews at all major phases (planning, design, implementation, final)
+- Review-guided retry decisions
+- Comprehensive review summary document generation
+- Review history tracking and approval management
+
+### Phase 9: Test Execution ✅
+- Execute generated tests after each feature implementation
+- Test failure analysis and fixing
+- Test-driven retry loop
+- Test coverage tracking
+- Verification loop closure
+
+### Phase 10: Integration Verification ✅
+- Full application integration testing
+- Build verification and smoke tests
+- Feature interaction validation
+- Comprehensive completion report generation
+- Basic documentation auto-generation
+
+**Note**: For complete phase documentation, see [MVP Incremental Phases Documentation](../../docs/mvp_incremental_phases.md)
+
+## Review Summary Document
+
+The workflow automatically generates a comprehensive review summary document (`README.md`) that includes:
+
+### 📋 Sections Included
+
+1. **Project Overview**
+   - Summary of what was built
+   - Key features implemented
+   - Overall architecture
+
+2. **Implementation Status**
+   - Feature-by-feature breakdown
+   - Success/failure status
+   - Retry attempts and outcomes
+
+3. **Code Quality Assessment**
+   - Review findings at each phase
+   - Code patterns and practices
+   - Adherence to requirements
+
+4. **Key Recommendations**
+   - High-priority improvements
+   - Refactoring suggestions
+   - Security considerations
+
+5. **Technical Debt**
+   - Known issues to address
+   - Future maintenance needs
+   - Scalability concerns
+
+6. **Success Metrics**
+   - What went well
+   - Performance achievements
+   - Clean implementations
+
+7. **Lessons Learned**
+   - Insights from the development process
+   - Common error patterns
+   - Effective solutions
 
 ## Example Output
 
 ```
-🚀 Starting MVP Incremental Workflow (Phase 6 - Progress Monitoring)
+🚀 Starting MVP Incremental Workflow (Phase 8 - Review Integration)
 ============================================================
 ⏰ Started at: 14:23:15
 📋 Total features to implement: 4
@@ -350,6 +479,65 @@ tests/
                                          Next Feature ◀──────────────────────────┘
 ```
 
+## 📚 Examples
+
+Explore the `workflows/mvp_incremental/examples/` directory for ready-to-run examples:
+
+### Available Examples
+- **calculator_with_tests.py** - Simple calculator with comprehensive tests (Phase 9)
+- **todo_api_with_validation.py** - REST API with validation and retries
+- **file_processor_retry.py** - CSV processor demonstrating error recovery
+- **data_pipeline_dependencies.py** - Complex pipeline with feature dependencies
+
+### Running Examples
+```bash
+cd workflows/mvp_incremental/examples/
+python calculator_with_tests.py
+```
+
+## 🛠️ Visual Workflow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        MVP INCREMENTAL WORKFLOW (10 PHASES)              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Requirements ──► Phase 1-2: Planning & Design                         │
+│       │              │                                                  │
+│       ▼              ▼                                                  │
+│  ┌─────────┐    ┌─────────┐                                           │
+│  │ PLANNER │───►│DESIGNER │                                           │
+│  └────┬────┘    └────┬────┘                                           │
+│       │              │                                                  │
+│       ▼              ▼                                                  │
+│  ┌─────────────────────────────────────────────────┐                  │
+│  │          Phase 3-8: Feature Implementation       │                  │
+│  │  ┌───────────────────────────────────────────┐  │                  │
+│  │  │  For Each Feature:                        │  │                  │
+│  │  │  1. Parse & Order (Phase 3)               │  │                  │
+│  │  │  2. Implement Code                        │  │                  │
+│  │  │  3. Validate (Phase 2)                    │  │                  │
+│  │  │  4. Review (Phase 7-8)                    │  │                  │
+│  │  │  5. Retry if Failed (Phase 4-5)           │  │                  │
+│  │  │  6. Track Progress (Phase 6)              │  │                  │
+│  │  └───────────────────────────────────────────┘  │                  │
+│  └─────────────────────────────────────────────────┘                  │
+│                           │                                             │
+│                           ▼                                             │
+│  ┌─────────────────────────────────────────────────┐                  │
+│  │        Phase 9-10: Testing & Integration        │                  │
+│  │  ┌───────────────┐     ┌────────────────────┐  │                  │
+│  │  │ Test Execution│────►│Integration Verify  │  │                  │
+│  │  │  (Phase 9)    │     │    (Phase 10)      │  │                  │
+│  │  └───────────────┘     └────────────────────┘  │                  │
+│  └─────────────────────────────────────────────────┘                  │
+│                           │                                             │
+│                           ▼                                             │
+│                    Final Output + Reports                               │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Contributing
 
 When adding new features to the MVP Incremental Workflow:
@@ -360,14 +548,58 @@ When adding new features to the MVP Incremental Workflow:
 4. Document error categories and recovery strategies
 5. Ensure backward compatibility
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
-1. **Docker not running**: Ensure Docker daemon is running for validation
-2. **Import errors**: Check that all dependencies are installed
-3. **Validation timeouts**: Increase timeout in validator configuration
-4. **Session cleanup**: Validator sessions are automatically cleaned up
+#### 1. **Docker not running**
+```bash
+# Check Docker status
+docker info
+
+# Start Docker daemon (macOS)
+open -a Docker
+
+# Start Docker daemon (Linux)
+sudo systemctl start docker
+```
+
+#### 2. **Import errors during validation**
+```bash
+# Ensure all dependencies are installed
+pip install -r requirements.txt
+
+# For specific packages
+pip install fastapi pydantic pytest
+```
+
+#### 3. **Validation timeouts**
+```python
+# Increase timeout in your code
+from workflows.mvp_incremental.config_helper import MVPIncrementalConfig
+
+config = MVPIncrementalConfig()
+config.test_timeout = 120  # Increase to 2 minutes
+```
+
+#### 4. **Session cleanup issues**
+```bash
+# Manually clean up Docker containers
+docker ps -a | grep validator
+docker rm -f <container_id>
+```
+
+#### 5. **Feature parsing problems**
+- Ensure requirements have clear, numbered features
+- Use bullet points or numbered lists
+- Keep feature descriptions concise
+
+#### 6. **Retry loops getting stuck**
+```python
+# Limit retries in configuration
+config = MVPIncrementalConfig()
+config.max_retries = 2  # Reduce from default
+```
 
 ### Debug Mode
 
@@ -375,14 +607,28 @@ Enable detailed logging:
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Or set environment variable
+export MVP_DEBUG=1
 ```
+
+### Getting Help
+
+1. Check the [examples directory](./examples/) for working code
+2. Review [test files](../../tests/mvp_incremental/) for usage patterns
+3. Enable debug logging to see detailed execution flow
+4. Check Docker logs: `docker logs <container_id>`
 
 ## Future Enhancements
 
-- **Phase 7**: Stagnation detection and advanced recovery
-- **Parallel Processing**: Implement independent features in parallel
+Beyond the planned Phase 9 and 10:
+
+- **Parallel Processing**: Implement independent features in parallel when no dependencies exist
 - **Caching**: Cache successful implementations for faster retries
 - **Learning**: Adapt retry strategies based on historical success rates
+- **Multi-Language Support**: Extend validation beyond Python
+- **Performance Optimization**: Profile and optimize slow features
+- **Semantic Versioning**: Track feature versions and compatibility
 
 ---
 

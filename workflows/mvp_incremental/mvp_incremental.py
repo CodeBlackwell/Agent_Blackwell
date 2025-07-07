@@ -1,13 +1,17 @@
 """
-MVP Incremental Workflow - Phase 6
-Basic feature breakdown and sequential implementation with validation, retry logic, error analysis, and progress monitoring
+MVP Incremental Workflow - Phase 10
+Basic feature breakdown and sequential implementation with validation, retry logic, error analysis, progress monitoring, review integration, test execution, and integration verification
 """
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict
+from pathlib import Path
 from shared.data_models import CodingTeamInput, TeamMemberResult, TeamMember
 from workflows.monitoring import WorkflowExecutionTracer
 from workflows.mvp_incremental.retry_strategy import RetryStrategy, RetryConfig
 from workflows.mvp_incremental.progress_monitor import ProgressMonitor, StepStatus
+from workflows.mvp_incremental.review_integration import ReviewIntegration, ReviewPhase, ReviewRequest, ReviewResult
+from workflows.mvp_incremental.test_execution import TestExecutionConfig, execute_and_fix_tests
+from workflows.mvp_incremental.integration_verification import perform_integration_verification
 
 
 
@@ -66,15 +70,19 @@ async def execute_mvp_incremental_workflow(
 ) -> List[TeamMemberResult]:
     """
     Execute MVP incremental workflow.
-    Planning → Design → Sequential Feature Implementation with Validation
+    Planning → Design → Sequential Feature Implementation with Validation and Review
     """
     from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    from agents.feature_reviewer.feature_reviewer_agent import feature_reviewer_agent
     
     if not tracer:
         tracer = WorkflowExecutionTracer("mvp_incremental")
     
     # Phase 6: Initialize progress monitor
     progress_monitor = ProgressMonitor()
+    
+    # Phase 8: Initialize review integration
+    review_integration = ReviewIntegration(feature_reviewer_agent)
     
     results = []
     validator_session_id = None  # Track validator session
@@ -113,6 +121,23 @@ async def execute_mvp_incremental_workflow(
     
     progress_monitor.complete_step("planning", success=True)
     
+    # Phase 8: Review the plan
+    planning_review_request = ReviewRequest(
+        phase=ReviewPhase.PLANNING,
+        content=planning_output,
+        context={"requirements": input_data.requirements}
+    )
+    
+    planning_review = await review_integration.request_review(planning_review_request)
+    
+    if not planning_review.approved:
+        print(f"\n🔍 Plan Review: NEEDS REVISION")
+        print(f"   Feedback: {planning_review.feedback}")
+        # For now, we'll proceed anyway but log the review
+        # In a full implementation, we might retry planning
+    else:
+        print(f"\n✅ Plan Review: APPROVED")
+    
     # Step 2: Design
     progress_monitor.start_phase("Design")
     progress_monitor.start_step("design", "design")
@@ -146,6 +171,22 @@ async def execute_mvp_incremental_workflow(
     })
     
     progress_monitor.complete_step("design", success=True)
+    
+    # Phase 8: Review the design
+    design_review_request = ReviewRequest(
+        phase=ReviewPhase.DESIGN,
+        content=design_output,
+        context={"requirements": input_data.requirements, "plan": planning_output}
+    )
+    
+    design_review = await review_integration.request_review(design_review_request)
+    
+    if not design_review.approved:
+        print(f"\n🔍 Design Review: NEEDS REVISION")
+        print(f"   Feedback: {design_review.feedback}")
+        # For now, we'll proceed anyway but log the review
+    else:
+        print(f"\n✅ Design Review: APPROVED")
     
     # Step 3: Parse features from design
     print("\n🔍 Parsing features from design...")
@@ -277,6 +318,28 @@ For each file you create, use this format:
             else:
                 accumulated_code.update(new_files)
             
+            # Phase 8: Review the feature implementation before validation
+            feature_review_request = ReviewRequest(
+                phase=ReviewPhase.FEATURE_IMPLEMENTATION,
+                content=code_output,
+                context={
+                    "feature_info": feature,
+                    "existing_code": _format_existing_code(accumulated_code) if len(accumulated_code) > 1 else "",
+                    "dependencies": [f['title'] for f in features[:i]],  # Previous features
+                },
+                feature_id=feature['id'],
+                retry_count=retry_count,
+                previous_feedback=review_integration.get_feature_feedback(feature['id']) if retry_count > 0 else None
+            )
+            
+            feature_review = await review_integration.request_review(feature_review_request)
+            
+            if not feature_review.approved:
+                print(f"   🔍 Feature Review: NEEDS REVISION")
+                print(f"      Feedback: {feature_review.feedback}")
+                if feature_review.must_fix:
+                    print(f"      Must fix: {', '.join(feature_review.must_fix)}")
+            
             # PHASE 2: Validate the feature implementation
             validation_passed = True
             validation_error = None
@@ -348,8 +411,33 @@ Please validate this code implementation for feature: {feature['title']}
                 last_validation_error = validation_output if 'validation_output' in locals() else str(validation_error)
                 feature_validation_passed = False
                 
-                if retry_strategy.should_retry(validation_error, retry_count, retry_config):
+                # Phase 8: Get review input on whether to retry
+                validation_review_request = ReviewRequest(
+                    phase=ReviewPhase.VALIDATION_RESULT,
+                    content=validation_output if 'validation_output' in locals() else f"Validation error: {validation_error}",
+                    context={
+                        "validation_result": {"success": False},
+                        "error_info": validation_error,
+                        "max_retries": retry_config.max_retries
+                    },
+                    feature_id=feature['id'],
+                    retry_count=retry_count
+                )
+                
+                validation_review = await review_integration.request_review(validation_review_request)
+                
+                # Combine retry strategy decision with review recommendation
+                should_retry_technical = retry_strategy.should_retry(validation_error, retry_count, retry_config)
+                should_retry_review, review_reason = review_integration.should_retry_feature(
+                    feature['id'], 
+                    {"success": False, "error": validation_error}
+                )
+                
+                if should_retry_technical and should_retry_review:
                     retry_count += 1
+                    print(f"   🔄 Retrying based on technical analysis and review recommendation")
+                    if validation_review.suggestions:
+                        print(f"      Suggestions: {', '.join(validation_review.suggestions[:2])}")
                     tracer.complete_step(feature_step_id, {
                         "files_created": list(new_files.keys()),
                         "validation_passed": False,
@@ -359,8 +447,12 @@ Please validate this code implementation for feature: {feature['title']}
                     })
                     continue  # Retry the feature
                 else:
-                    # Max retries reached or non-retryable error
-                    print(f"   ⚠️  Feature {i+1} failed validation - max retries reached or non-retryable error")
+                    # Max retries reached, non-retryable error, or review recommends not retrying
+                    if not should_retry_technical:
+                        print(f"   ⚠️  Feature {i+1} failed validation - max retries reached or non-retryable error")
+                    else:
+                        print(f"   ⚠️  Feature {i+1} failed validation - review recommends not retrying")
+                        print(f"      Review feedback: {review_reason}")
                     if validation_error:
                         print(f"      Final error: {validation_error}")
                     feature_implemented = True  # Move on to next feature
@@ -370,6 +462,34 @@ Please validate this code implementation for feature: {feature['title']}
                 feature_validation_passed = True
                 feature_implemented = True
                 progress_monitor.update_step(f"feature_{feature['id']}", StepStatus.COMPLETED)
+                
+                # Phase 9: Test Execution after successful validation
+                if hasattr(input_data, 'run_tests') and input_data.run_tests:
+                    print(f"   🧪 Running tests for {feature['title']}...")
+                    from workflows.mvp_incremental.validator import CodeValidator
+                    test_validator = CodeValidator()
+                    test_config = TestExecutionConfig(
+                        run_tests=True,
+                        fix_on_failure=True,
+                        max_fix_attempts=2
+                    )
+                    
+                    # Execute tests and potentially fix failures
+                    tested_code, test_result = await execute_and_fix_tests(
+                        code_output,
+                        feature['title'],
+                        test_validator,
+                        test_config
+                    )
+                    
+                    if test_result.success:
+                        print(f"   ✅ Tests passed: {test_result.passed} tests")
+                        code_output = tested_code  # Use the tested/fixed code
+                    else:
+                        print(f"   ⚠️  Tests failed: {test_result.failed} failures")
+                        print(f"      Errors: {', '.join(test_result.errors[:2])}")
+                        # Continue anyway but log the test failure
+                        feature_validation_passed = False  # Mark as failed due to tests
             
             # Record feature result with validation status
             feature_result = TeamMemberResult(
@@ -416,14 +536,117 @@ Please validate this code implementation for feature: {feature['title']}
     )
     results.append(final_result)
     
-    # Phase 6: End workflow and show summary
+    # Phase 6: End workflow and show summary (moved up to export metrics first)
     progress_monitor.end_workflow()
     
     # Export metrics for potential further analysis
     metrics = progress_monitor.export_metrics()
     
+    # Phase 8: Final review of complete implementation
+    final_review_request = ReviewRequest(
+        phase=ReviewPhase.FINAL_IMPLEMENTATION,
+        content=final_code,
+        context={
+            "requirements": input_data.requirements,
+            "feature_summary": {
+                "total": len(validation_results),
+                "successful": passed_validations,
+                "retried": retried_features,
+                "failed": failed_validations
+            }
+        }
+    )
+    
+    final_review = await review_integration.request_review(final_review_request)
+    
+    print(f"\n📋 Final Implementation Review:")
+    print(f"   Status: {'APPROVED' if final_review.approved else 'NEEDS REVISION'}")
+    print(f"   Feedback: {final_review.feedback[:200]}...")
+    
+    # Generate comprehensive review summary document
+    print("\n📝 Generating review summary document...")
+    review_summary = await _generate_review_summary(
+        input_data.requirements,
+        review_integration,
+        validation_results,
+        final_review,
+        metrics
+    )
+    
+    # Add review summary to accumulated code as README.md
+    accumulated_code['README.md'] = review_summary
+    
+    # Update final code with the review summary
+    final_code = _consolidate_code(accumulated_code)
+    
+    # Update the final result with the new code including review summary
+    final_result.output = final_code
+    
+    # Add review summary to metrics
+    metrics['review_summary'] = review_integration.get_approval_summary()
+    
     # Add metrics to the final result
     final_result.metadata = metrics
+    
+    # Phase 10: Integration Verification
+    if hasattr(input_data, 'run_integration_verification') and input_data.run_integration_verification:
+        print("\n🔍 Starting Integration Verification...")
+        progress_monitor.start_phase("Integration Verification")
+        
+        # Determine output path from workflow config
+        from workflows.workflow_config import get_generated_code_path
+        generated_path = Path(get_generated_code_path())
+        
+        # Create feature summary for integration verification
+        feature_summary = []
+        for i, feature in enumerate(features):
+            feature_data = {
+                "name": feature['title'],
+                "id": feature['id'],
+                "status": "completed" if (i < len(validation_results) and 
+                         validation_results[i].metadata.get('final_success', False)) else "failed",
+                "retries": validation_results[i].metadata.get('retry_count', 0) if i < len(validation_results) else 0
+            }
+            feature_summary.append(feature_data)
+        
+        # Create a simplified workflow report for integration verification
+        class SimpleWorkflowReport:
+            def __init__(self, output_path, total_duration):
+                self.output_path = output_path
+                self.total_duration = total_duration
+        
+        workflow_report = SimpleWorkflowReport(
+            output_path=str(generated_path),
+            total_duration=metrics.get('total_duration', 'unknown')
+        )
+        
+        # Run integration verification
+        integration_result, completion_report = await perform_integration_verification(
+            generated_path,
+            feature_summary,
+            workflow_report,
+            project_name=input_data.requirements.split('\n')[0][:50]  # First line as project name
+        )
+        
+        print("\n📋 Integration Verification Results:")
+        print(f"   All tests pass: {integration_result.all_tests_pass}")
+        print(f"   Build successful: {integration_result.build_successful}")
+        print(f"   Smoke test: {'PASSED' if integration_result.smoke_test_passed else 'FAILED'}")
+        if integration_result.issues_found:
+            print(f"   Issues found: {len(integration_result.issues_found)}")
+            for issue in integration_result.issues_found[:3]:  # Show first 3 issues
+                print(f"      - {issue}")
+        
+        print(f"\n📄 Completion report saved to: {generated_path}/COMPLETION_REPORT.md")
+        
+        # Add integration results to metrics
+        metrics['integration_verification'] = {
+            'tests_passed': integration_result.all_tests_pass,
+            'build_successful': integration_result.build_successful,
+            'issues_count': len(integration_result.issues_found)
+        }
+        
+        progress_monitor.complete_step("integration_verification", success=integration_result.all_tests_pass)
     
     # Cleanup validator container
     if validator_session_id:
@@ -517,6 +740,89 @@ def _parse_code_files(code_output: str) -> Dict[str, str]:
             files["main.py"] = code_output.strip()
     
     return files
+
+
+async def _generate_review_summary(
+    requirements: str,
+    review_integration: ReviewIntegration,
+    validation_results: List[TeamMemberResult],
+    final_review: 'ReviewResult',
+    metrics: Dict
+) -> str:
+    """Generate a comprehensive review summary document using an LLM."""
+    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    
+    # Gather all review data
+    approval_summary = review_integration.get_approval_summary()
+    all_must_fix = review_integration.get_must_fix_items()
+    
+    # Build prompt for summary generation
+    summary_prompt = f"""Generate a comprehensive review summary document in Markdown format for this incremental development project.
+
+## Original Requirements
+{requirements}
+
+## Review Summary by Phase
+{_format_approval_summary(approval_summary)}
+
+## Implementation Metrics
+- Total features: {len(validation_results)}
+- Successfully implemented: {sum(1 for r in validation_results if r.metadata.get('final_success', False))}
+- Features requiring retry: {sum(1 for r in validation_results if r.metadata.get('retry_count', 0) > 0)}
+- Failed features: {sum(1 for r in validation_results if not r.metadata.get('final_success', False))}
+
+## Workflow Duration
+- Total time: {metrics.get('workflow_duration', 0):.1f}s
+- Phase breakdown: {metrics.get('phase_times', {})}
+
+## Final Review Assessment
+Status: {final_review.approved}
+Feedback: {final_review.feedback}
+
+## All Must-Fix Items Identified
+{chr(10).join(f'- {item}' for item in all_must_fix) if all_must_fix else 'None'}
+
+Please create a professional README.md that includes:
+1. Project Overview - summarize what was built
+2. Implementation Status - which features succeeded/failed
+3. Code Quality Assessment - based on all reviews
+4. Key Recommendations - most important improvements needed
+5. Technical Debt - issues to address in future iterations
+6. Success Metrics - what went well
+7. Lessons Learned - insights from the review process
+
+Make it comprehensive but concise, focusing on actionable insights."""
+
+    # Use the reviewer agent to generate the summary
+    summary_result = await run_team_member_with_tracking(
+        "feature_reviewer_agent",
+        summary_prompt,
+        "review_summary_generation"
+    )
+    
+    # Extract content
+    if isinstance(summary_result, list) and len(summary_result) > 0:
+        summary_content = summary_result[0].parts[0].content
+    else:
+        summary_content = str(summary_result)
+    
+    # Ensure it's properly formatted as markdown
+    if not summary_content.startswith("# "):
+        summary_content = f"# Code Review Summary\n\n{summary_content}"
+    
+    return summary_content
+
+
+def _format_approval_summary(approval_summary: Dict) -> str:
+    """Format the approval summary for display."""
+    lines = []
+    for phase, data in approval_summary.items():
+        lines.append(f"- **{phase.title()}**: {data['approved']} approved, {data['rejected']} rejected")
+        if 'features' in data and data['features']:
+            for feature_id, approved in data['features'].items():
+                status = "✅" if approved else "❌"
+                lines.append(f"  - {feature_id}: {status}")
+    return '\n'.join(lines)
 
 
 def _consolidate_code(code_dict: Dict[str, str]) -> str:

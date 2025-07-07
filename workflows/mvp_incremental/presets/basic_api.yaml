@@ -1,0 +1,56 @@
+# Basic REST API Preset
+# Optimized for simple CRUD API development
+
+name: "Basic REST API"
+description: "Configuration for building basic REST APIs with CRUD operations"
+
+# Retry configuration for API development
+retry_config:
+  max_retries: 3  # APIs often need multiple iterations
+  extract_error_context: true
+  modify_prompt_on_retry: true
+  
+# Test execution configuration
+test_execution:
+  run_tests: true
+  test_command: "pytest"
+  test_timeout: 60  # APIs may have slower tests
+  fix_on_failure: true
+  max_fix_attempts: 2
+  
+# Validation settings
+validation:
+  strict_mode: true
+  check_imports: true
+  check_syntax: true
+  run_basic_tests: true
+  
+# Common error patterns for APIs
+expected_errors:
+  - pattern: "ImportError.*fastapi"
+    hint: "Ensure FastAPI is imported correctly"
+  - pattern: "AttributeError.*app"
+    hint: "Check that app instance is created properly"
+  - pattern: "TypeError.*Depends"
+    hint: "Verify dependency injection syntax"
+    
+# Feature breakdown hints
+feature_hints:
+  - "Start with data models/schemas"
+  - "Implement basic CRUD endpoints"
+  - "Add validation and error handling"
+  - "Include API documentation"
+  - "Write integration tests"
+  
+# Recommended project structure
+project_structure:
+  - "models.py      # Data models"
+  - "schemas.py     # Pydantic schemas"
+  - "main.py        # FastAPI app"
+  - "routes/        # API routes"
+  - "tests/         # Test files"
+  
+# Phase configuration
+phases:
+  run_tests: true
+  run_integration_verification: true

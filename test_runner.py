@@ -131,6 +131,28 @@ TEST_CATEGORIES = {
         "runner": "python",
         "path": "tests/mvp_incremental/",
         "pattern": "test_*.py"
+    },
+    "tdd": {
+        "emoji": "🔴",
+        "name": "TDD Tests",
+        "description": "Test-Driven Development workflow tests",
+        "runner": "python",
+        "files": [
+            "tests/tdd/test_tdd_integration.py",
+            "tests/tdd/test_tdd_single_directory.py",
+            "tests/tdd/test_tdd_enhanced.py"
+        ]
+    },
+    "demo": {
+        "emoji": "🎯",
+        "name": "Demo Scripts",
+        "description": "Demo and example test scripts",
+        "runner": "python",
+        "files": [
+            "tests/demo/test_enhanced_tdd_demo.py",
+            "tests/demo/test_short_mode_simple.py",
+            "tests/demo/test_tdd_demo.py"
+        ]
     }
 }
 

@@ -36,6 +36,11 @@ class TDDFileManager:
         - "PROJECT CREATED: app_generated_20250707_113423"
         - "Created project directory: /path/to/project"
         """
+        # If we already have a project set, return its path to prevent new directories
+        if self.current_project and self.current_project.project_path.exists():
+            logger.info(f"Using existing project location: {self.current_project.project_path}")
+            return str(self.current_project.project_path)
+            
         # Pattern 1: Direct location line
         location_match = re.search(r'(?:Location|📁 Location):\s*(.+?)(?:\n|$)', coder_output)
         if location_match:

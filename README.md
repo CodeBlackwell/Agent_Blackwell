@@ -215,7 +215,39 @@ Generated code is saved in the `generated/` directory.
 
 ## 🧪 Testing
 
-The system includes a comprehensive testing suite for both individual agents and workflows.
+The system includes a comprehensive testing suite with a unified test runner and organized test categories. Tests are organized into logical directories for better maintainability.
+
+### Quick Start with Unified Test Runner
+
+```bash
+# Run all tests
+./test_runner.py
+
+# Run specific test categories
+./test_runner.py unit              # Unit tests only
+./test_runner.py tdd               # TDD workflow tests
+./test_runner.py demo              # Demo scripts
+./test_runner.py unit integration  # Multiple categories
+
+# Run tests in parallel (faster)
+./test_runner.py -p
+
+# List all available test categories
+./test_runner.py -l
+
+# CI mode (no emojis, verbose output)
+./test_runner.py --ci
+```
+
+### Test Organization
+
+- **Unit Tests** (`tests/unit/`): Fast, isolated component tests
+- **Integration Tests** (`tests/integration/`): Component interaction tests
+- **TDD Tests** (`tests/tdd/`): Test-Driven Development workflow tests
+- **Demo Scripts** (`tests/demo/`): Example and demonstration scripts
+- **MVP Incremental Tests** (`tests/mvp_incremental/`): MVP workflow tests
+- **Agent Tests** (`tests/`): Individual agent functionality tests
+- **API Tests** (`api/`): REST API endpoint tests
 
 ### Agent Testing
 
@@ -311,6 +343,10 @@ python tests/test_executor_direct.py
 # Run full TDD workflow with executor integration
 python tests/test_workflows.py --workflow tdd --complexity standard
 ```
+
+### Comprehensive Test Documentation
+
+For detailed information about all tests, including prerequisites, troubleshooting, and advanced testing strategies, see [TEST_GUIDE.md](TEST_GUIDE.md).
 
 ## 🚀 Getting Started
 

@@ -36,3 +36,12 @@ WORKFLOW_CONFIG = {
     "save_intermediate_results": True,     # Save results after each phase
     "parallel_reviews": False,             # Run reviews in parallel (experimental)
 }
+
+# Session and directory management configuration
+SESSION_CONFIG = {
+    "use_single_directory": True,          # Create only one directory per workflow run
+    "session_name_prefix": "tdd",          # Prefix for session directories
+    "include_timestamp": True,             # Include timestamp in directory name
+    "save_metadata": True,                 # Save session metadata file
+    "organize_by_feature": False,          # Organize files by feature/component
+}

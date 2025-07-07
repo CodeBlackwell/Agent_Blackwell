@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from shared.data_models import CodingTeamInput, TeamMember
 from workflows.tdd.tdd_workflow import execute_tdd_workflow
-from workflows.workflow_config import init_workflow_config
+from workflows.workflow_config import GENERATED_CODE_PATH
 
 
 async def test_tdd_workflow():

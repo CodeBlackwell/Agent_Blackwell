@@ -42,6 +42,9 @@ from workflows.tdd.test_executor import TestExecutor
 # Import logger
 from workflows.logger import workflow_logger as logger
 
+# Import CodeSaver for session management
+from workflows.mvp_incremental.code_saver import CodeSaver
+
 
 
 async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
@@ -71,6 +74,31 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     
     # Initialize results list
     results = []
+    
+    # Import session config
+    from workflows.tdd.tdd_config import SESSION_CONFIG
+    
+    # Initialize CodeSaver for session management
+    code_saver = CodeSaver()
+    session_name = None
+    project_path = None
+    
+    # Create session directory if configured
+    if SESSION_CONFIG.get("use_single_directory", True):
+        # Extract project name from requirements if possible
+        req_lower = input_data.requirements.lower()
+        if "calculator" in req_lower:
+            session_name = "calculator"
+        elif "todo" in req_lower:
+            session_name = "todo_app"
+        elif "string" in req_lower and "util" in req_lower:
+            session_name = "string_utils"
+        else:
+            session_name = SESSION_CONFIG.get("session_name_prefix", "tdd")
+        
+        # Create the session directory
+        project_path = code_saver.create_session_directory(session_name)
+        logger.info(f"Created TDD session directory: {project_path}")
     
     try:
         # Planning phase
@@ -190,6 +218,16 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
                 max_iterations=TEST_CONFIG.get("max_iterations", 5),
                 require_test_failure=TEST_CONFIG.get("test_before_code", True)
             )
+            
+            # Set the project path if available
+            if project_path and hasattr(tdd_manager, 'file_manager'):
+                from workflows.tdd.file_manager import ProjectInfo
+                tdd_manager.file_manager.current_project = ProjectInfo(
+                    project_name=session_name or "tdd_project",
+                    project_path=project_path,
+                    files={},
+                    timestamp=code_saver.current_session_path.name.split('_')[0] if code_saver.current_session_path else ""
+                )
             
             # Execute TDD cycle
             tdd_step_id = tracer.start_step("tdd_cycle", "tdd_cycle_manager", {
@@ -345,11 +383,68 @@ Please review the code, tests, AND execution results."""
         ))
         tracer.complete_step(step_id, {"output": review_result_output[:200] + "..."})  # Use the string output
         
+        # Save all generated code to session directory if configured
+        if SESSION_CONFIG.get("use_single_directory", True) and code_saver.current_session_path:
+            try:
+                # Parse files from code output
+                from workflows.tdd.file_manager import TDDFileManager
+                file_manager = TDDFileManager()
+                
+                # Parse implementation files from code output
+                impl_files = file_manager.parse_files(code_output, extract_location=False)
+                
+                # Parse test files from test output
+                test_files = file_manager.parse_files(test_output, extract_location=False)
+                
+                # Combine all files
+                all_files = {}
+                all_files.update(impl_files)
+                all_files.update(test_files)
+                
+                # Save all files to the session directory
+                if all_files:
+                    saved_paths = code_saver.save_code_files(all_files, overwrite=True)
+                    logger.info(f"Saved {len(saved_paths)} files to session directory")
+                    
+                    # Save metadata if configured
+                    if SESSION_CONFIG.get("save_metadata", True):
+                        metadata = {
+                            "workflow_type": "TDD",
+                            "requirements": input_data.requirements,
+                            "project_name": session_name or "tdd_project",
+                            "total_iterations": cycle_result.iterations if 'cycle_result' in locals() else 1,
+                            "test_results": {
+                                "passed": cycle_result.final_test_result.passed_tests if 'cycle_result' in locals() else 0,
+                                "total": cycle_result.final_test_result.total_tests if 'cycle_result' in locals() else 0
+                            }
+                        }
+                        code_saver.save_metadata(metadata)
+                        
+                    # Create README if we have project info
+                    if session_name:
+                        features = [f"TDD implementation of {session_name}"]
+                        if 'cycle_result' in locals() and cycle_result.success:
+                            features.append(f"All {cycle_result.final_test_result.total_tests} tests passing")
+                        
+                        code_saver.create_readme(
+                            project_name=session_name,
+                            description=f"Test-Driven Development implementation based on: {input_data.requirements[:100]}",
+                            features=features,
+                            setup_instructions=["1. Install dependencies", "2. Run tests with pytest", "3. Run the application"]
+                        )
+                        
+                    logger.info(f"✅ TDD workflow completed. Project saved to: {code_saver.current_session_path}")
+                    
+            except Exception as save_error:
+                logger.error(f"Error saving files to session directory: {str(save_error)}")
+                # Don't fail the workflow if saving fails
+        
         # Complete workflow execution
         tracer.complete_execution(final_output={
             "workflow": "TDD",
             "results_count": len(results),
-            "success": True
+            "success": True,
+            "project_path": str(code_saver.current_session_path) if code_saver.current_session_path else None
         })
         
     except Exception as e:

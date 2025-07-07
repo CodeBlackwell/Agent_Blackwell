@@ -321,17 +321,25 @@ EXISTING CODE FILES:
 {self._format_existing_code(existing_code)}
 """
         
-        # Add project directory context if available
-        if self.file_manager.current_project and iteration > 1:
+        # Add project directory context to prevent new directory creation
+        if self.file_manager.current_project:
             context += f"""
 
-CURRENT PROJECT LOCATION:
-{self.file_manager.current_project.project_path}
+CRITICAL PROJECT INFORMATION:
+📁 EXISTING PROJECT LOCATION: {self.file_manager.current_project.project_path}
+📝 PROJECT NAME: {self.file_manager.current_project.project_name}
 
 EXISTING PROJECT FILES:
 {', '.join(self.file_manager.list_project_files())}
 
-NOTE: You are updating an existing project. Update the existing files rather than creating a new project.
+IMPORTANT INSTRUCTIONS:
+1. DO NOT create a new project directory
+2. DO NOT use timestamps in filenames or project names
+3. UPDATE the existing files in the project location above
+4. When generating code, use the SAME filenames as before
+5. This is iteration {iteration} of the TDD cycle - continue working in the same project
+
+Location: {self.file_manager.current_project.project_path}
 """
         
         context += f"""

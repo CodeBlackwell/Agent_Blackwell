@@ -211,6 +211,45 @@ Real-time output display tests.
 python test_realtime_output.py
 ```
 
+### 🔴 TDD Tests
+Test-Driven Development workflow specific tests.
+
+**Location**: `tests/tdd/`  
+**Framework**: Standalone scripts  
+**Files**:
+- `test_tdd_integration.py` - Complete TDD workflow integration test
+- `test_tdd_single_directory.py` - Verifies single directory generation
+- `test_tdd_enhanced.py` - Enhanced TDD workflow tests
+
+**Run individually**:
+```bash
+# All TDD tests
+./test_runner.py tdd
+
+# Specific TDD test
+python tests/tdd/test_tdd_integration.py
+python tests/tdd/test_tdd_single_directory.py
+```
+
+### 🎯 Demo Scripts
+Example and demonstration scripts for various workflows.
+
+**Location**: `tests/demo/`  
+**Framework**: Standalone scripts  
+**Files**:
+- `test_enhanced_tdd_demo.py` - Enhanced TDD workflow demo
+- `test_short_mode_simple.py` - Simple short mode demo
+- `test_tdd_demo.py` - Basic TDD demonstration
+
+**Run individually**:
+```bash
+# All demo scripts
+./test_runner.py demo
+
+# Specific demo
+python tests/demo/test_tdd_demo.py
+```
+
 ## 🔧 Prerequisites & Setup
 
 ### Required Services
@@ -311,7 +350,9 @@ python test_realtime_output.py
 
 2. **Test TDD Workflow**
    ```bash
+   ./test_runner.py tdd
    python tests/test_workflows.py --workflow tdd
+   python tests/tdd/test_tdd_integration.py
    ```
 
 3. **Test Individual Agents**

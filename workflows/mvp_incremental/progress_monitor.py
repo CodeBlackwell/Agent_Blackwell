@@ -210,7 +210,7 @@ class ProgressMonitor:
     def _print_header(self):
         """Print workflow start header"""
         print("\n" + "="*60)
-        print("🚀 MVP INCREMENTAL WORKFLOW - PHASE 6 (Progress Monitoring)")
+        print("🚀 MVP INCREMENTAL WORKFLOW")
         print("="*60)
         print(f"⏰ Started at: {self.workflow_start_time.strftime('%H:%M:%S')}")
         if self.total_features > 0:

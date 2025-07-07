@@ -5,7 +5,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from shared.data_models import CodingTeamInput
 from workflows.workflow_manager import execute_workflow

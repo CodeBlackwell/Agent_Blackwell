@@ -29,3 +29,7 @@ feature_coder_config = {
 validator_config = {
     "model": "openai:gpt-3.5-turbo",  # Use fast model for validation
 }
+
+feature_reviewer_config = {
+    "model": "openai:gpt-4o-mini",  # Use same model as other reviewers
+}

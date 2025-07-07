@@ -45,6 +45,7 @@ from agents.test_writer.test_writer_agent import test_writer_agent
 from agents.reviewer.reviewer_agent import reviewer_agent
 from agents.feature_coder.feature_coder_agent import feature_coder_agent
 from agents.validator.validator_agent import validator_agent
+from agents.feature_reviewer.feature_reviewer_agent import feature_reviewer_agent
 
 # Import the modular tools
 from orchestrator.regression_test_runner_tool import TestRunnerTool
@@ -343,6 +344,7 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "feature_coder_agent": 8080,
         "executor_agent": 8080,
         "validator_agent": 8080,
+        "feature_reviewer_agent": 8080,
     }
     
     agent_name_mapping = {
@@ -353,7 +355,8 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
         "reviewer_agent": "reviewer_agent_wrapper",
         "executor_agent": "executor_agent_wrapper",
         "feature_coder_agent": "feature_coder_agent_wrapper",
-        "validator_agent": "validator_agent_wrapper"
+        "validator_agent": "validator_agent_wrapper",
+        "feature_reviewer_agent": "feature_reviewer_agent_wrapper"
     }
     
     internal_agent_name = agent_name_mapping.get(agent, agent)
@@ -411,6 +414,11 @@ async def executor_agent_wrapper(input: list[Message]) -> AsyncGenerator:
 @server.agent()
 async def validator_agent_wrapper(input: list[Message]) -> AsyncGenerator:
     async for part in validator_agent(input):
+        yield part
+
+@server.agent()
+async def feature_reviewer_agent_wrapper(input: list[Message]) -> AsyncGenerator:
+    async for part in feature_reviewer_agent(input):
         yield part
 
 # ============================================================================

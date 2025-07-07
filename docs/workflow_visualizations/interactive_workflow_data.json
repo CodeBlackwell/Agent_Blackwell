@@ -1,0 +1,147 @@
+{
+  "generated_at": "2025-07-06T17:58:00.990981",
+  "theme": "modern",
+  "workflows": {
+    "TDD Workflow": {
+      "nodes": [
+        {
+          "id": "executor_agent",
+          "label": "Executor Agent",
+          "type": "agent",
+          "color": "#95A5A6"
+        },
+        {
+          "id": "coder_agent",
+          "label": "Coder Agent",
+          "type": "agent",
+          "color": "#96CEB4"
+        },
+        {
+          "id": "input",
+          "label": "Input",
+          "type": "input",
+          "color": "#DDA0DD"
+        },
+        {
+          "id": "reviewer_agent",
+          "label": "Reviewer Agent",
+          "type": "agent",
+          "color": "#FECA57"
+        },
+        {
+          "id": "designer_agent",
+          "label": "Designer Agent",
+          "type": "agent",
+          "color": "#4ECDC4"
+        },
+        {
+          "id": "test_writer_agent",
+          "label": "Test Writer Agent",
+          "type": "agent",
+          "color": "#45B7D1"
+        }
+      ],
+      "edges": [
+        {
+          "from": "designer_agent",
+          "to": "reviewer_agent",
+          "label": "review",
+          "flow_type": "review",
+          "details": {
+            "data_schema": {
+              "stage": "design",
+              "output": "design_output"
+            },
+            "transformations": []
+          }
+        },
+        {
+          "from": "reviewer_agent",
+          "to": "designer_agent",
+          "label": "feedback",
+          "flow_type": "feedback",
+          "details": {
+            "data_schema": {
+              "decision": "revision_needed",
+              "stage": "design"
+            },
+            "transformations": []
+          }
+        },
+        {
+          "from": "test_writer_agent",
+          "to": "reviewer_agent",
+          "label": "review",
+          "flow_type": "review",
+          "details": {
+            "data_schema": {
+              "stage": "test_writing",
+              "output": "test_output"
+            },
+            "transformations": []
+          }
+        },
+        {
+          "from": "input",
+          "to": "designer_agent",
+          "label": "data flow",
+          "flow_type": null,
+          "details": {
+            "data_schema": {
+              "type": "initial_input"
+            },
+            "transformations": []
+          }
+        },
+        {
+          "from": "designer_agent",
+          "to": "test_writer_agent",
+          "label": "data flow",
+          "flow_type": null,
+          "details": {
+            "data_schema": {
+              "type": "sequential"
+            },
+            "transformations": []
+          }
+        },
+        {
+          "from": "test_writer_agent",
+          "to": "coder_agent",
+          "label": "data flow",
+          "flow_type": null,
+          "details": {
+            "data_schema": {
+              "type": "sequential"
+            },
+            "transformations": []
+          }
+        },
+        {
+          "from": "coder_agent",
+          "to": "executor_agent",
+          "label": "data flow",
+          "flow_type": null,
+          "details": {
+            "data_schema": {
+              "type": "sequential"
+            },
+            "transformations": []
+          }
+        }
+      ]
+    },
+    "Full Workflow": {
+      "nodes": [],
+      "edges": []
+    },
+    "Individual Workflow": {
+      "nodes": [],
+      "edges": []
+    },
+    "Incremental Workflow": {
+      "nodes": [],
+      "edges": []
+    }
+  }
+}

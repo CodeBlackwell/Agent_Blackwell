@@ -594,8 +594,8 @@ Please validate this code implementation for feature: {feature['title']}
         progress_monitor.start_phase("Integration Verification")
         
         # Determine output path from workflow config
-        from workflows.workflow_config import get_generated_code_path
-        generated_path = Path(get_generated_code_path())
+        from workflows.workflow_config import GENERATED_CODE_PATH
+        generated_path = Path(GENERATED_CODE_PATH)
         
         # Create feature summary for integration verification
         feature_summary = []

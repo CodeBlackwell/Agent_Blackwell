@@ -25,7 +25,7 @@ class RealTimeOutputHandler:
         Initialize the output handler.
         
         Args:
-            display_mode: "detailed" for full output, "summary" for condensed view
+            display_mode: "detailed" for full output, "summary" for condensed view, "minimal" for one-line status
             max_input_chars: Maximum characters to display for input
             max_output_chars: Maximum characters to display for output
         """
@@ -34,6 +34,20 @@ class RealTimeOutputHandler:
         self.max_output_chars = max_output_chars
         self.interactions: list[AgentInteraction] = []
         self.start_time = time.time()
+        self.current_agent_start = None
+        self.agent_descriptions = {
+            "planner_agent": "Creating project plan",
+            "designer_agent": "Architecting system",
+            "feature_parser": "Breaking down features", 
+            "coder_agent": "Implementing code",
+            "test_writer_agent": "Writing tests",
+            "reviewer_agent": "Reviewing code",
+            "executor_agent": "Running tests",
+            "validator_agent": "Validating implementation",
+            "error_analyzer": "Analyzing errors",
+            "progress_tracker": "Tracking progress",
+            "integration_verifier": "Verifying integration"
+        }
         
     def display_separator(self, char: str = "=", length: int = 80):
         """Display a separator line"""
@@ -89,10 +103,28 @@ class RealTimeOutputHandler:
             Start timestamp
         """
         start_time = time.time()
-        self.display_agent_header(agent_name, step_number)
-        self.display_input(input_text)
-        print("⏳ Processing...")
-        print()
+        self.current_agent_start = start_time
+        
+        if self.display_mode == "minimal":
+            # Get agent description
+            agent_key = agent_name.lower()
+            description = self.agent_descriptions.get(agent_key, "Processing")
+            
+            # Check if this is a feature-specific task
+            if "feature" in input_text.lower():
+                # Try to extract feature info
+                lines = input_text.split('\n')
+                for line in lines:
+                    if "feature" in line.lower() and "/" in line:
+                        description = f"{description} {line.strip()}"
+                        break
+            
+            print(f"⏳ {agent_name.replace('_', ' ').title()}: {description}...", end='', flush=True)
+        else:
+            self.display_agent_header(agent_name, step_number)
+            self.display_input(input_text)
+            print("⏳ Processing...")
+            print()
         return start_time
         
     def on_agent_complete(self, agent_name: str, input_text: str, output_text: str, 
@@ -111,34 +143,54 @@ class RealTimeOutputHandler:
         )
         self.interactions.append(interaction)
         
-        # Display output
-        self.display_output(output_text)
-        
-        # Display metadata if available
-        if metadata:
-            self.display_metadata(metadata)
+        if self.display_mode == "minimal":
+            # Determine success/failure
+            success = True
+            if metadata and metadata.get("error"):
+                success = False
+            elif "error" in output_text.lower() or "failed" in output_text.lower():
+                success = False
             
-        # Display completion info
-        print(f"✅ COMPLETED in {duration:.2f} seconds")
-        self.display_separator()
-        print()
+            status_emoji = "✅" if success else "❌"
+            print(f" {status_emoji} ({duration:.1f}s)")
+        else:
+            # Display output
+            self.display_output(output_text)
+            
+            # Display metadata if available
+            if metadata:
+                self.display_metadata(metadata)
+                
+            # Display completion info
+            print(f"✅ COMPLETED in {duration:.2f} seconds")
+            self.display_separator()
+            print()
         
     def on_review_start(self, stage: str, target_agent: str):
         """Called when a review starts"""
-        print(f"🔍 REVIEWING {stage} output from {target_agent}...")
+        if self.display_mode != "minimal":
+            print(f"🔍 REVIEWING {stage} output from {target_agent}...")
         
     def on_review_complete(self, approved: bool, feedback: str):
         """Called when a review completes"""
-        status = "✅ APPROVED" if approved else "❌ NEEDS REVISION"
-        print(f"{status}")
-        if feedback:
-            print(f"   Feedback: {feedback}")
-        print()
+        if self.display_mode == "minimal":
+            # Only show if revision needed
+            if not approved:
+                print(f"🔄 Revision needed: {feedback[:50]}...")
+        else:
+            status = "✅ APPROVED" if approved else "❌ NEEDS REVISION"
+            print(f"{status}")
+            if feedback:
+                print(f"   Feedback: {feedback}")
+            print()
         
     def on_retry(self, agent_name: str, attempt: int, reason: str):
         """Called when an agent retry occurs"""
-        print(f"🔄 RETRY #{attempt} for {agent_name}: {reason}")
-        print()
+        if self.display_mode == "minimal":
+            print(f"🔄 Retry #{attempt}: {reason[:30]}...")
+        else:
+            print(f"🔄 RETRY #{attempt} for {agent_name}: {reason}")
+            print()
         
     def generate_summary(self) -> str:
         """Generate a summary of all interactions"""

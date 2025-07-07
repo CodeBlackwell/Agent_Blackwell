@@ -53,7 +53,7 @@ You are the orchestrator of a coding team consisting of:
 
 # Output display configuration
 OUTPUT_DISPLAY_CONFIG = {
-    "mode": "detailed",  # Options: "detailed", "summary"
+    "mode": "detailed",  # Options: "detailed", "summary", "minimal"
     "max_input_chars": 1000,  # Maximum characters to show for input
     "max_output_chars": 2000,  # Maximum characters to show for output
     "export_interactions": True,  # Whether to export interactions to JSON

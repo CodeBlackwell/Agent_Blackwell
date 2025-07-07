@@ -63,6 +63,7 @@ from workflows.full.full_workflow import execute_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
 from workflows.incremental.incremental_workflow import execute_incremental_workflow
 from workflows.mvp_incremental.mvp_incremental import execute_mvp_incremental_workflow
+from workflows.mvp_incremental.mvp_incremental_tdd import execute_mvp_incremental_tdd_workflow
 from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 
 # Import Docker manager for cleanup
@@ -158,6 +159,10 @@ async def execute_workflow(input_data: CodingTeamInput,
             print(f"DEBUG: Executing MVP incremental workflow")
             results = await execute_mvp_incremental_workflow(input_data, tracer)
             print(f"DEBUG: MVP incremental workflow completed, results type: {type(results)}")
+        elif workflow_type == "mvp_incremental_tdd" or workflow_type == "mvp_tdd":
+            print(f"DEBUG: Executing MVP incremental TDD workflow")
+            results = await execute_mvp_incremental_tdd_workflow(input_data, tracer)
+            print(f"DEBUG: MVP incremental TDD workflow completed, results type: {type(results)}")
         elif workflow_type in ["individual", "planning", "design", "test_writing", "implementation", "review"]:
             # For individual workflows, set the step type if not already set
             if workflow_type != "individual" and not input_data.step_type:
@@ -167,7 +172,7 @@ async def execute_workflow(input_data: CodingTeamInput,
             results = await execute_individual_workflow(input_data, tracer)
             print(f"DEBUG: Individual workflow completed, results type: {type(results)}")
         else:
-            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, mvp_incremental, individual, planning, design, test_writing, implementation, review"
+            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, mvp_incremental, mvp_incremental_tdd, mvp_tdd, individual, planning, design, test_writing, implementation, review"
             print(f"ERROR: {error_msg}")
             tracer.complete_execution(error=error_msg)
             raise ValueError(error_msg)
@@ -430,7 +435,7 @@ async def run_workflow(workflow_type: str, requirements: str,
 # Utility functions for workflow management
 def get_available_workflows() -> List[str]:
     """Get list of available workflow types."""
-    return ["tdd", "full", "incremental", "individual", "planning", "design", "test_writing", "implementation", "review", "execution"]
+    return ["tdd", "full", "incremental", "mvp_incremental", "mvp_incremental_tdd", "mvp_tdd", "individual", "planning", "design", "test_writing", "implementation", "review", "execution"]
 
 
 def get_workflow_description(workflow_type: str) -> str:
@@ -439,6 +444,9 @@ def get_workflow_description(workflow_type: str) -> str:
         "tdd": "Test-Driven Development workflow: Planning → Design → Test Writing → Implementation → Execution → Review",
         "full": "Full development workflow: Planning → Design → Implementation → Execution → Review",
         "incremental": "Incremental feature-based workflow: Planning → Design → Incremental Implementation → Review",
+        "mvp_incremental": "MVP Incremental workflow: Planning → Design → Feature-by-Feature Implementation with Validation",
+        "mvp_incremental_tdd": "MVP Incremental TDD workflow: Planning → Design → For each feature: (Write Tests → Run Tests → Implement → Validate)",
+        "mvp_tdd": "Alias for mvp_incremental_tdd",
         "individual": "Execute a single workflow step",
         "planning": "Execute only the planning phase",
         "design": "Execute only the design phase",

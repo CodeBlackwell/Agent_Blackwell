@@ -27,12 +27,20 @@ from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionRepor
 
 # Import configuration
 from workflows.workflow_config import MAX_REVIEW_RETRIES
+from workflows.tdd.tdd_config import WORKFLOW_CONFIG, TEST_CONFIG
 
 # Import output handler
 from workflows.agent_output_handler import get_output_handler
 
 # Import executor components
 from agents.executor.session_utils import generate_session_id
+
+# Import TDD components
+from workflows.tdd.tdd_cycle_manager import TDDCycleManager, TDDPhase
+from workflows.tdd.test_executor import TestExecutor
+
+# Import logger
+from workflows.logger import workflow_logger as logger
 
 
 
@@ -171,20 +179,101 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
             target_agent="test_writer_agent"
         )
         
-        # Coding phase
-        step_id = tracer.start_step("coding", "coder_agent", {
-            "test_input": test_output[:200] + "...",
-            "design_input": design_output[:200] + "..."
-        })
-        coding_input = f"Requirements: {input_data.requirements}\n\nPlan: {planning_output}\n\nDesign: {design_output}\n\nTests: {test_output}"
-        code_result = await run_team_member_with_tracking("coder_agent", coding_input, "tdd_coding")
-        code_output = str(code_result)
+        # TDD Cycle: RED-GREEN-REFACTOR
+        if TEST_CONFIG.get("execute_real_tests", True) and TEST_CONFIG.get("use_tdd_cycle", True):
+            # Use proper TDD cycle with test execution
+            output_handler = get_output_handler()
+            logger.info("🔄 Starting TDD Red-Green-Refactor cycle")
+            
+            # Initialize TDD cycle manager
+            tdd_manager = TDDCycleManager(
+                max_iterations=TEST_CONFIG.get("max_iterations", 5),
+                require_test_failure=TEST_CONFIG.get("test_before_code", True)
+            )
+            
+            # Execute TDD cycle
+            tdd_step_id = tracer.start_step("tdd_cycle", "tdd_cycle_manager", {
+                "test_output": test_output[:200] + "...",
+                "requirements": input_data.requirements
+            })
+            
+            try:
+                # Run TDD cycle with test execution
+                cycle_result = await tdd_manager.execute_tdd_cycle(
+                    requirements=input_data.requirements,
+                    test_code=test_output,
+                    existing_code={}  # No existing code for new project
+                )
+                
+                # Use the implementation from TDD cycle
+                code_output = cycle_result.implementation_code
+                
+                # Add TDD cycle metrics to tracer
+                tracer.complete_step(tdd_step_id, {
+                    "success": cycle_result.success,
+                    "iterations": cycle_result.iterations,
+                    "initial_failures": cycle_result.initial_test_result.failed_tests,
+                    "final_passes": cycle_result.final_test_result.passed_tests,
+                    "all_tests_passing": cycle_result.final_test_result.all_passing
+                })
+                
+                # Log TDD results
+                status_msg = f"TDD cycle completed: {cycle_result.final_test_result.passed_tests}/{cycle_result.final_test_result.total_tests} tests passing"
+                if cycle_result.final_test_result.coverage_percent:
+                    status_msg += f" (Coverage: {cycle_result.final_test_result.coverage_percent}%)"
+                logger.info(f"✅ {status_msg}")
+                
+                # If not all tests are passing, log warnings
+                if not cycle_result.success:
+                    logger.warning(f"TDD cycle completed with failures: {cycle_result.final_test_result.failed_tests} tests still failing")
+                
+            except Exception as e:
+                # Fallback to standard coding if TDD cycle fails
+                logger.error(f"TDD cycle failed: {str(e)}")
+                tracer.complete_step(tdd_step_id, {"error": str(e)}, error=str(e))
+                
+                # Use standard coding approach with TDD mindset
+                step_id = tracer.start_step("coding_fallback", "coder_agent", {
+                    "reason": "TDD cycle failed, using standard approach"
+                })
+                
+                # Create TDD-focused context even for fallback
+                coding_input = f"""Using Test-Driven Development approach.
+
+REQUIREMENTS:
+{input_data.requirements}
+
+PLAN:
+{planning_output}
+
+DESIGN:
+{design_output}
+
+TESTS TO PASS:
+{test_output}
+
+Please implement the minimal code needed to make all the tests pass."""
+                
+                code_result = await run_team_member_with_tracking("coder_agent", coding_input, "tdd_coding_fallback")
+                code_output = str(code_result)
+                tracer.complete_step(step_id, {"output": code_output[:200] + "..."})
+        else:
+            # Standard coding phase (backward compatibility)
+            step_id = tracer.start_step("coding", "coder_agent", {
+                "test_input": test_output[:200] + "...",
+                "design_input": design_output[:200] + "..."
+            })
+            coding_input = f"Requirements: {input_data.requirements}\n\nPlan: {planning_output}\n\nDesign: {design_output}\n\nTests: {test_output}"
+            code_result = await run_team_member_with_tracking("coder_agent", coding_input, "tdd_coding")
+            code_output = str(code_result)
+            tracer.complete_step(step_id, {"output": code_output[:200] + "..."})
+        
+        # Add code result
         results.append(TeamMemberResult(
             team_member=TeamMember.coder,
             output=code_output,
             name="coder"
         ))
-        tracer.complete_step(step_id, {"output": code_output[:200] + "..."})
         
         # Step 4.5: Execute tests and code
         session_id = generate_session_id(input_data.requirements)

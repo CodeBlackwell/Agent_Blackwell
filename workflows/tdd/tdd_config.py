@@ -14,7 +14,13 @@ RETRY_CONFIG = {
 TEST_CONFIG = {
     "default_test_count": 10,              # Default number of tests if not detected
     "min_pass_threshold": 0.8,             # Minimum pass rate to consider successful (80%)
-    "execute_real_tests": False,           # Toggle between simulation and real test execution
+    "execute_real_tests": True,            # Toggle between simulation and real test execution
+    "use_tdd_cycle": True,                 # Use proper red-green-refactor cycle
+    "test_before_code": True,              # Ensure tests are run before implementation
+    "use_generated_directory": True,       # Run tests in generated project directory vs temp
+    "preserve_iterations": False,          # Keep intermediate test results and files
+    "test_isolation_mode": "project",      # Options: "project", "temp", "docker"
+    "max_iterations": 5,                   # Maximum TDD cycle iterations
 }
 
 # Review configuration

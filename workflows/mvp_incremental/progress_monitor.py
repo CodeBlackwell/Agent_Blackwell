@@ -16,6 +16,13 @@ class StepStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     RETRYING = "retrying"
+    # TDD-specific states
+    WRITING_TESTS = "writing_tests"
+    TESTS_WRITTEN = "tests_written"
+    TESTS_FAILING = "tests_failing"  # Red phase
+    IMPLEMENTING = "implementing"
+    TESTS_PASSING = "tests_passing"   # Green phase
+    REFACTORING = "refactoring"       # Refactor phase
 
 
 @dataclass
@@ -54,6 +61,13 @@ class FeatureProgress:
     errors: List[str] = field(default_factory=list)
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    # TDD-specific tracking
+    tests_written: bool = False
+    tests_initial_run: bool = False
+    tests_passing: bool = False
+    test_file_count: int = 0
+    test_function_count: int = 0
+    code_coverage: Optional[float] = None
 
 
 class ProgressMonitor:
@@ -125,6 +139,19 @@ class ProgressMonitor:
             elif status == StepStatus.COMPLETED:
                 duration = (datetime.now() - step.start_time).total_seconds()
                 print(f"   ✅ Completed in {duration:.1f}s")
+            # TDD-specific status updates
+            elif status == StepStatus.WRITING_TESTS:
+                print(f"   ✍️  Writing tests...")
+            elif status == StepStatus.TESTS_WRITTEN:
+                print(f"   📝 Tests written")
+            elif status == StepStatus.TESTS_FAILING:
+                print(f"   🔴 Tests failing (expected - TDD red phase)")
+            elif status == StepStatus.IMPLEMENTING:
+                print(f"   🔨 Implementing code to pass tests...")
+            elif status == StepStatus.TESTS_PASSING:
+                print(f"   🟢 Tests passing (TDD green phase)")
+            elif status == StepStatus.REFACTORING:
+                print(f"   🔧 Refactoring code...")
                 
     def complete_step(self, step_name: str, success: bool = True, metadata: Dict[str, Any] = None):
         """Mark step as complete"""
@@ -251,6 +278,21 @@ class ProgressMonitor:
             print(f"   - Failed: {failed_features}")
             print(f"   - Required Retry: {retried_features}")
             
+            # TDD stats
+            features_with_tests = sum(1 for f in self.features.values() if f.tests_written)
+            features_tests_passing = sum(1 for f in self.features.values() if f.tests_passing)
+            total_test_files = sum(f.test_file_count for f in self.features.values())
+            total_test_functions = sum(f.test_function_count for f in self.features.values())
+            avg_coverage = self._calculate_average_coverage()
+            
+            print(f"\n🧪 TDD Metrics:")
+            print(f"   - Features with tests: {features_with_tests}/{len(self.features)}")
+            print(f"   - Features with passing tests: {features_tests_passing}/{len(self.features)}")
+            print(f"   - Total test files: {total_test_files}")
+            print(f"   - Total test functions: {total_test_functions}")
+            if avg_coverage is not None:
+                print(f"   - Average code coverage: {avg_coverage:.1f}%")
+            
         # Error summary
         all_errors = []
         for feature in self.features.values():
@@ -283,8 +325,40 @@ class ProgressMonitor:
                 
         return phase_times
         
+    def update_tdd_progress(self, feature_id: str, tdd_phase: str, metadata: Dict[str, Any] = None):
+        """Update TDD-specific progress for a feature"""
+        if feature_id in self.features:
+            feature = self.features[feature_id]
+            
+            if tdd_phase == "tests_written":
+                feature.tests_written = True
+                feature.test_file_count = metadata.get("test_files", 0) if metadata else 0
+                feature.test_function_count = metadata.get("test_functions", 0) if metadata else 0
+                print(f"   📝 Tests written: {feature.test_file_count} files, {feature.test_function_count} test functions")
+            elif tdd_phase == "tests_initial_run":
+                feature.tests_initial_run = True
+                passed = metadata.get("passed", 0) if metadata else 0
+                failed = metadata.get("failed", 0) if metadata else 0
+                print(f"   🔴 Initial test run: {passed} passed, {failed} failed (expected failures)")
+            elif tdd_phase == "tests_passing":
+                feature.tests_passing = True
+                feature.code_coverage = metadata.get("coverage", None) if metadata else None
+                if feature.code_coverage:
+                    print(f"   🟢 All tests passing! Coverage: {feature.code_coverage:.1f}%")
+                else:
+                    print(f"   🟢 All tests passing!")
+                    
     def export_metrics(self) -> Dict[str, Any]:
         """Export progress metrics for analysis"""
+        # Calculate TDD metrics
+        tdd_metrics = {
+            "features_with_tests": sum(1 for f in self.features.values() if f.tests_written),
+            "features_tests_passing": sum(1 for f in self.features.values() if f.tests_passing),
+            "total_test_files": sum(f.test_file_count for f in self.features.values()),
+            "total_test_functions": sum(f.test_function_count for f in self.features.values()),
+            "average_coverage": self._calculate_average_coverage()
+        }
+        
         return {
             "workflow_duration": (self.workflow_end_time - self.workflow_start_time).total_seconds() if self.workflow_end_time else None,
             "total_steps": len(self.steps),
@@ -293,13 +367,26 @@ class ProgressMonitor:
             "failed_features": sum(1 for f in self.features.values() if not f.validation_passed),
             "retried_features": sum(1 for f in self.features.values() if f.total_attempts > 1),
             "phase_times": self._calculate_phase_times(),
+            "tdd_metrics": tdd_metrics,
             "feature_details": {
                 fid: {
                     "title": f.feature_title,
                     "passed": f.validation_passed,
                     "attempts": f.total_attempts,
-                    "errors": f.errors
+                    "errors": f.errors,
+                    "tests_written": f.tests_written,
+                    "tests_passing": f.tests_passing,
+                    "test_files": f.test_file_count,
+                    "test_functions": f.test_function_count,
+                    "coverage": f.code_coverage
                 }
                 for fid, f in self.features.items()
             }
         }
+    
+    def _calculate_average_coverage(self) -> Optional[float]:
+        """Calculate average code coverage across features"""
+        coverages = [f.code_coverage for f in self.features.values() if f.code_coverage is not None]
+        if coverages:
+            return sum(coverages) / len(coverages)
+        return None

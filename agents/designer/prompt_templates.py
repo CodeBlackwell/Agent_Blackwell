@@ -27,13 +27,21 @@ IMPLEMENTATION_PLAN_TEMPLATE = """
 After providing the complete technical design, create an IMPLEMENTATION PLAN that breaks down 
 the development work into discrete, testable features.
 
+CRITICAL REQUIREMENTS FOR FEATURES:
+===================================
+1. You MUST include ALL features necessary for a complete implementation
+2. For API projects: Include AT LEAST 5-7 features (setup, models, auth, endpoints, validation, tests, docs)
+3. For web apps: Include frontend, backend, state management, and testing features
+4. For CLI tools: Include command structure, I/O handling, config, and testing features
+5. NEVER combine multiple major functionalities into a single feature
+
 IMPLEMENTATION PLAN:
 ===================
 
-Structure each feature as follows:
+Structure EVERY feature using this EXACT format:
 
 FEATURE[N]: <Concise Feature Title>
-Description: <What functionality this implements>
+Description: <What functionality this implements - be specific>
 Files: <Comma-separated list of files to create/modify>
 Validation: <Specific criteria to verify this feature works>
 Dependencies: <List of FEATURE[N] IDs this depends on, or "None">
@@ -48,7 +56,16 @@ Guidelines for creating features:
 6. Validation criteria should be specific and testable
 7. Keep features focused - better to have more small features than few large ones
 
-Example:
+IMPORTANT: For any API project, you MUST include these essential features:
+- Project setup and configuration
+- Database models/schema
+- Authentication system (if applicable)
+- CRUD endpoints or main functionality
+- Input validation and error handling
+- Testing suite
+- API documentation
+
+Example for a REST API (minimum features):
 FEATURE[1]: Project Foundation
 Description: Set up Flask application structure with configuration management
 Files: app.py, config.py, requirements.txt, __init__.py
@@ -56,12 +73,47 @@ Validation: Application starts without errors, configuration loads from environm
 Dependencies: None
 Estimated Complexity: Low
 
-FEATURE[2]: User Authentication Model
-Description: Implement User model with secure password hashing
-Files: models/user.py, models/__init__.py, utils/security.py
-Validation: User can be created with hashed password, password verification works
+FEATURE[2]: Database Models
+Description: Create User and Resource models with SQLAlchemy ORM
+Files: models/user.py, models/resource.py, models/__init__.py, database.py
+Validation: Models can be created, database migrations work
 Dependencies: FEATURE[1]
 Estimated Complexity: Medium
+
+FEATURE[3]: Authentication System
+Description: Implement JWT-based authentication with login/register endpoints
+Files: auth/handlers.py, auth/jwt_utils.py, middleware/auth.py
+Validation: Users can register, login, and receive valid JWT tokens
+Dependencies: FEATURE[1], FEATURE[2]
+Estimated Complexity: High
+
+FEATURE[4]: Resource CRUD Endpoints
+Description: Create REST endpoints for resource management
+Files: routes/resources.py, schemas/resource.py
+Validation: All CRUD operations work with proper authentication
+Dependencies: FEATURE[1], FEATURE[2], FEATURE[3]
+Estimated Complexity: Medium
+
+FEATURE[5]: Input Validation and Error Handling
+Description: Add request validation schemas and global error handlers
+Files: schemas/validation.py, middleware/error_handler.py
+Validation: Invalid requests return proper error messages, all errors are handled
+Dependencies: FEATURE[1]
+Estimated Complexity: Medium
+
+FEATURE[6]: API Testing Suite
+Description: Write comprehensive unit and integration tests
+Files: tests/test_auth.py, tests/test_resources.py, tests/conftest.py
+Validation: All tests pass with good coverage
+Dependencies: FEATURE[1], FEATURE[2], FEATURE[3], FEATURE[4]
+Estimated Complexity: Medium
+
+FEATURE[7]: API Documentation
+Description: Generate OpenAPI/Swagger documentation
+Files: docs/openapi.yaml, routes/docs.py
+Validation: Documentation is accessible and accurate
+Dependencies: FEATURE[1], FEATURE[4]
+Estimated Complexity: Low
 """
 
 # Update the main designer template to include this

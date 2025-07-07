@@ -15,6 +15,7 @@ class ReviewPhase(Enum):
     """Phases where review can occur."""
     PLANNING = "planning"
     DESIGN = "design"
+    TEST_SPECIFICATION = "test_specification"
     FEATURE_IMPLEMENTATION = "feature_implementation"
     VALIDATION_RESULT = "validation_result"
     FINAL_IMPLEMENTATION = "final_implementation"
@@ -88,6 +89,7 @@ class ReviewIntegration:
         prompts = {
             ReviewPhase.PLANNING: self._build_planning_review_prompt,
             ReviewPhase.DESIGN: self._build_design_review_prompt,
+            ReviewPhase.TEST_SPECIFICATION: self._build_test_specification_review_prompt,
             ReviewPhase.FEATURE_IMPLEMENTATION: self._build_feature_review_prompt,
             ReviewPhase.VALIDATION_RESULT: self._build_validation_review_prompt,
             ReviewPhase.FINAL_IMPLEMENTATION: self._build_final_review_prompt,
@@ -149,6 +151,48 @@ Please review for:
 2. Are interfaces between features well-defined?
 3. Will this design allow for independent feature validation?
 4. Are there any architectural concerns?
+
+Provide your review in the format:
+REVIEW: APPROVED or NEEDS REVISION
+FEEDBACK: Your detailed feedback
+SUGGESTIONS: 
+- Suggestion 1
+- Suggestion 2
+MUST FIX:
+- Critical issue 1 (if any)
+"""
+        
+        if request.retry_count > 0:
+            prompt += f"\n\nThis is retry attempt {request.retry_count}."
+            if request.previous_feedback:
+                prompt += f"\nPrevious feedback: {request.previous_feedback}"
+                
+        return prompt
+    
+    def _build_test_specification_review_prompt(self, request: ReviewRequest) -> str:
+        """Build prompt for reviewing TDD test specifications."""
+        feature = request.context.get('feature', {})
+        
+        prompt = f"""Review this test specification for Test-Driven Development:
+
+Feature: {feature.get('title', 'Unknown')}
+Description: {feature.get('description', 'No description')}
+
+Test Code:
+{request.content}
+
+Context:
+- These tests are written BEFORE implementation (TDD Red Phase)
+- Tests should define the expected behavior clearly
+- Tests must fail initially since no implementation exists yet
+- {request.context.get('purpose', 'Ensure comprehensive test coverage')}
+
+Please review for:
+1. Do the tests clearly define expected behavior?
+2. Are both positive and negative test cases included?
+3. Are edge cases and error conditions covered?
+4. Will these tests effectively guide the implementation?
+5. Are the test names descriptive and clear?
 
 Provide your review in the format:
 REVIEW: APPROVED or NEEDS REVISION

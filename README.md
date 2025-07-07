@@ -31,11 +31,77 @@ This architecture allows for a flexible and extensible system where workflows ca
 ## ✨ Features
 
 - **Modular Agent System**: Each agent is a self-contained module, making it easy to update, test, and replace individual components.
-- **Dynamic Workflows**: Supports multiple development workflows, including Test-Driven Development (TDD), Full Development, and individual step execution.
+- **Dynamic Workflows**: Supports multiple development workflows, including Test-Driven Development (TDD), Full Development, MVP Incremental with automatic requirement expansion, and individual step execution.
 - **Advanced Progress Tracking**: A comprehensive progress tracking system that monitors each step of the workflow, records performance metrics, and generates detailed reports.
 - **Workflow Visualization**: Includes tools to generate visual diagrams of the workflows, providing a clear overview of the data flow between agents.
 - **Centralized Configuration**: All LLM configurations, including prompts and model parameters, are managed in a central location for consistency and easy maintenance.
 - **Comprehensive Testing**: The system includes a full suite of tests for each agent and workflow, ensuring reliability and stability.
+
+## 🎯 MVP Incremental TDD Workflow
+
+The system includes an enhanced MVP Incremental workflow with Test-Driven Development that intelligently expands vague requirements into multiple well-defined features.
+
+### Key Features
+
+- **Automatic Requirement Expansion**: Vague requirements like "Create a REST API" are automatically expanded into 7+ detailed features
+- **Template-Based Expansion**: Built-in templates for REST APIs (7 features), Web Apps (6 features), and CLI Tools (6 features)
+- **Intelligent Feature Extraction**: Multiple strategies to extract features from design output
+- **Full TDD Cycle**: Each feature goes through Write Tests → Run Tests (Fail) → Implement → Run Tests (Pass) → Review
+- **Feature Dependencies**: Automatic ordering of features based on dependencies
+- **Comprehensive Testing**: Each feature gets its own test suite with edge cases and error conditions
+
+### Example: REST API Expansion
+
+**Before Enhancement:**
+```
+Input: "Create a REST API"
+Output: 1 monolithic implementation file
+```
+
+**After Enhancement:**
+```
+Input: "Create a REST API"
+Output: 7 modular features:
+1. Project Foundation - Framework setup and configuration
+2. Database Models - Data persistence layer
+3. Authentication System - JWT-based auth
+4. CRUD API Endpoints - RESTful operations
+5. Input Validation - Request validation
+6. Test Suite - Comprehensive tests
+7. API Documentation - OpenAPI/Swagger
+```
+
+### Running the Enhanced Workflow
+
+```bash
+# Using the orchestrator
+curl -X POST http://localhost:8080/acp/submit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool": "EnhancedCodingTeamTool",
+    "arguments": {
+      "requirements": "Create a REST API",
+      "workflow_type": "mvp_incremental_tdd"
+    }
+  }'
+
+# Using the REST API
+curl -X POST http://localhost:8000/execute-workflow \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requirements": "Create a REST API",
+    "workflow_type": "mvp_incremental_tdd"
+  }'
+```
+
+### Demo
+
+Run the interactive demo to see the enhancement in action:
+```bash
+python demo_mvp_incremental_enhancement.py
+```
+
+For detailed documentation, see [MVP Incremental TDD Enhancement Guide](docs/mvp_incremental_tdd_enhancement.md).
 
 ## 🌐 REST API
 
@@ -186,6 +252,8 @@ python tests/test_workflows.py --workflow full --complexity standard
 - **Workflow Types**:
   - `tdd`: Test-Driven Development workflow (Planning → Design → Test Writing → Implementation → Execution → Review)
   - `full`: Full Development workflow (Planning → Design → Implementation → Review)
+  - `mvp_incremental`: MVP Incremental workflow - Feature-by-feature implementation with validation
+  - `mvp_incremental_tdd`: Enhanced MVP Incremental with TDD - Expands vague requirements to 7+ features with full TDD cycle
   - `planning`: Execute only the planning phase
   - `design`: Execute only the design phase
   - `implementation`: Execute only the implementation phase

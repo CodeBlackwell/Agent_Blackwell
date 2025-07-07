@@ -1,0 +1,33 @@
+name: "Simple Calculator"
+description: "A basic Python calculator module with mathematical operations"
+difficulty: "Beginner"
+time_estimate: "2-3 minutes"
+detailed_description: |
+  This example creates a simple calculator that can:
+  • Add, subtract, multiply, and divide numbers
+  • Calculate square roots
+  • Handle edge cases like division by zero
+  • Include comprehensive unit tests
+  
+  Perfect for beginners to see the workflow in action!
+
+requirements: |
+  Create a Python calculator module with the following features:
+  1. Add two numbers
+  2. Subtract two numbers
+  3. Multiply two numbers
+  4. Divide two numbers (handle division by zero)
+  5. Calculate square root (handle negative numbers)
+  6. Include unit tests for all operations
+  7. Add proper error handling and validation
+  8. Include docstrings for all functions
+
+config:
+  workflow_type: "tdd"
+  run_tests: true
+  run_integration_verification: false
+
+expected_files:
+  - calculator.py
+  - test_calculator.py
+  - README.md

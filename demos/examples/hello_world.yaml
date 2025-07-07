@@ -1,0 +1,30 @@
+name: "Hello World"
+description: "The simplest possible example - a Hello World function"
+difficulty: "Beginner"
+time_estimate: "1-2 minutes"
+detailed_description: |
+  The classic first program! This example creates:
+  • A simple function that prints a greeting
+  • Basic unit tests
+  • Proper documentation
+  
+  Perfect for testing that everything works!
+
+requirements: |
+  Create a Python module with:
+  1. A function called `greet(name=None)` that:
+     - Returns "Hello, World!" if no name is provided
+     - Returns "Hello, {name}!" if a name is provided
+     - Validates that name is a string if provided
+  2. A main function that demonstrates usage
+  3. Unit tests to verify the function works correctly
+  4. Proper docstrings
+
+config:
+  workflow_type: "tdd"
+  run_tests: true
+  run_integration_verification: false
+
+expected_files:
+  - hello.py
+  - test_hello.py

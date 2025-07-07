@@ -6,6 +6,23 @@ A modular multi-agent system built on the Agent Communication Protocol (ACP) tha
 
 This system implements a team of specialized AI agents that work together to complete software development tasks. Each agent has a specific role in the development process, from planning to review, and communicates through a standardized protocol. The system features a modular workflow architecture that visualizes data flows between agents for better understanding and debugging.
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Documentation Hub](docs/README.md)** - Main documentation index with organized categories
+- **[User Guide](docs/user-guide/README.md)** - Getting started, examples, and usage guides
+- **[Developer Guide](docs/developer-guide/README.md)** - Architecture, testing, and contribution guidelines
+- **[Workflows Documentation](docs/workflows/README.md)** - Detailed workflow documentation including MVP Incremental
+- **[API Reference](docs/reference/README.md)** - REST API endpoints and configuration options
+- **[Operations Guide](docs/operations/README.md)** - Deployment, monitoring, and maintenance
+
+### Quick Links
+- [Quick Start Guide](docs/user-guide/quick-start.md)
+- [Examples](docs/user-guide/examples.md)
+- [Testing Guide](docs/developer-guide/testing-guide.md)
+- [MVP Incremental Workflow](docs/workflows/mvp-incremental/README.md)
+
 ## 🤖 Architecture
 
 The system is built on a modular, single-server architecture that coordinates a team of specialized AI agents. The core components are:
@@ -98,10 +115,14 @@ curl -X POST http://localhost:8000/execute-workflow \
 
 Run the interactive demo to see the enhancement in action:
 ```bash
-python demo_mvp_incremental_enhancement.py
+# Using the unified runner (recommended)
+python run.py example todo_api
+
+# Or run the advanced demo directly
+python demos/advanced/mvp_incremental_demo.py
 ```
 
-For detailed documentation, see [MVP Incremental TDD Enhancement Guide](docs/mvp_incremental_tdd_enhancement.md).
+For detailed documentation, see [MVP Incremental TDD Enhancement Guide](docs/workflows/mvp-incremental/tdd-enhancement.md).
 
 ## 🌐 REST API
 
@@ -217,26 +238,26 @@ Generated code is saved in the `generated/` directory.
 
 The system includes a comprehensive testing suite with a unified test runner and organized test categories. Tests are organized into logical directories for better maintainability.
 
-### Quick Start with Unified Test Runner
+### Quick Start with Unified Runner
 
 ```bash
 # Run all tests
-./test_runner.py
+python run.py test all
 
 # Run specific test categories
-./test_runner.py unit              # Unit tests only
-./test_runner.py tdd               # TDD workflow tests
-./test_runner.py demo              # Demo scripts
-./test_runner.py unit integration  # Multiple categories
+python run.py test unit              # Unit tests only
+python run.py test tdd               # TDD workflow tests
+python run.py test demo              # Demo scripts
+python run.py test unit integration  # Multiple categories
 
 # Run tests in parallel (faster)
-./test_runner.py -p
+python run.py test all -p
 
 # List all available test categories
-./test_runner.py -l
+python run.py list tests
 
 # CI mode (no emojis, verbose output)
-./test_runner.py --ci
+python run.py test all --ci
 ```
 
 ### Test Organization
@@ -346,7 +367,7 @@ python tests/test_workflows.py --workflow tdd --complexity standard
 
 ### Comprehensive Test Documentation
 
-For detailed information about all tests, including prerequisites, troubleshooting, and advanced testing strategies, see [TEST_GUIDE.md](TEST_GUIDE.md).
+For detailed information about all tests, including prerequisites, troubleshooting, and advanced testing strategies, see the [Testing Guide](docs/developer-guide/testing-guide.md).
 
 ## 🚀 Getting Started
 
@@ -369,6 +390,27 @@ For detailed information about all tests, including prerequisites, troubleshooti
     uv pip install -r requirements.txt
     ```
 4.  Create a `.env` file with your API keys (you can use `.env.example` as a template).
+
+### Quick Start
+
+The easiest way to get started is with the unified runner:
+
+```bash
+# Interactive mode (recommended for beginners)
+python run.py
+
+# Run a pre-configured example
+python run.py example calculator
+
+# Run a workflow with custom requirements
+python run.py workflow tdd --task "Create a Python function to calculate fibonacci numbers"
+
+# Run tests
+python run.py test unit
+
+# Get help
+python run.py --help
+```
 
 ### Running the System
 
@@ -397,6 +439,7 @@ The API server will be available at `http://localhost:8000`.
 ## 📁 Project Structure
 
 ```
+├── run.py                        # 🚀 Unified runner (start here!)
 ├── orchestrator/
 │   ├── orchestrator_agent.py     # Main server and orchestrator agent
 │   └── orchestrator_configs.py   # Configuration for the orchestrator
@@ -415,6 +458,11 @@ The API server will be available at `http://localhost:8000`.
 │   ├── full/                     # Full workflow implementation
 │   ├── individual/               # Individual step workflow implementation
 │   └── workflow_manager.py       # Workflow dispatch system
+├── demos/
+│   ├── examples/                 # Pre-configured example projects
+│   ├── lib/                      # Helper modules for demos
+│   ├── legacy/                   # Old demo scripts (deprecated)
+│   └── advanced/                 # Advanced demonstration scripts
 ├── tests/
 │   ├── run_agent_tests.py        # Master agent test runner
 │   └── test_workflows.py         # Workflow testing script

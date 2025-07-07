@@ -1,0 +1,84 @@
+name: "User Authentication System"
+description: "A complete authentication system with JWT tokens and role-based access"
+difficulty: "Advanced"
+time_estimate: "10-15 minutes"
+detailed_description: |
+  This example implements a production-ready auth system:
+  • User registration and login
+  • Secure password hashing (bcrypt)
+  • JWT token generation and validation
+  • Email verification flow
+  • Password reset functionality
+  • Role-based access control (RBAC)
+  • Security best practices
+  
+  Ideal for understanding security implementations!
+
+requirements: |
+  Create a comprehensive user authentication system with the following features:
+  
+  1. User Model:
+     - id (UUID)
+     - email (unique, validated)
+     - username (unique, 3-20 chars)
+     - password_hash
+     - is_active (boolean)
+     - is_verified (boolean)
+     - role (enum: user, admin)
+     - created_at
+     - updated_at
+  
+  2. Authentication Endpoints:
+     - POST /auth/register - User registration
+     - POST /auth/login - User login (returns JWT)
+     - POST /auth/refresh - Refresh access token
+     - POST /auth/logout - Logout (token blacklist)
+     - GET /auth/me - Get current user info
+  
+  3. User Management:
+     - GET /users/{id} - Get user profile (auth required)
+     - PUT /users/{id} - Update user profile (owner only)
+     - DELETE /users/{id} - Delete account (owner only)
+     - GET /users - List users (admin only)
+  
+  4. Password Management:
+     - POST /auth/forgot-password - Request password reset
+     - POST /auth/reset-password - Reset password with token
+     - POST /auth/change-password - Change password (auth required)
+  
+  5. Email Verification:
+     - POST /auth/verify-email - Verify email with token
+     - POST /auth/resend-verification - Resend verification email
+  
+  6. Security Features:
+     - Password hashing with bcrypt
+     - JWT tokens with expiration
+     - Refresh token rotation
+     - Rate limiting on auth endpoints
+     - Token blacklist for logout
+     - Role-based access control
+     - Input validation and sanitization
+  
+  7. Testing:
+     - Unit tests for all endpoints
+     - Test authentication flows
+     - Test authorization (RBAC)
+     - Test error cases
+     - Test security features
+
+config:
+  workflow_type: "tdd"
+  run_tests: true
+  run_integration_verification: true
+
+expected_files:
+  - auth.py
+  - models.py
+  - middleware.py
+  - utils.py
+  - database.py
+  - test_auth.py
+  - test_users.py
+  - requirements.txt
+  - README.md
+  - .env.example

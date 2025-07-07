@@ -18,6 +18,17 @@ The system follows a **modular, single-server architecture** with these key comp
 
 ## Key Commands
 
+### Quick Start
+
+```bash
+# 🚀 RECOMMENDED: Use the unified runner
+python run.py                         # Interactive mode (best for beginners)
+python run.py example calculator      # Run a pre-configured example
+python run.py workflow tdd --task "..." # Run a workflow with custom task
+python run.py test unit              # Run unit tests
+python run.py --help                 # Get comprehensive help
+```
+
 ### Running the System
 
 ```bash
@@ -38,12 +49,11 @@ python api/orchestrator_api.py
 ### Testing Commands
 
 ```bash
-# 🚀 RECOMMENDED: Use the unified test runner
-./test_runner.py              # Run all tests
-./test_runner.py unit         # Run only unit tests  
-./test_runner.py -p           # Run all tests in parallel
-./test_runner.py --quick      # Run fast tests only
-./test_runner.py -l           # List all test categories
+# 🚀 RECOMMENDED: Use the unified runner
+python run.py test all              # Run all tests
+python run.py test unit            # Run only unit tests  
+python run.py test unit integration -p  # Run tests in parallel
+python run.py test --list          # List all test categories
 
 # Individual test commands (if needed)
 python tests/run_agent_tests.py      # Run agent tests
@@ -58,13 +68,13 @@ See [TEST_GUIDE.md](TEST_GUIDE.md) for comprehensive testing documentation.
 
 ```bash
 # Generate workflow visualizations (focused version - system overview & flow graphs only)
-python workflows/workflow_visualizer_v4.py
+python workflows/workflow_visualizer.py
 
 # Options:
-python workflows/workflow_visualizer_v4.py --help                # Show all options
-python workflows/workflow_visualizer_v4.py --system-only         # System overview only
-python workflows/workflow_visualizer_v4.py --workflow tdd        # Single workflow flow
-python workflows/workflow_visualizer_v4.py --output-dir custom   # Custom output directory
+python workflows/workflow_visualizer.py --help                # Show all options
+python workflows/workflow_visualizer.py --system-only         # System overview only
+python workflows/workflow_visualizer.py --workflow tdd        # Single workflow flow
+python workflows/workflow_visualizer.py --output-dir custom   # Custom output directory
 ```
 
 ## Workflow Types
@@ -99,7 +109,7 @@ python workflows/workflow_visualizer_v4.py --output-dir custom   # Custom output
    - Follow existing patterns for consistency
 
 3. **Testing**:
-   - Use the unified test runner: `./test_runner.py`
+   - Use the unified runner: `python run.py test`
    - Test individual agents with `test_[agent]_debug.py` files
    - Use workflow tests to validate end-to-end flows
    - All test artifacts saved in `tests/outputs/`
@@ -236,23 +246,23 @@ The codebase includes a robust testing framework with multiple test types and a 
 
 ### Unified Test Runner
 
-The `test_runner.py` script provides a centralized, user-friendly interface for all tests:
+Tests are now run through the unified `run.py` script:
 
 ```bash
 # Run all tests
-./test_runner.py
+python run.py test all
 
 # Run specific test categories
-./test_runner.py unit              # Unit tests only
-./test_runner.py unit integration  # Unit and integration tests
-./test_runner.py workflow agent    # Workflow and agent tests
+python run.py test unit              # Unit tests only
+python run.py test unit integration  # Unit and integration tests
+python run.py test workflow agent    # Workflow and agent tests
 
 # Advanced options
-./test_runner.py -p               # Run tests in parallel
-./test_runner.py --quick          # Quick tests only (unit)
-./test_runner.py -v               # Verbose output
-./test_runner.py --ci             # CI mode (no emojis)
-./test_runner.py -l               # List all test categories
+python run.py test all -p           # Run tests in parallel
+python run.py test unit             # Quick tests only (unit)
+python run.py test all -v           # Verbose output
+python run.py test all --ci         # CI mode (no emojis)
+python run.py list tests             # List all test categories
 ```
 
 ### Test Categories
@@ -315,7 +325,7 @@ The `test_runner.py` script provides a centralized, user-friendly interface for 
 4. **CI/CD Integration**:
    ```bash
    # Use CI mode for automated pipelines
-   ./test_runner.py --ci
+   python run.py test all --ci
    ```
 
 ### Adding New Tests
@@ -324,6 +334,6 @@ When adding new tests:
 - Unit tests: Add to `tests/unit/` using pytest
 - Integration tests: Add to `tests/integration/`
 - Agent tests: Create debug script in agent directory
-- Update `TEST_CATEGORIES` in `test_runner.py` for new categories
+- Update `TEST_CATEGORIES` in `run.py` for new categories
 
 For complete testing documentation, see [TEST_GUIDE.md](TEST_GUIDE.md).

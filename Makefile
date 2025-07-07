@@ -39,13 +39,13 @@ logs-api: ## View API logs
 	docker-compose logs -f api
 
 test: ## Run all tests
-	docker-compose exec orchestrator ./test_runner.py
+	docker-compose exec orchestrator python run.py test all
 
 test-unit: ## Run unit tests
-	docker-compose exec orchestrator ./test_runner.py unit
+	docker-compose exec orchestrator python run.py test unit
 
 test-integration: ## Run integration tests
-	docker-compose exec orchestrator ./test_runner.py integration
+	docker-compose exec orchestrator python run.py test integration
 
 shell: ## Open shell in orchestrator container
 	docker-compose exec orchestrator /bin/bash
@@ -61,10 +61,10 @@ frontend: ## Open frontend in browser
 	@open http://localhost:3000 2>/dev/null || xdg-open http://localhost:3000 2>/dev/null || echo "Please open http://localhost:3000 in your browser"
 
 hello: ## Run hello world example
-	docker-compose exec orchestrator python hello_agents.py
+	docker-compose exec orchestrator python run.py example hello_world
 
 demo: ## Run interactive demo
-	docker-compose exec orchestrator python quickstart.py
+	docker-compose exec orchestrator python run.py
 
 health: ## Check service health
 	@echo "Checking service health..."

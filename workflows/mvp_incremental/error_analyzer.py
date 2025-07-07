@@ -28,6 +28,17 @@ class ErrorInfo:
     recovery_hint: Optional[str] = None
 
 
+@dataclass
+class ErrorContext:
+    """Context information for an error"""
+    error_type: str
+    error_message: str
+    line_number: int
+    context_lines: List[str]
+    stack_trace: str
+    recovery_hints: List[str]
+
+
 class SimplifiedErrorAnalyzer:
     """
     Simplified error analyzer for MVP incremental workflow.

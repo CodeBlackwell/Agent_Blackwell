@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-from shared.utils import logger
+from workflows.logger import workflow_logger as logger
 from workflows.mvp_incremental.validator import CodeValidator
 from workflows.mvp_incremental.test_execution import TestExecutor, TestExecutionConfig, TestResult
 

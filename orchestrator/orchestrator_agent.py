@@ -10,6 +10,8 @@ from typing import List, Dict, Optional, Any
 import time
 import json
 import re
+import subprocess
+import platform
 
 # Add the project root to the Python path so we can import from the agents module
 project_root = Path(__file__).parent.parent
@@ -726,8 +728,53 @@ async def enhanced_orchestrator(input: list[Message], context: Context) -> Async
 
     yield MessagePart(content=response.result.text)
 
+def kill_process_on_port(port: int):
+    """Kill any process listening on the specified port."""
+    try:
+        if platform.system() == "Darwin" or platform.system() == "Linux":
+            # Find process using lsof
+            result = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True,
+                text=True
+            )
+            if result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    try:
+                        subprocess.run(["kill", "-9", pid])
+                        print(f"✅ Killed process {pid} on port {port}")
+                    except Exception as e:
+                        print(f"⚠️  Failed to kill process {pid}: {e}")
+        elif platform.system() == "Windows":
+            # Windows command to find and kill process
+            result = subprocess.run(
+                ["netstat", "-ano", "|", "findstr", f":{port}"],
+                capture_output=True,
+                text=True,
+                shell=True
+            )
+            if result.stdout:
+                lines = result.stdout.strip().split('\n')
+                for line in lines:
+                    parts = line.split()
+                    if len(parts) > 4:
+                        pid = parts[-1]
+                        try:
+                            subprocess.run(["taskkill", "/F", "/PID", pid])
+                            print(f"✅ Killed process {pid} on port {port}")
+                        except Exception as e:
+                            print(f"⚠️  Failed to kill process {pid}: {e}")
+    except Exception as e:
+        print(f"⚠️  Error checking port {port}: {e}")
+
 # Run the server
 if __name__ == "__main__":
     print("🚀 Starting Enhanced Coding Team Agent System on port 8080...")
     print("✨ Features: Progress Tracking | Parallel Execution | Comprehensive Reporting")
+    
+    # Kill any existing process on port 8080
+    print("🔍 Checking for existing processes on port 8080...")
+    kill_process_on_port(8080)
+    
     server.run(port=8080)

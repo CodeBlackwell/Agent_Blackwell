@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import time
 
-from shared.utils import logger
+from workflows.logger import workflow_logger as logger
 
 
 @dataclass

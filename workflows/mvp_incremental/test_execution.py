@@ -12,9 +12,9 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from pathlib import Path
 
-from shared.utils import logger
+from workflows.logger import workflow_logger as logger
 from workflows.mvp_incremental.validator import CodeValidator
-from workflows.mvp_incremental.error_analyzer import ErrorAnalyzer, ErrorContext
+from workflows.mvp_incremental.error_analyzer import SimplifiedErrorAnalyzer, ErrorContext
 
 
 @dataclass
@@ -44,7 +44,7 @@ class TestExecutor:
     def __init__(self, validator: CodeValidator, config: TestExecutionConfig):
         self.validator = validator
         self.config = config
-        self.error_analyzer = ErrorAnalyzer()
+        self.error_analyzer = SimplifiedErrorAnalyzer()
         
     async def execute_tests(self, 
                           code: str, 

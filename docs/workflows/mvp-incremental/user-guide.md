@@ -1,14 +1,14 @@
-# MVP Incremental Workflow Demo - Complete User Guide
+# MVP Incremental Workflow - User Guide
 
 ## 🌟 Overview
 
-The MVP Incremental Workflow Demo is a beginner-friendly tool that helps you create production-ready software using AI agents. This sophisticated system breaks down your requirements and builds your application step-by-step, with validation and testing at each phase.
+The MVP Incremental Workflow is a beginner-friendly tool that helps you create production-ready software using AI agents. This sophisticated system breaks down your requirements and builds your application step-by-step, with validation and testing at each phase.
 
 ### What Does It Do?
 
-This demo tool orchestrates a team of specialized AI agents to:
+This workflow orchestrates a team of specialized AI agents to:
 - 📋 Analyze your requirements and create a development plan
-- 🏗️ Design the architecture and structure
+- 🏗️ Design the architecture and structure  
 - 💻 Implement features incrementally with validation
 - 🧪 Write and run comprehensive tests
 - 🔍 Review code for quality and best practices
@@ -18,7 +18,7 @@ This demo tool orchestrates a team of specialized AI agents to:
 
 ### Prerequisites
 
-Before running the demo, ensure you have:
+Before running the workflow, ensure you have:
 - Python 3.8 or higher
 - UV package manager (`pip install uv`)
 - A virtual environment set up
@@ -46,7 +46,7 @@ Before running the demo, ensure you have:
 
 4. **Run the demo:**
    ```bash
-   python demo_mvp_incremental.py
+   python demos/advanced/mvp_incremental_demo.py
    ```
 
 ## 🎯 Usage Modes
@@ -55,7 +55,7 @@ Before running the demo, ensure you have:
 
 Simply run without arguments:
 ```bash
-python demo_mvp_incremental.py
+python demos/advanced/mvp_incremental_demo.py
 ```
 
 This mode provides:
@@ -72,22 +72,22 @@ Use command-line arguments for direct execution:
 #### Using Presets
 ```bash
 # Simple calculator example
-python demo_mvp_incremental.py --preset calculator
+python demos/advanced/mvp_incremental_demo.py --preset calculator
 
 # TODO API with all phases enabled
-python demo_mvp_incremental.py --preset todo-api --all-phases
+python demos/advanced/mvp_incremental_demo.py --preset todo-api --all-phases
 
 # Authentication system with custom configuration
-python demo_mvp_incremental.py --preset auth-system --tests --no-integration
+python demos/advanced/mvp_incremental_demo.py --preset auth-system --tests --no-integration
 ```
 
 #### Custom Requirements
 ```bash
 # Basic custom project
-python demo_mvp_incremental.py --requirements "Create a web scraper for news articles"
+python demos/advanced/mvp_incremental_demo.py --requirements "Create a web scraper for news articles"
 
 # Custom project with testing enabled
-python demo_mvp_incremental.py --requirements "Build a chat application" --tests
+python demos/advanced/mvp_incremental_demo.py --requirements "Build a chat application" --tests
 ```
 
 ### 3. Tutorial Mode
@@ -290,21 +290,21 @@ Use the generated code as a starting point and enhance it with your domain knowl
 
 ### Quick Prototype
 ```bash
-python demo_mvp_incremental.py --preset calculator --no-tests --no-integration
+python demos/advanced/mvp_incremental_demo.py --preset calculator --no-tests --no-integration
 ```
 
 ### Production API
 ```bash
-python demo_mvp_incremental.py --preset todo-api --all-phases --save-output
+python demos/advanced/mvp_incremental_demo.py --preset todo-api --all-phases --save-output
 ```
 
 ### Custom Project with Preview
 ```bash
 # First, preview what will happen
-python demo_mvp_incremental.py --requirements "Create a blog engine" --dry-run
+python demos/advanced/mvp_incremental_demo.py --requirements "Create a blog engine" --dry-run
 
 # Then execute if satisfied
-python demo_mvp_incremental.py --requirements "Create a blog engine" --tests
+python demos/advanced/mvp_incremental_demo.py --requirements "Create a blog engine" --tests
 ```
 
 ## 🚀 Advanced Usage
@@ -314,7 +314,7 @@ Create a script to run multiple projects:
 ```bash
 #!/bin/bash
 for preset in calculator todo-api file-processor; do
-    python demo_mvp_incremental.py --preset $preset --save-output
+    python demos/advanced/mvp_incremental_demo.py --preset $preset --save-output
 done
 ```
 
@@ -322,7 +322,7 @@ done
 The tool can be integrated into automated pipelines:
 ```bash
 # In your CI script
-python demo_mvp_incremental.py \
+python demos/advanced/mvp_incremental_demo.py \
     --requirements "$PROJECT_REQUIREMENTS" \
     --all-phases \
     --save-output \
@@ -388,10 +388,10 @@ demo_outputs/
 
 ## 🎉 Conclusion
 
-The MVP Incremental Workflow Demo makes it easy to generate high-quality, production-ready code using AI agents. Whether you're a beginner exploring AI-assisted development or an experienced developer looking to accelerate your workflow, this tool provides the flexibility and guidance you need.
+The MVP Incremental Workflow makes it easy to generate high-quality, production-ready code using AI agents. Whether you're a beginner exploring AI-assisted development or an experienced developer looking to accelerate your workflow, this tool provides the flexibility and guidance you need.
 
 Remember: The generated code is a starting point. Feel free to modify, extend, and improve it to meet your specific requirements!
 
 ---
 
-*Happy coding with AI! 🚀*
+[← Back to MVP Incremental](README.md) | [← Back to Workflows](../README.md) | [← Back to Docs](../../README.md)

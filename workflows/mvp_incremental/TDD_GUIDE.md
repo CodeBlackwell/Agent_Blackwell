@@ -72,10 +72,10 @@ results, report = await execute_workflow(input_data)
 
 ```bash
 # With TDD enabled (default for MVP incremental)
-python demo_mvp_incremental.py --preset calculator --tdd
+python demos/advanced/mvp_incremental_demo.py --preset calculator --tdd
 
 # Or specify the TDD workflow directly
-python demo_mvp_incremental.py --workflow mvp_incremental_tdd --requirements "Your requirements"
+python demos/advanced/mvp_incremental_demo.py --workflow mvp_incremental_tdd --requirements "Your requirements"
 ```
 
 ## Configuration

@@ -102,3 +102,7 @@ The cleanup implementation ensures:
 - Cleanup errors don't break workflows
 - Both workflow manager and API perform cleanup
 - Session-based cleanup (only affects specific session)
+
+---
+
+[← Back to Operations](../operations/) | [← Back to Docs](../)

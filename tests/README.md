@@ -25,20 +25,20 @@ tests/
 
 ## Running Tests
 
-### Using the Test Runner (Recommended)
+### Using the Unified Runner (Recommended)
 ```bash
 # Run all tests
-./test_runner.py
+python run.py test all
 
 # Run specific category
-./test_runner.py unit
-./test_runner.py integration
-./test_runner.py workflow
+python run.py test unit
+python run.py test integration
+python run.py test workflow
 
 # Run with options
-./test_runner.py -v          # Verbose output
-./test_runner.py -p          # Parallel execution
-./test_runner.py --quick     # Quick tests only
+python run.py test all -v    # Verbose output
+python run.py test all -p    # Parallel execution
+python run.py test unit       # Quick tests only
 ```
 
 ### Running Individual Tests
@@ -74,6 +74,6 @@ All test results are saved to `tests/outputs/` with timestamps for analysis:
 
 1. **Unit Tests**: Add to appropriate subdirectory in `tests/unit/`
 2. **Integration Tests**: Add to `tests/integration/`
-3. **Update test_runner.py**: Add new test categories if needed
+3. **Update run.py**: Add new test categories if needed
 4. **Follow naming convention**: `test_*.py` for test files
 5. **Use appropriate imports**: Update sys.path relative to test location

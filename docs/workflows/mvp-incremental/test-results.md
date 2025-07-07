@@ -8,7 +8,7 @@ The MVP Incremental Demo tool has been successfully enhanced and tested. The too
 ## Test Execution Details
 
 ### 1. CLI Help Test
-**Command:** `python demo_mvp_incremental.py --help`
+**Command:** `python demos/advanced/mvp_incremental_demo.py --help`
 
 **Result:** ✅ Success
 - Help documentation displayed correctly
@@ -17,7 +17,7 @@ The MVP Incremental Demo tool has been successfully enhanced and tested. The too
 - Tips section provides helpful guidance
 
 ### 2. List Presets Test
-**Command:** `python demo_mvp_incremental.py --list-presets`
+**Command:** `python demos/advanced/mvp_incremental_demo.py --list-presets`
 
 **Result:** ✅ Success
 - All 4 presets displayed with full details:
@@ -28,7 +28,7 @@ The MVP Incremental Demo tool has been successfully enhanced and tested. The too
 - Each preset shows name, difficulty, time estimate, description, and expected files
 
 ### 3. Dry Run Test
-**Command:** `python demo_mvp_incremental.py --preset calculator --dry-run`
+**Command:** `python demos/advanced/mvp_incremental_demo.py --preset calculator --dry-run`
 
 **Result:** ✅ Success
 - Dry run mode correctly shows what would be executed
@@ -37,7 +37,7 @@ The MVP Incremental Demo tool has been successfully enhanced and tested. The too
 - Clear indication that no changes were made
 
 ### 4. Actual Execution Test
-**Command:** `python demo_mvp_incremental.py --preset calculator --skip-checks --save-output`
+**Command:** `python demos/advanced/mvp_incremental_demo.py --preset calculator --skip-checks --save-output`
 
 **Result:** ⚠️ Partial Success
 - Workflow executed successfully (178 seconds)
@@ -54,7 +54,7 @@ The MVP Incremental Demo tool has been successfully enhanced and tested. The too
 - Phase 6: Test Execution ✅
 
 ### 5. Interactive Mode Test
-**Command:** `python demo_mvp_incremental.py` (with simulated inputs)
+**Command:** `python demos/advanced/mvp_incremental_demo.py` (with simulated inputs)
 
 **Result:** ✅ Success
 - Welcome banner displays with team introduction
@@ -138,3 +138,7 @@ The MVP Incremental Demo tool is fully functional and provides an excellent user
 - ✅ Documents everything clearly
 
 The tool is ready for use by beginners and experts alike, with comprehensive documentation and helpful features throughout.
+
+---
+
+[← Back to MVP Incremental](../mvp-incremental/) | [← Back to Workflows](../) | [← Back to Docs](../../)

@@ -4,33 +4,33 @@ This guide provides complete documentation for all tests in the Multi-Agent Syst
 
 ## 🚀 Quick Start
 
-### Using the Unified Test Runner (Recommended)
+### Using the Unified Runner (Recommended)
 
-The easiest way to run tests is using our unified test runner:
+The easiest way to run tests is using the unified runner:
 
 ```bash
 # Run all tests
-./test_runner.py
+python run.py test all
 
 # Run specific test categories
-./test_runner.py unit              # Run only unit tests
-./test_runner.py unit integration  # Run unit and integration tests
-./test_runner.py workflow agent    # Run workflow and agent tests
+python run.py test unit              # Run only unit tests
+python run.py test unit integration  # Run unit and integration tests
+python run.py test workflow agent    # Run workflow and agent tests
 
 # Run tests in parallel (faster)
-./test_runner.py -p
+python run.py test all -p
 
 # Run quick tests only (unit tests)
-./test_runner.py --quick
+python run.py test unit
 
 # List all available test categories
-./test_runner.py -l
+python run.py list tests
 
 # Verbose output
-./test_runner.py -v
+python run.py test all -v
 
 # CI mode (no emojis, verbose)
-./test_runner.py --ci
+python run.py test all --ci
 ```
 
 ## 📋 Test Categories
@@ -224,7 +224,7 @@ Test-Driven Development workflow specific tests.
 **Run individually**:
 ```bash
 # All TDD tests
-./test_runner.py tdd
+python run.py test tdd
 
 # Specific TDD test
 python tests/tdd/test_tdd_integration.py
@@ -244,7 +244,7 @@ Example and demonstration scripts for various workflows.
 **Run individually**:
 ```bash
 # All demo scripts
-./test_runner.py demo
+python run.py test demo
 
 # Specific demo
 python tests/demo/test_tdd_demo.py
@@ -324,20 +324,20 @@ python tests/demo/test_tdd_demo.py
 
 1. **Quick Tests** (< 1 minute)
    ```bash
-   ./test_runner.py --quick  # Unit tests only
+   python run.py test unit  # Unit tests only
    pytest tests/unit/       # Direct pytest
    ```
 
 2. **Medium Tests** (1-5 minutes)
    ```bash
-   ./test_runner.py unit integration
+   python run.py test unit integration
    python tests/run_agent_tests.py
    ```
 
 3. **Full Test Suite** (5-15 minutes)
    ```bash
-   ./test_runner.py        # All tests
-   ./test_runner.py -p     # All tests in parallel
+   python run.py test all        # All tests
+   python run.py test all -p     # All tests in parallel
    ```
 
 ### Testing Specific Features
@@ -350,7 +350,7 @@ python tests/demo/test_tdd_demo.py
 
 2. **Test TDD Workflow**
    ```bash
-   ./test_runner.py tdd
+   python run.py test tdd
    python tests/test_workflows.py --workflow tdd
    python tests/tdd/test_tdd_integration.py
    ```
@@ -365,7 +365,7 @@ python tests/demo/test_tdd_demo.py
 
 1. **Enable Verbose Output**
    ```bash
-   ./test_runner.py -v
+   python run.py test all -v
    pytest -vv tests/unit/
    ```
 
@@ -426,7 +426,7 @@ For CI/CD pipelines, use:
 
 ```bash
 # CI mode (no emojis, verbose output)
-./test_runner.py --ci
+python run.py test all --ci
 
 # Or run specific test types
 pytest tests/unit/ --tb=short
@@ -452,6 +452,10 @@ When adding new tests:
 1. **Unit Tests**: Add to `tests/unit/` with pytest
 2. **Integration Tests**: Add to `tests/integration/`
 3. **Agent Tests**: Add debug script to agent directory
-4. **Update TEST_CATEGORIES** in `test_runner.py` if adding new category
+4. **Update TEST_CATEGORIES** in `run.py` if adding new category
 
 Follow existing patterns for consistency!
+
+---
+
+[← Back to Developer Guide](../developer-guide/) | [← Back to Docs](../)

@@ -40,19 +40,19 @@
 ### Interactive Demo (Recommended)
 ```bash
 # Run the interactive demo
-python demo_mvp_incremental.py
+python demos/advanced/mvp_incremental_demo.py
 ```
 
 ### Quick Examples
 ```bash
 # Build a calculator with tests
-python demo_mvp_incremental.py --preset calculator
+python demos/advanced/mvp_incremental_demo.py --preset calculator
 
 # Create a TODO API with all phases
-python demo_mvp_incremental.py --preset todo-api --all-phases
+python demos/advanced/mvp_incremental_demo.py --preset todo-api --all-phases
 
 # Custom requirements
-python demo_mvp_incremental.py --requirements "Create a web scraper for news articles"
+python demos/advanced/mvp_incremental_demo.py --requirements "Create a web scraper for news articles"
 ```
 
 ### Run Example Scripts

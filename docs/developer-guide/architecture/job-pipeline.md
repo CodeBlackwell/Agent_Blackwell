@@ -533,3 +533,7 @@ python client.py "Create a to-do list application with user authentication"
 ---
 
 This implementation leverages ACP for agent communication and MCP for system operations like Git, creating a powerful, modular system that follows best practices for AI agent orchestration while maintaining human oversight at critical milestones.
+
+---
+
+[← Back to Architecture](../architecture/) | [← Back to Developer Guide](../../developer-guide/) | [← Back to Docs](../../../)

@@ -4,29 +4,29 @@
 
 ### Interactive Mode (Recommended)
 ```bash
-python demo_mvp_incremental.py
+python demos/advanced/mvp_incremental_demo.py
 ```
 
 ### Common Use Cases
 
 #### Try a Simple Example
 ```bash
-python demo_mvp_incremental.py --preset calculator
+python demos/advanced/mvp_incremental_demo.py --preset calculator
 ```
 
 #### Build a TODO API with Tests
 ```bash
-python demo_mvp_incremental.py --preset todo-api --tests
+python demos/advanced/mvp_incremental_demo.py --preset todo-api --tests
 ```
 
 #### Custom Project with All Features
 ```bash
-python demo_mvp_incremental.py --requirements "Your project description" --all-phases
+python demos/advanced/mvp_incremental_demo.py --requirements "Your project description" --all-phases
 ```
 
 #### Preview Without Running
 ```bash
-python demo_mvp_incremental.py --preset auth-system --dry-run
+python demos/advanced/mvp_incremental_demo.py --preset auth-system --dry-run
 ```
 
 ## 📋 Available Presets
@@ -106,18 +106,18 @@ Create a [type of application] that:
 
 ```bash
 # Beginner: Simple calculator with tests
-python demo_mvp_incremental.py --preset calculator
+python demos/advanced/mvp_incremental_demo.py --preset calculator
 
 # Intermediate: API with full testing
-python demo_mvp_incremental.py --preset todo-api --all-phases
+python demos/advanced/mvp_incremental_demo.py --preset todo-api --all-phases
 
 # Advanced: Custom project with preview
-python demo_mvp_incremental.py \
+python demos/advanced/mvp_incremental_demo.py \
   --requirements "Create a blog engine with user auth" \
   --dry-run
 
 # Production: Full workflow with output
-python demo_mvp_incremental.py \
+python demos/advanced/mvp_incremental_demo.py \
   --preset auth-system \
   --all-phases \
   --save-output \
@@ -126,4 +126,8 @@ python demo_mvp_incremental.py \
 
 ---
 
-*Need more help? Run `python demo_mvp_incremental.py --help` or check the full guide.*
+*Need more help? Run `python demos/advanced/mvp_incremental_demo.py --help` or check the full guide.*
+
+---
+
+[← Back to MVP Incremental](../mvp-incremental/) | [← Back to Workflows](../) | [← Back to Docs](../../)

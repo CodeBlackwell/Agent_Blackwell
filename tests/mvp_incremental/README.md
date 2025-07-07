@@ -51,8 +51,8 @@ This directory contains all tests specific to the MVP incremental workflow imple
 
 ### Run All MVP Tests
 ```bash
-# Using the test runner
-./test_runner.py mvp
+# Using the unified runner
+python run.py test mvp
 
 # Or run individual tests
 python tests/mvp_incremental/test_mvp_incremental.py

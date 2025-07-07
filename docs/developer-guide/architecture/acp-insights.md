@@ -73,3 +73,7 @@
 The most powerful pattern in agent-based systems is the careful decomposition of cognitive tasks into specialized components with clean interfaces. This allows each agent to be optimized independently while the system as a whole becomes more than the sum of its parts.
 
 Rather than building monolithic "do everything" agents, the ACP model encourages thinking in terms of cognitive microservices that can be combined and recombined to solve increasingly complex problems.
+
+---
+
+[← Back to Architecture](../architecture/) | [← Back to Developer Guide](../../developer-guide/) | [← Back to Docs](../../../)

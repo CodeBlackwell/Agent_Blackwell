@@ -169,3 +169,7 @@ You are implementing a sophisticated ACP-based modular autonomous multi-agent so
 - Proper Git workflow with branch management and pull requests
 - Real-time pipeline visibility through Streamlit UI
 - Comprehensive state persistence and audit trails
+
+---
+
+[← Back to Architecture](../architecture/) | [← Back to Developer Guide](../../developer-guide/) | [← Back to Docs](../../../)

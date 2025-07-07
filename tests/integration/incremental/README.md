@@ -49,13 +49,13 @@ python tests/integration/incremental/test_phase7_simple.py
 python tests/integration/incremental/test_phase7_validation.py
 ```
 
-### Using the test runner:
+### Using the unified runner:
 ```bash
 # Run all integration tests (includes incremental)
-./test_runner.py integration
+python run.py test integration
 
-# Run specific test category
-./test_runner.py unit integration
+# Run specific test categories
+python run.py test unit integration
 ```
 
 ## Test Requirements

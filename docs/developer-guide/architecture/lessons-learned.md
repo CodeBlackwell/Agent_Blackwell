@@ -239,3 +239,7 @@ async with Client(base_url="http://localhost:8001") as client:
 3. **Configuration Completeness**: All LLM parameters must be provided explicitly
 4. **API Evolution**: Keep up with API changes (e.g., memory handling)
 5. **Error Information**: Log detailed errors during development for faster debugging
+
+---
+
+[← Back to Architecture](../architecture/) | [← Back to Developer Guide](../../developer-guide/) | [← Back to Docs](../../../)

@@ -1,8 +1,8 @@
 # 🚀 Quick Start Examples
 
-This directory contains three example scripts to help you get started with the Multi-Agent Coding System:
+Examples are now integrated into the unified `run.py` script for a better experience:
 
-## 1. 👋 `hello_agents.py` - Absolute Beginner
+## 1. 👋 Hello World Example - Absolute Beginner
 The simplest possible example. Creates a "Hello World" program using AI agents.
 
 ```bash
@@ -10,29 +10,26 @@ The simplest possible example. Creates a "Hello World" program using AI agents.
 python orchestrator/orchestrator_agent.py
 
 # Then run the example
-python hello_agents.py
+python run.py example hello_world
 ```
 
 **What it does:** Creates a simple Python function with tests using 6 AI agents working together.
 
-## 2. 📘 `simple_example.py` - Basic Usage
-A more complete example with command-line options and different workflows.
+## 2. 📘 Calculator Example - Basic Usage
+A more complete example with different workflow options.
 
 ```bash
 # Start the orchestrator first
 python orchestrator/orchestrator_agent.py
 
-# Run with defaults (TDD workflow)
-python simple_example.py
+# Run the calculator example
+python run.py example calculator
 
-# Specify a workflow
-python simple_example.py --workflow full
+# Or run a custom workflow with your own task
+python run.py workflow tdd --task "Create a password generator"
 
-# Provide your own task
-python simple_example.py --task "Create a password generator"
-
-# Combine options
-python simple_example.py --workflow tdd --task "Build a calculator class"
+# Use different workflows
+python run.py workflow full --task "Build a calculator class"
 ```
 
 **Available workflows:**
@@ -42,17 +39,17 @@ python simple_example.py --workflow tdd --task "Build a calculator class"
 - `design` - Just design phase
 - `implement` - Just coding phase
 
-## 3. 🎯 `quickstart.py` - Advanced Interactive
-Full-featured example with interactive mode and automatic orchestrator startup (requires MCP).
+## 3. 🎯 Interactive Mode - Advanced
+Full-featured interactive mode for exploring all capabilities.
 
 ```bash
-# Interactive mode - prompts for workflow and task
-python quickstart.py
+# Interactive mode - menu-driven interface
+python run.py
 
-# Command line mode
-python quickstart.py --tdd --task "Create a REST API"
-python quickstart.py --full --task "Build a todo app"
-python quickstart.py --plan --task "Design a chat system"
+# Or use command line directly
+python run.py workflow tdd --task "Create a REST API"
+python run.py workflow full --task "Build a todo app"
+python run.py workflow planning --task "Design a chat system"
 ```
 
 ## 📋 Common Tasks to Try
@@ -76,9 +73,9 @@ Here are some example tasks you can use with any of the scripts:
 
 ## 🎯 Which Example Should I Use?
 
-- **New to the system?** Start with `hello_agents.py`
-- **Want to experiment?** Use `simple_example.py`
-- **Need all features?** Use `quickstart.py`
+- **New to the system?** Start with `python run.py example hello_world`
+- **Want to experiment?** Use `python run.py example calculator`
+- **Need all features?** Use `python run.py` (interactive mode)
 
 ## 📁 Output Location
 
@@ -102,6 +99,10 @@ uv pip install -r requirements.txt
 
 **Need more help?**
 Check the main documentation:
-- `README.md` - Project overview
-- `CLAUDE.md` - Detailed system documentation
-- `TEST_GUIDE.md` - Testing documentation
+- [`README.md`](../../README.md) - Project overview
+- [`CLAUDE.md`](../../CLAUDE.md) - Detailed system documentation
+- [Testing Guide](../developer-guide/testing-guide.md) - Testing documentation
+
+---
+
+[← Back to User Guide](../user-guide/) | [← Back to Docs](../)

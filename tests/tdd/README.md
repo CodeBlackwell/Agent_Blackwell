@@ -73,9 +73,9 @@ python tests/tdd/test_tdd_enhanced.py
 
 ## Running All TDD Tests
 
-Using the test runner:
+Using the unified runner:
 ```bash
-./test_runner.py tdd
+python run.py test tdd
 ```
 
 Or directly:

@@ -56,13 +56,13 @@ python tests/demo/test_short_mode_simple.py
 
 ## Running Demo Scripts
 
-### Using the Test Runner
+### Using the Unified Runner
 ```bash
 # Run all demos
-./test_runner.py demo
+python run.py test demo
 
-# Run specific demo category
-./test_runner.py demo -v
+# Run demos with verbose output
+python run.py test demo -v
 ```
 
 ### Direct Execution

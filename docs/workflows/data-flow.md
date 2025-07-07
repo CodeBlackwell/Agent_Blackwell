@@ -6,7 +6,7 @@ This document provides detailed information about data flow between agents in di
 
 **Description:** Test-Driven Development workflow (planner → designer → test_writer → coder → reviewer)
 
-![TDD Workflow Visualization](workflow_visualizations/tdd_workflow.png)
+![TDD Workflow Visualization](../workflow_visualizations/tdd_workflow.png)
 
 ### Data Flow Details
 
@@ -162,7 +162,7 @@ type: sequential
 
 **Description:** Full development workflow (planner → designer → coder → reviewer)
 
-![Full Workflow Visualization](workflow_visualizations/full_workflow.png)
+![Full Workflow Visualization](../workflow_visualizations/full_workflow.png)
 
 ### Data Flow Details
 
@@ -288,7 +288,7 @@ type: sequential
 
 **Description:** Individual workflow step execution (single agent)
 
-![Individual Workflow Visualization](workflow_visualizations/individual_workflow.png)
+![Individual Workflow Visualization](../workflow_visualizations/individual_workflow.png)
 
 ### Data Flow Details
 
@@ -296,5 +296,9 @@ type: sequential
 
 This diagram shows the entire workflow system architecture and all possible agent interactions:
 
-![Workflow System Overview](workflow_visualizations/workflow_overview.png)
+![Workflow System Overview](../workflow_visualizations/workflow_overview.png)
+
+---
+
+[← Back to Workflows](../workflows/) | [← Back to Docs](../)
 

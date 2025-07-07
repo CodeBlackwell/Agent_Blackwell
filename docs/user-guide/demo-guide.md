@@ -83,23 +83,23 @@ The entire Multi-Agent Coding System can be run using Docker, providing a consis
 #### Running Example Scripts
 ```bash
 # Hello World example
-docker-compose exec orchestrator python hello_agents.py
+docker-compose exec orchestrator python run.py example hello_world
 
-# Simple example with parameters
-docker-compose exec orchestrator python simple_example.py --workflow tdd --task "Create a calculator"
+# Calculator example with TDD workflow
+docker-compose exec orchestrator python run.py workflow tdd --task "Create a calculator"
 
-# Interactive quickstart
-docker-compose exec orchestrator python quickstart.py
+# Interactive mode
+docker-compose exec orchestrator python run.py
 ```
 
 #### Running Tests
 ```bash
 # Run all tests
-docker-compose exec orchestrator ./test_runner.py
+docker-compose exec orchestrator python run.py test all
 
 # Run specific test categories
-docker-compose exec orchestrator ./test_runner.py unit
-docker-compose exec orchestrator ./test_runner.py integration
+docker-compose exec orchestrator python run.py test unit
+docker-compose exec orchestrator python run.py test integration
 ```
 
 #### API Testing with Docker
@@ -231,29 +231,29 @@ curl http://localhost:8000/health
 ### 1. Hello World - Simplest Demo
 ```bash
 # The absolute simplest way to see the system work
-python hello_agents.py
+python run.py example hello_world
 ```
 **What it does**: Creates a "Hello World" function with tests using 6 AI agents.
 
 ### 2. Interactive Demo with Examples
 ```bash
-# Run interactively - prompts for workflow and task
-python simple_example.py
+# Run interactively - menu-driven interface
+python run.py
 
 # Or specify parameters
-python simple_example.py --workflow tdd --task "Create a password validator"
-python simple_example.py --workflow full --task "Build a URL shortener"
-python simple_example.py --workflow plan --task "Design a chat application"
+python run.py workflow tdd --task "Create a password validator"
+python run.py workflow full --task "Build a URL shortener"
+python run.py workflow planning --task "Design a chat application"
 ```
 
 ### 3. Advanced Interactive Demo
 ```bash
-# Full-featured demo with auto-orchestrator startup
-python quickstart.py
+# Full-featured interactive mode
+python run.py
 
 # Command line options
-python quickstart.py --tdd --task "Create a REST API for a blog"
-python quickstart.py --full --task "Build a command-line todo app"
+python run.py workflow tdd --task "Create a REST API for a blog"
+python run.py workflow full --task "Build a command-line todo app"
 ```
 
 ---
@@ -308,34 +308,34 @@ python api/test_proof_in_api.py
 
 ### 1. Test-Driven Development (TDD) Workflow
 ```bash
-# Using test runner
-python test_workflows.py --workflow tdd --complexity minimal
+# Using workflow tests
+python tests/test_workflows.py --workflow tdd --complexity minimal
 
-# Using simple example
-python simple_example.py --workflow tdd --task "Create a bank account class"
+# Using unified runner
+python run.py workflow tdd --task "Create a bank account class"
 ```
 **Flow**: Planning → Design → Test Writing → Implementation → Execution → Review
 
 ### 2. Full Development Workflow
 ```bash
-# Using test runner
-python test_workflows.py --workflow full --complexity standard
+# Using workflow tests
+python tests/test_workflows.py --workflow full --complexity standard
 
-# Using simple example
-python simple_example.py --workflow full --task "Build a file encryption tool"
+# Using unified runner
+python run.py workflow full --task "Build a file encryption tool"
 ```
 **Flow**: Planning → Design → Implementation → Execution → Review
 
 ### 3. Individual Step Workflows
 ```bash
 # Just planning
-python simple_example.py --workflow plan --task "Design a microservices architecture"
+python run.py workflow planning --task "Design a microservices architecture"
 
 # Just design
-python simple_example.py --workflow design --task "Create database schema for e-commerce"
+python run.py workflow design --task "Create database schema for e-commerce"
 
 # Just implementation
-python simple_example.py --workflow implement --task "Write a binary search function"
+python run.py workflow implementation --task "Write a binary search function"
 ```
 
 ### 4. Incremental Workflow
@@ -354,19 +354,19 @@ python tests/integration/test_incremental_workflow_basic.py
 ### 1. Run All Tests with Unified Runner
 ```bash
 # Run everything
-./test_runner.py
+python run.py test all
 
 # Run in parallel (faster)
-./test_runner.py -p
+python run.py test all -p
 
 # Verbose output
-./test_runner.py -v
+python run.py test all -v
 ```
 
 ### 2. Unit Tests Only
 ```bash
 # Quick unit tests
-./test_runner.py unit
+python run.py test unit
 
 # Or directly with pytest
 pytest tests/unit/ -v
@@ -376,7 +376,7 @@ pytest tests/unit/ -v
 ### 3. Integration Tests
 ```bash
 # Integration tests only
-./test_runner.py integration
+python run.py test integration
 
 # Specific integration test
 pytest tests/integration/test_realtime_output.py -v
@@ -385,10 +385,10 @@ pytest tests/integration/test_realtime_output.py -v
 ### 4. Workflow Tests
 ```bash
 # All workflow tests
-./test_runner.py workflow
+python run.py test workflow
 
 # Specific workflow test with options
-python test_workflows.py --workflow tdd --complexity complex --verbose
+python tests/test_workflows.py --workflow tdd --complexity complex --verbose
 ```
 
 ### 5. Agent Tests
@@ -559,22 +559,22 @@ open frontend/test_cors.html
 
 ### 1. Build a REST API
 ```bash
-python simple_example.py --workflow tdd --task "Create a REST API for a book library with CRUD operations, pagination, and search"
+python run.py workflow tdd --task "Create a REST API for a book library with CRUD operations, pagination, and search"
 ```
 
 ### 2. Create a CLI Tool
 ```bash
-python simple_example.py --workflow full --task "Build a command-line tool for file organization that sorts files by type and date"
+python run.py workflow full --task "Build a command-line tool for file organization that sorts files by type and date"
 ```
 
 ### 3. Design a System Architecture
 ```bash
-python simple_example.py --workflow plan --task "Design a scalable architecture for a real-time collaboration platform like Google Docs"
+python run.py workflow planning --task "Design a scalable architecture for a real-time collaboration platform like Google Docs"
 ```
 
 ### 4. Implement an Algorithm
 ```bash
-python simple_example.py --workflow implement --task "Implement a caching mechanism with LRU eviction policy"
+python run.py workflow implementation --task "Implement a caching mechanism with LRU eviction policy"
 ```
 
 ---
@@ -616,7 +616,7 @@ ls -la tests/outputs/session_*/
 ### 4. Debug Mode
 ```bash
 # Run with debug output
-python test_workflows.py --verbose --debug
+python tests/test_workflows.py --verbose --debug
 ```
 
 ---
@@ -624,22 +624,22 @@ python test_workflows.py --verbose --debug
 ## 🎯 Demo Scenarios by Audience
 
 ### For Developers
-1. Run `hello_agents.py` for quick overview
-2. Try `simple_example.py` with custom tasks
-3. Explore unit tests with `./test_runner.py unit`
+1. Run `python run.py example hello_world` for quick overview
+2. Try `python run.py workflow tdd` with custom tasks
+3. Explore unit tests with `python run.py test unit`
 
 ### For API Users
-1. Start with `api/demo_api_usage.py`
+1. Start with `python api/demo_api_usage.py`
 2. Try curl commands for manual testing
-3. Check `api/test_proof_in_api.py` for advanced features
+3. Check `python api/test_proof_in_api.py` for advanced features
 
 ### For System Architects
-1. Generate visualizations with `workflow_visualizer.py`
+1. Generate visualizations with `python workflows/workflow_visualizer.py`
 2. Run workflow tests to see system design
 3. Explore incremental workflow capabilities
 
 ### For QA/Testing
-1. Run full test suite with `./test_runner.py`
+1. Run full test suite with `python run.py test all`
 2. Check proof of execution features
 3. Examine test outputs in `tests/outputs/`
 
@@ -660,15 +660,19 @@ python test_workflows.py --verbose --debug
 - Check Docker permissions
 
 **Slow performance**
-- Use parallel test execution: `./test_runner.py -p`
+- Use parallel test execution: `python run.py test all -p`
 - Run specific tests instead of full suite
 
 ---
 
 ## 📚 Additional Resources
 
-- **README.md** - Project overview and setup
-- **CLAUDE.md** - Detailed system documentation
-- **TEST_GUIDE.md** - Comprehensive testing documentation
-- **EXAMPLES.md** - Quick start example guide
-- **API README** - `api/README.md` for API details
+- [`README.md`](../../README.md) - Project overview and setup
+- [`CLAUDE.md`](../../CLAUDE.md) - Detailed system documentation
+- [Testing Guide](../developer-guide/testing-guide.md) - Comprehensive testing documentation
+- [Examples](examples.md) - Quick start example guide
+- [API README](../../api/README.md) - API details
+
+---
+
+[← Back to User Guide](../user-guide/) | [← Back to Docs](../)

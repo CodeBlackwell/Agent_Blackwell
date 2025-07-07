@@ -232,9 +232,13 @@ if word_count < 10:  # Adjust threshold
 
 ## Future Enhancements
 
-See `workflows/mvp_incremental/ENHANCEMENT_PLAN.md` for planned improvements:
+See [`ENHANCEMENT_PLAN.md`](../../../workflows/mvp_incremental/ENHANCEMENT_PLAN.md) for planned improvements:
 - Interactive mode for template customization
 - Preset configurations for common project types
 - Configuration helper utility
 - Example gallery
 - Enhanced documentation
+
+---
+
+[← Back to MVP Incremental](../mvp-incremental/) | [← Back to Workflows](../) | [← Back to Docs](../../)

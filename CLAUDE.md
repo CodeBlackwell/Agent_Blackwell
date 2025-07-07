@@ -71,6 +71,7 @@ python workflows/workflow_visualizer_v4.py --output-dir custom   # Custom output
 
 - **TDD Workflow**: Planning → Design → Test Writing → Implementation → Execution → Review
 - **Full Workflow**: Planning → Design → Implementation → Review  
+- **MVP Incremental Workflow**: Feature-by-feature implementation with validation and reviews (10 phases - see [MVP Incremental Phases](docs/mvp_incremental_phases.md))
 - **Individual Steps**: Execute single agent steps (planning, design, implementation, etc.)
 
 ## Important Configuration

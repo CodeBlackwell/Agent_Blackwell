@@ -59,8 +59,8 @@ TEST_CATEGORIES = {
         "runner": "python",
         "files": [
             "tests/test_workflows.py",
-            "tests/test_incremental_workflow.py",
-            "tests/test_incremental_simple.py"
+            "tests/mvp_incremental/test_incremental_workflow.py",
+            "tests/mvp_incremental/test_incremental_simple.py"
         ]
     },
     "agent": {
@@ -123,6 +123,14 @@ TEST_CATEGORIES = {
         "description": "Orchestrator client functionality tests",
         "runner": "python",
         "script": "tests/orchestrator/test_orchestrator_client.py"
+    },
+    "mvp": {
+        "emoji": "🚀",
+        "name": "MVP Incremental Tests",
+        "description": "MVP incremental workflow specific tests",
+        "runner": "python",
+        "path": "tests/mvp_incremental/",
+        "pattern": "test_*.py"
     }
 }
 
@@ -266,6 +274,17 @@ class TestRunner:
                         self._print(f"Running {Path(file).name}...", Colors.BLUE, "▶️")
                         result = self.run_python_script(file)
                         results["tests"][file] = result
+            elif "path" in config and "pattern" in config:
+                # Pattern-based file discovery
+                path = Path(config["path"])
+                if path.exists():
+                    pattern = config["pattern"]
+                    test_files = sorted(path.glob(pattern))
+                    self._print(f"Found {len(test_files)} tests in {config['path']}", Colors.BLUE, config["emoji"])
+                    for file in test_files:
+                        self._print(f"Running {file.name}...", Colors.BLUE, "▶️")
+                        result = self.run_python_script(str(file))
+                        results["tests"][str(file)] = result
                         
         elif config["runner"] == "mixed":
             # Run both pytest and standalone scripts

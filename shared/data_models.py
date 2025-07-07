@@ -75,6 +75,9 @@ class CodingTeamInput:
     team_members: List[TeamMember] = field(default_factory=list)
     max_retries: int = 3
     timeout_seconds: int = 300
+    # Phase 9 & 10 configuration options
+    run_tests: bool = False  # Enable Phase 9: Test Execution
+    run_integration_verification: bool = False  # Enable Phase 10: Integration Verification
     
     def __post_init__(self):
         # Handle backward compatibility between workflow and workflow_type

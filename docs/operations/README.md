@@ -7,36 +7,25 @@ This section covers operational aspects of running and maintaining the Multi-Age
 ### Deployment & Setup
 - **[Deployment Guide](deployment.md)** - Production deployment strategies
 - **[Configuration Management](configuration.md)** - System configuration
-- **[Environment Setup](environment-setup.md)** - Environment variables and settings
 
 ### Maintenance
 - **[Docker Operations](docker-cleanup.md)** - Container maintenance
-- **[Backup & Recovery](backup-recovery.md)** - Data protection strategies
-- **[Upgrade Procedures](upgrade-procedures.md)** - System updates
 
 ### Monitoring & Performance
 - **[Monitoring Guide](monitoring.md)** - System health monitoring
 - **[Performance Tuning](performance.md)** - Optimization techniques
-- **[Logging & Debugging](logging.md)** - Log management
 
 ### Security
-- **[Security Best Practices](security.md)** - Security guidelines
-- **[Access Control](access-control.md)** - Authentication & authorization
-- **[Audit Logging](audit-logging.md)** - Activity tracking
 
 ## 🚀 Quick Start
 
 ### For System Administrators
 1. Review [Deployment Guide](deployment.md)
 2. Set up [Monitoring](monitoring.md)
-3. Configure [Security](security.md)
-4. Plan [Backup Strategy](backup-recovery.md)
 
 ### For DevOps Engineers
 1. Understand [Docker Operations](docker-cleanup.md)
-2. Configure [CI/CD Pipeline](cicd.md)
-3. Set up [Performance Monitoring](performance.md)
-4. Implement [Logging Strategy](logging.md)
+2. Set up [Performance Monitoring](performance.md)
 
 ## 🔧 Common Operations
 
@@ -114,7 +103,7 @@ tail -f logs/api.log
 - Slow performance
 - Connection errors
 
-See [Troubleshooting Guide](troubleshooting.md) for solutions.
+Check the user guide troubleshooting section for common solutions.
 
 ## 📚 Related Documentation
 

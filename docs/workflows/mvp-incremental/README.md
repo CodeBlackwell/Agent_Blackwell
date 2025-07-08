@@ -12,11 +12,8 @@ The MVP Incremental Workflow is a sophisticated, feature-by-feature development 
 
 ### Test Results & Validation
 - **[Test Results](test-results.md)** - Validation results and bug fixes
-- **[Testing Guide](../../mvp_incremental/TESTING_GUIDE.md)** - Testing strategies
-- **[TDD Guide](../../mvp_incremental/TDD_GUIDE.md)** - TDD workflow guide
 
 ### Examples & Tutorials
-- **[Examples](../../mvp_incremental/examples/README.md)** - Code examples
 - **[Tutorial Mode](#tutorial-mode)** - Interactive learning
 
 ## 🚀 Quick Start
@@ -136,6 +133,6 @@ This provides:
 1. Check the [User Guide](user-guide.md) for detailed information
 2. See [Quick Reference](quick-reference.md) for command options
 3. Review [Troubleshooting](user-guide.md#troubleshooting) section
-4. Explore [Examples](../../mvp_incremental/examples/README.md)
+4. Run the demo script with --tutorial flag for examples
 
 [← Back to Workflows](../README.md) | [← Back to Docs](../../README.md)

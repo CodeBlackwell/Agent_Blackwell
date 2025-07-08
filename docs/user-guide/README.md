@@ -16,7 +16,6 @@ Welcome to the User Guide for the Multi-Agent Orchestrator System. This guide wi
 
 ### Help & Support
 - **[Troubleshooting](troubleshooting.md)** - Solutions to common problems
-- **[FAQ](faq.md)** - Frequently asked questions
 
 ## 🚀 Quick Navigation
 
@@ -31,8 +30,7 @@ Welcome to the User Guide for the Multi-Agent Orchestrator System. This guide wi
 
 ### Having Issues?
 1. Check [Troubleshooting](troubleshooting.md)
-2. Review [FAQ](faq.md)
-3. Search component-specific documentation
+2. Search component-specific documentation
 
 ## 📚 Related Documentation
 

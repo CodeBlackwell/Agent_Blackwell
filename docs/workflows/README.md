@@ -31,7 +31,6 @@ This section covers the various workflow types available in the Multi-Agent Orch
 
 - **[Data Flow](data-flow.md)** - How data moves through workflows
 - **[Workflow Visualizations](../workflow_visualizations/)** - Visual diagrams
-- **[Configuration](configuration.md)** - Customizing workflow behavior
 
 ## 🎯 Choosing a Workflow
 

@@ -1,5 +1,46 @@
 # Modular Agent System
 
+## 🦖 Welcome to CodeRex: The Future of Autonomous Development
+
+> *"While others talk about AI coding assistants, we're building the autonomous development teams of tomorrow."*
+
+### 🌐 The ACP Revolution Has Begun
+
+Three months ago, the internet gained a new protocol layer: **ACP (Agent Communication Protocol)**. Like HTTP transformed human web interaction, ACP is transforming agent-to-agent communication. We're not just early—we're **pioneering**.
+
+This isn't another "AI writes code" tool. This is **CodeRex**—a battle-tested orchestration system where specialized AI agents collaborate like a real development team, with:
+
+- 🧠 **6+ Specialized Agents** vs Codex's basic 2-3 agent setup
+- 🚀 **Horizontal Scalability** through Factory Agents that spawn parallel "Orchestras" 
+- 💰 **Intelligent Cost Optimization**: Deploy cheap models for boilerplate, bring in Claude/Opus for the complex stuff
+- 🔓 **100% Open Source** vs proprietary black boxes
+- 🐳 **Real Execution & Validation** in Docker environments
+- 🧪 **True TDD** with actual test execution, not just test generation
+
+### 🎯 Why This Matters
+
+**The Problem**: Current AI coding tools (Codex, Copilot, etc.) are:
+- Limited to single LLMs (usually OpenAI's inferior coding models)
+- Confused by complex tasks due to oversimplified agent architectures  
+- Expensive because they can't intelligently route tasks to appropriate models
+- Closed source, leaving you dependent on corporate APIs
+
+**Our Solution**: A modular multi-agent orchestra where:
+- **Planner agents** decompose your "build me a full-stack app" into parallel workstreams
+- **Factory agents** spin up specialized teams for frontend, backend, and database
+- **Smart routing** sends simple tasks to GPT-4o-mini while complex logic goes to Claude Opus
+- **Everything runs locally** with your choice of LLMs
+
+### 🏗️ Built for Builders
+
+This isn't just a tool—it's **foundational infrastructure** for the agentic future. While ACP documentation is practically non-existent, this codebase serves as:
+- ✅ Production-ready boilerplate for ACP development
+- ✅ Reference implementation of multi-agent orchestration patterns
+- ✅ Battle-tested workflow management for autonomous teams
+- ✅ Your springboard into the $100B+ autonomous agent economy
+
+---
+
 A modular multi-agent system built on the Agent Communication Protocol (ACP) that orchestrates specialized AI agents to collaborate on software development tasks. Features a highly modular workflow architecture with advanced visualization capabilities.
 
 ## 🌟 Overview

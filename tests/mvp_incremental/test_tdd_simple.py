@@ -7,6 +7,7 @@ Tests individual components without full workflow execution
 import asyncio
 import sys
 from pathlib import Path
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -14,7 +15,7 @@ sys.path.insert(0, str(project_root))
 
 from workflows.mvp_incremental.test_accumulator import TestAccumulator
 from workflows.mvp_incremental.progress_monitor import ProgressMonitor, StepStatus
-from workflows.mvp_incremental.tdd_feature_implementer import TDDPhase
+from workflows.mvp_incremental.tdd_phase_tracker import TDDPhase
 
 
 def test_test_accumulator():
@@ -147,28 +148,38 @@ def test_tdd_phase_tracking():
     phases = list(TDDPhase)
     print(f"TDD Phases: {[p.value for p in phases]}")
     
-    # Simulate phase progression
-    current_phase = TDDPhase.WRITE_TESTS
-    print(f"\n📝 Starting phase: {current_phase.value}")
+    # Test RED-YELLOW-GREEN cycle
+    from workflows.mvp_incremental.tdd_phase_tracker import TDDPhaseTracker
     
-    # Progress through phases
-    phase_order = [
-        TDDPhase.WRITE_TESTS,
-        TDDPhase.RUN_TESTS_FAIL,
-        TDDPhase.IMPLEMENT,
-        TDDPhase.RUN_TESTS_PASS,
-        TDDPhase.REFACTOR
-    ]
+    tracker = TDDPhaseTracker()
+    feature_id = "test_feature_1"
     
-    for i, phase in enumerate(phase_order[1:], 1):
-        print(f"   → Transitioning to: {phase.value}")
-        current_phase = phase
+    # Start in RED phase
+    tracker.start_feature(feature_id)
+    current_phase = tracker.get_current_phase(feature_id)
+    print(f"\n{tracker.get_visual_status(feature_id)}")
+    assert current_phase == TDDPhase.RED
     
-    print("✅ All TDD phases completed")
+    # Transition to YELLOW
+    tracker.transition_to(feature_id, TDDPhase.YELLOW, "Tests passing")
+    print(f"{tracker.get_visual_status(feature_id)}")
+    assert tracker.get_current_phase(feature_id) == TDDPhase.YELLOW
+    
+    # Transition to GREEN
+    tracker.transition_to(feature_id, TDDPhase.GREEN, "Code reviewed")
+    print(f"{tracker.get_visual_status(feature_id)}")
+    assert tracker.get_current_phase(feature_id) == TDDPhase.GREEN
+    
+    print("\n✅ RED-YELLOW-GREEN cycle completed")
+    
+    # Show summary
+    print("\nPhase Tracker Summary:")
+    print(tracker.get_summary_report())
     
     return True
 
 
+@pytest.mark.asyncio
 async def test_workflow_integration():
     """Test basic workflow integration"""
     print("\n=== Testing Basic Workflow Integration ===")

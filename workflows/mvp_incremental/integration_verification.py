@@ -16,6 +16,7 @@ from pathlib import Path
 from workflows.logger import workflow_logger as logger
 from workflows.mvp_incremental.validator import CodeValidator
 from workflows.mvp_incremental.test_execution import TestExecutor, TestExecutionConfig, TestResult
+from workflows.mvp_incremental.tdd_phase_tracker import TDDPhaseTracker, TDDPhase
 
 
 @dataclass
@@ -30,6 +31,7 @@ class IntegrationTestResult:
     build_output: str
     feature_interactions: Dict[str, bool]
     issues_found: List[str]
+    tdd_compliance: Dict[str, str]  # Feature ID -> TDD phase status
 
 
 @dataclass
@@ -46,14 +48,16 @@ class CompletionReport:
     api_documentation: Dict[str, str]
     recommendations: List[str]
     metrics: Dict[str, Any]
+    tdd_summary: Dict[str, Any]  # TDD compliance summary
 
 
 class IntegrationVerifier:
     """Handles full integration verification and reporting."""
     
-    def __init__(self, validator: CodeValidator):
+    def __init__(self, validator: CodeValidator, phase_tracker: Optional[TDDPhaseTracker] = None):
         self.validator = validator
         self.test_executor = TestExecutor(validator, TestExecutionConfig())
+        self.phase_tracker = phase_tracker
         
     async def verify_integration(self,
                                generated_path: Path,
@@ -86,6 +90,9 @@ class IntegrationVerifier:
             interactions
         )
         
+        # Verify TDD compliance
+        tdd_compliance = self._verify_tdd_compliance(features)
+        
         return IntegrationTestResult(
             all_tests_pass=unit_results.success and (integration_results.success if integration_results else True),
             unit_test_results=unit_results,
@@ -95,7 +102,8 @@ class IntegrationVerifier:
             build_successful=build_success,
             build_output=build_output,
             feature_interactions=interactions,
-            issues_found=issues
+            issues_found=issues,
+            tdd_compliance=tdd_compliance
         )
         
     async def _run_all_unit_tests(self, generated_path: Path) -> TestResult:
@@ -271,6 +279,9 @@ else:
             metrics
         )
         
+        # Generate TDD summary
+        tdd_summary = self._generate_tdd_summary(integration_result.tdd_compliance)
+        
         return CompletionReport(
             project_name=project_name,
             timestamp=datetime.now().isoformat(),
@@ -279,7 +290,11 @@ else:
                     "name": f["name"],
                     "status": f.get("status", "unknown"),
                     "retries": f.get("retries", 0),
-                    "test_coverage": f.get("test_coverage", "unknown")
+                    "test_coverage": f.get("test_coverage", "unknown"),
+                    "tdd_phase": integration_result.tdd_compliance.get(
+                        f.get('id', f.get('name', 'unknown')), 
+                        "Not tracked"
+                    )
                 }
                 for f in features
             ],
@@ -302,7 +317,8 @@ else:
             run_instructions=run_instructions,
             api_documentation=api_docs,
             recommendations=recommendations,
-            metrics=metrics
+            metrics=metrics,
+            tdd_summary=tdd_summary
         )
         
     def _calculate_metrics(self,
@@ -378,6 +394,32 @@ else:
         
         return instructions if instructions else ["No clear entry point found - check the code for main functions"]
         
+    def _verify_tdd_compliance(self, features: List[Dict[str, Any]]) -> Dict[str, str]:
+        """Verify TDD compliance for all features."""
+        tdd_compliance = {}
+        
+        if not self.phase_tracker:
+            # No phase tracker available, return default
+            for feature in features:
+                tdd_compliance[feature.get('id', feature.get('name', 'unknown'))] = "No TDD tracking"
+            return tdd_compliance
+        
+        # Check each feature's TDD phase
+        for feature in features:
+            feature_id = feature.get('id', feature.get('name', 'unknown'))
+            current_phase = self.phase_tracker.get_current_phase(feature_id)
+            
+            if current_phase is None:
+                tdd_compliance[feature_id] = "Not tracked"
+            else:
+                tdd_compliance[feature_id] = f"{current_phase.get_emoji()} {current_phase.value}"
+                
+                # Add warnings for incomplete features
+                if current_phase != TDDPhase.GREEN:
+                    logger.warning(f"Feature {feature_id} not in GREEN phase: {current_phase.value}")
+        
+        return tdd_compliance
+        
     def _generate_recommendations(self,
                                 features: List[Dict[str, Any]],
                                 integration_result: IntegrationTestResult,
@@ -408,8 +450,48 @@ else:
         # Error handling
         if integration_result.issues_found:
             recommendations.append("Address the identified issues for production readiness")
+        
+        # TDD compliance
+        if hasattr(integration_result, 'tdd_compliance'):
+            incomplete_features = [
+                fid for fid, phase in integration_result.tdd_compliance.items() 
+                if "GREEN" not in phase and "Not tracked" not in phase
+            ]
+            if incomplete_features:
+                recommendations.append(f"Complete TDD cycle for {len(incomplete_features)} features not in GREEN phase")
             
         return recommendations
+    
+    def _generate_tdd_summary(self, tdd_compliance: Dict[str, str]) -> Dict[str, Any]:
+        """Generate TDD compliance summary."""
+        summary = {
+            "total_features": len(tdd_compliance),
+            "phases": {
+                "RED": 0,
+                "YELLOW": 0,
+                "GREEN": 0,
+                "not_tracked": 0
+            },
+            "compliance_rate": 0.0,
+            "details": tdd_compliance
+        }
+        
+        # Count features by phase
+        for feature_id, phase_info in tdd_compliance.items():
+            if "RED" in phase_info:
+                summary["phases"]["RED"] += 1
+            elif "YELLOW" in phase_info:
+                summary["phases"]["YELLOW"] += 1
+            elif "GREEN" in phase_info:
+                summary["phases"]["GREEN"] += 1
+            else:
+                summary["phases"]["not_tracked"] += 1
+        
+        # Calculate compliance rate (features in GREEN phase)
+        if summary["total_features"] > 0:
+            summary["compliance_rate"] = (summary["phases"]["GREEN"] / summary["total_features"]) * 100
+        
+        return summary
         
     def save_completion_report(self, report: CompletionReport, output_path: Path) -> Path:
         """Save the completion report to a file."""
@@ -433,8 +515,23 @@ else:
                 f.write(f"- {status_emoji} **{feature['name']}**")
                 if feature["retries"] > 0:
                     f.write(f" (required {feature['retries']} retries)")
+                if "tdd_phase" in feature and feature["tdd_phase"] != "Not tracked":
+                    f.write(f" [{feature['tdd_phase']}]")
                 f.write("\n")
             f.write("\n")
+            
+            # Add TDD Summary section
+            if hasattr(report, 'tdd_summary') and report.tdd_summary:
+                f.write("## TDD Compliance Summary\n\n")
+                f.write(f"- **Total Features**: {report.tdd_summary['total_features']}\n")
+                f.write(f"- **Compliance Rate**: {report.tdd_summary['compliance_rate']:.1f}%\n")
+                f.write(f"- **Phase Distribution**:\n")
+                f.write(f"  - 🔴 RED: {report.tdd_summary['phases']['RED']} features\n")
+                f.write(f"  - 🟡 YELLOW: {report.tdd_summary['phases']['YELLOW']} features\n")
+                f.write(f"  - 🟢 GREEN: {report.tdd_summary['phases']['GREEN']} features\n")
+                if report.tdd_summary['phases']['not_tracked'] > 0:
+                    f.write(f"  - ❓ Not Tracked: {report.tdd_summary['phases']['not_tracked']} features\n")
+                f.write("\n")
             
             if report.known_issues:
                 f.write("## Known Issues\n\n")
@@ -480,12 +577,13 @@ async def perform_integration_verification(
     generated_path: Path,
     features: List[Dict[str, Any]],
     workflow_report: Any,
-    project_name: str = "Generated Project"
+    project_name: str = "Generated Project",
+    phase_tracker: Optional[TDDPhaseTracker] = None
 ) -> Tuple[IntegrationTestResult, CompletionReport]:
     """Perform complete integration verification and generate report."""
     # Create validator for the generated code path
     validator = CodeValidator()
-    verifier = IntegrationVerifier(validator)
+    verifier = IntegrationVerifier(validator, phase_tracker)
     
     # Run integration verification
     integration_result = await verifier.verify_integration(

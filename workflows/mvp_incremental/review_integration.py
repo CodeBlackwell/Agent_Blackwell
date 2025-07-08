@@ -16,6 +16,7 @@ class ReviewPhase(Enum):
     PLANNING = "planning"
     DESIGN = "design"
     TEST_SPECIFICATION = "test_specification"
+    IMPLEMENTATION = "implementation"  # For TDD compatibility
     FEATURE_IMPLEMENTATION = "feature_implementation"
     VALIDATION_RESULT = "validation_result"
     FINAL_IMPLEMENTATION = "final_implementation"
@@ -90,6 +91,7 @@ class ReviewIntegration:
             ReviewPhase.PLANNING: self._build_planning_review_prompt,
             ReviewPhase.DESIGN: self._build_design_review_prompt,
             ReviewPhase.TEST_SPECIFICATION: self._build_test_specification_review_prompt,
+            ReviewPhase.IMPLEMENTATION: self._build_implementation_review_prompt,
             ReviewPhase.FEATURE_IMPLEMENTATION: self._build_feature_review_prompt,
             ReviewPhase.VALIDATION_RESULT: self._build_validation_review_prompt,
             ReviewPhase.FINAL_IMPLEMENTATION: self._build_final_review_prompt,
@@ -193,6 +195,51 @@ Please review for:
 3. Are edge cases and error conditions covered?
 4. Will these tests effectively guide the implementation?
 5. Are the test names descriptive and clear?
+
+Provide your review in the format:
+REVIEW: APPROVED or NEEDS REVISION
+FEEDBACK: Your detailed feedback
+SUGGESTIONS: 
+- Suggestion 1
+- Suggestion 2
+MUST FIX:
+- Critical issue 1 (if any)
+"""
+        
+        if request.retry_count > 0:
+            prompt += f"\n\nThis is retry attempt {request.retry_count}."
+            if request.previous_feedback:
+                prompt += f"\nPrevious feedback: {request.previous_feedback}"
+                
+        return prompt
+    
+    def _build_implementation_review_prompt(self, request: ReviewRequest) -> str:
+        """Build prompt for reviewing TDD implementation (after tests pass)."""
+        feature = request.context.get('feature', {})
+        test_code = request.context.get('test_code', '')
+        
+        prompt = f"""Review this TDD implementation (YELLOW → GREEN phase transition):
+
+Feature: {feature.get('title', 'Unknown')}
+Description: {feature.get('description', 'No description')}
+
+Implementation Code:
+{request.content}
+
+Tests (now passing):
+{test_code[:500] if test_code else 'No test code provided'}...
+
+Context:
+- This implementation was written to make failing tests pass (TDD)
+- All tests are now passing (YELLOW phase)
+- {request.context.get('purpose', 'Verify code quality and test compliance')}
+
+Please review for:
+1. Does the implementation satisfy all test requirements?
+2. Is the code minimal and focused (no over-engineering)?
+3. Is the code clean, readable, and maintainable?
+4. Are there any code quality issues?
+5. Should any refactoring be done?
 
 Provide your review in the format:
 REVIEW: APPROVED or NEEDS REVISION

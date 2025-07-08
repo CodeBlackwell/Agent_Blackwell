@@ -2,10 +2,11 @@
 TDD Feature Implementer for MVP Incremental Workflow
 
 This module implements Test-Driven Development (TDD) cycle for each feature:
-1. Write tests first (Red phase)
-2. Run tests to ensure they fail
-3. Implement code to make tests pass (Green phase)
-4. Refactor if needed (Refactor phase)
+1. Write tests first (RED phase - tests must fail)
+2. Implement code to make tests pass (YELLOW phase - awaiting review)
+3. Review and approve implementation (GREEN phase - complete)
+
+Uses the RED-YELLOW-GREEN phase tracking system from Operation Red Yellow.
 """
 
 import re
@@ -21,16 +22,8 @@ from workflows.mvp_incremental.review_integration import ReviewIntegration, Revi
 from workflows.mvp_incremental.test_execution import TestExecutionConfig, TestResult, execute_and_fix_tests
 from workflows.mvp_incremental.validator import CodeValidator
 from workflows.mvp_incremental.coverage_validator import TestCoverageValidator, validate_tdd_test_coverage
+from workflows.mvp_incremental.tdd_phase_tracker import TDDPhase, TDDPhaseTracker
 from workflows.logger import workflow_logger as logger
-
-
-class TDDPhase(Enum):
-    """Phases of TDD cycle"""
-    WRITE_TESTS = "write_tests"
-    RUN_TESTS_FAIL = "run_tests_fail"
-    IMPLEMENT = "implement"
-    RUN_TESTS_PASS = "run_tests_pass"
-    REFACTOR = "refactor"
 
 
 @dataclass
@@ -45,23 +38,26 @@ class TDDFeatureResult:
     refactored: bool = False
     retry_count: int = 0
     success: bool = False
+    final_phase: Optional[TDDPhase] = None
 
 
 class TDDFeatureImplementer:
-    """Manages TDD cycle for feature implementation"""
+    """Manages TDD cycle for feature implementation with RED-YELLOW-GREEN tracking"""
     
     def __init__(self,
                  tracer: WorkflowExecutionTracer,
                  progress_monitor: ProgressMonitor,
                  review_integration: ReviewIntegration,
                  retry_strategy: RetryStrategy,
-                 retry_config: RetryConfig):
+                 retry_config: RetryConfig,
+                 phase_tracker: Optional[TDDPhaseTracker] = None):
         self.tracer = tracer
         self.progress_monitor = progress_monitor
         self.review_integration = review_integration
         self.retry_strategy = retry_strategy
         self.retry_config = retry_config
         self.validator = CodeValidator()
+        self.phase_tracker = phase_tracker or TDDPhaseTracker()
         
     async def implement_feature_tdd(self,
                                   feature: Dict[str, str],
@@ -89,6 +85,13 @@ class TDDFeatureImplementer:
         
         logger.info(f"Starting TDD implementation for {feature_title}")
         self.progress_monitor.update_step(f"feature_{feature_id}", StepStatus.IN_PROGRESS)
+        
+        # Start tracking this feature in RED phase
+        self.phase_tracker.start_feature(feature_id, {
+            "title": feature_title,
+            "index": feature_index
+        })
+        logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
         
         # Phase 1: Write tests for the feature
         test_step_id = self.tracer.start_step(
@@ -120,7 +123,7 @@ class TDDFeatureImplementer:
         if not test_review.approved:
             logger.warning(f"Test review not approved for {feature_title}: {test_review.feedback}")
         
-        # Phase 2: Run tests (expect failure)
+        # Phase 2: Run tests (expect failure) - Confirm RED phase
         logger.info(f"Running tests for {feature_title} (expecting failure)...")
         initial_test_result = await self._run_tests(
             test_code, 
@@ -131,9 +134,19 @@ class TDDFeatureImplementer:
         
         if initial_test_result.success:
             logger.warning(f"Tests passed before implementation for {feature_title} - tests may be invalid")
-            # Continue anyway but mark this as a potential issue
+            # Tests should fail in RED phase
+        else:
+            logger.info(f"✅ Tests failing as expected - RED phase confirmed")
+            # RED phase is confirmed - tests are failing without implementation
         
         # Phase 3: Implement feature to make tests pass
+        # Enforce RED phase before allowing implementation
+        try:
+            self.phase_tracker.enforce_red_phase_start(feature_id)
+        except Exception as e:
+            logger.error(f"Cannot start implementation: {e}")
+            raise ValueError(f"Feature {feature_id} must be in RED phase before implementation can begin")
+        
         retry_count = 0
         implementation_successful = False
         implementation_code = ""
@@ -183,21 +196,51 @@ class TDDFeatureImplementer:
             )
             
             if final_test_result.success:
-                # Validate test coverage
+                # Tests are now passing - transition to YELLOW phase
+                self.phase_tracker.transition_to(
+                    feature_id, 
+                    TDDPhase.YELLOW,
+                    "Tests passing - awaiting review",
+                    {"test_count": final_test_result.passed}
+                )
+                logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
+                
+                # Validate test coverage with enhanced metrics
                 logger.info(f"Validating test coverage for {feature_title}...")
-                coverage_success, coverage_msg = await validate_tdd_test_coverage(
+                coverage_success, coverage_msg, coverage_result = await validate_tdd_test_coverage(
                     test_code,
                     implementation_code,
-                    minimum_coverage=80.0
+                    minimum_coverage=80.0,
+                    minimum_branch_coverage=70.0,
+                    feature_id=feature_id
                 )
                 
                 if coverage_success:
                     implementation_successful = True
                     logger.info(f"✅ Tests passing with sufficient coverage for {feature_title}")
-                    logger.info(f"   {coverage_msg}")
+                    for line in coverage_msg.split('\n'):
+                        if line.strip():
+                            logger.info(f"   {line.strip()}")
+                    
+                    # Log test quality score
+                    if coverage_result and coverage_result.test_quality_score > 0:
+                        logger.info(f"   📊 Test Quality Score: {coverage_result.test_quality_score:.1f}/100")
+                    
+                    # Check if coverage improved
+                    if coverage_result and coverage_result.coverage_improved:
+                        logger.info(f"   📈 Coverage improved from {coverage_result.previous_coverage:.1f}% to {coverage_result.coverage_report.coverage_percentage:.1f}%")
                 else:
                     logger.warning(f"⚠️  Tests pass but coverage insufficient for {feature_title}")
-                    logger.warning(f"   {coverage_msg}")
+                    for line in coverage_msg.split('\n'):
+                        if line.strip():
+                            logger.warning(f"   {line.strip()}")
+                    
+                    # Log suggestions
+                    if coverage_result and coverage_result.suggestions:
+                        logger.warning(f"   💡 Suggestions:")
+                        for suggestion in coverage_result.suggestions[:3]:  # Show top 3
+                            logger.warning(f"      - {suggestion}")
+                    
                     # Continue anyway but log the issue
                     implementation_successful = True
             else:
@@ -209,13 +252,40 @@ class TDDFeatureImplementer:
                     logger.error(f"❌ Tests still failing for {feature_title} after {retry_count} attempts")
                     break
         
-        # Phase 5: Optional refactoring
+        # Phase 5: Review implementation if tests are passing (YELLOW → GREEN)
+        if implementation_successful and self.phase_tracker.get_current_phase(feature_id) == TDDPhase.YELLOW:
+            logger.info(f"Requesting implementation review for {feature_title}...")
+            impl_review = await self._review_implementation(implementation_code, test_code, feature)
+            
+            if impl_review.approved:
+                # Transition to GREEN phase - feature complete!
+                self.phase_tracker.transition_to(
+                    feature_id,
+                    TDDPhase.GREEN,
+                    "Implementation reviewed and approved",
+                    {"reviewer": "feature_reviewer_agent"}
+                )
+                logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
+            else:
+                # Review rejected - back to RED phase
+                self.phase_tracker.transition_to(
+                    feature_id,
+                    TDDPhase.RED,
+                    f"Review rejected: {impl_review.feedback[:100]}",
+                    {"needs_rework": True}
+                )
+                logger.warning(f"Implementation review rejected - back to RED phase")
+                logger.warning(f"Feedback: {impl_review.feedback}")
+                implementation_successful = False
+        
+        # Phase 6: Optional refactoring (only in GREEN phase)
         refactored = False
-        if implementation_successful and self._should_refactor(implementation_code, test_code):
-            logger.info(f"Refactoring {feature_title}...")
-            # In a full implementation, this would call a refactoring agent
-            # For now, we'll skip actual refactoring
-            refactored = False
+        if implementation_successful and self.phase_tracker.get_current_phase(feature_id) == TDDPhase.GREEN:
+            if self._should_refactor(implementation_code, test_code):
+                logger.info(f"Refactoring {feature_title}...")
+                # In a full implementation, this would call a refactoring agent
+                # For now, we'll skip actual refactoring
+                refactored = False
         
         # Create result
         result = TDDFeatureResult(
@@ -227,7 +297,8 @@ class TDDFeatureImplementer:
             final_test_result=final_test_result,
             refactored=refactored,
             retry_count=retry_count,
-            success=implementation_successful
+            success=implementation_successful,
+            final_phase=self.phase_tracker.get_current_phase(feature_id)
         )
         
         # Update progress monitor
@@ -377,51 +448,68 @@ Make the tests pass with minimal, clean code.
                         implementation_code: Dict[str, str],
                         feature_name: str,
                         expect_failure: bool) -> TestResult:
-        """Run tests and return results"""
-        # Combine test code with implementation for validation
-        all_code = self._format_code_for_validator(implementation_code)
-        all_code += "\n\n" + test_code
-        
-        # Use test executor if available, otherwise use validator
+        """Run tests using enhanced test executor with RED phase support"""
+        # Use enhanced test executor with expect_failure support
         test_config = TestExecutionConfig(
             run_tests=True,
             fix_on_failure=False,  # Don't auto-fix in TDD mode
-            test_timeout=30
+            test_timeout=30,
+            expect_failure=expect_failure,  # Pass RED phase expectation
+            cache_results=True,  # Use caching for performance
+            extract_coverage=not expect_failure,  # No coverage in RED phase
+            verbose_output=True  # Get detailed failure info
         )
         
         try:
-            # For now, we'll simulate test execution
-            # In real implementation, this would use the test executor
-            from workflows.mvp_incremental.test_execution import TestExecutor
-            executor = TestExecutor(self.validator, test_config)
+            from workflows.mvp_incremental.test_execution import TestExecutor, execute_and_fix_tests
             
-            # Extract test files from test_code
+            # Combine test code with implementation
+            all_code = self._format_code_for_validator(implementation_code)
+            if test_code:
+                all_code += "\n\n# Test Code\n" + test_code
+            
+            # Extract test files from test_code for targeted execution
             test_files = self._extract_test_files(test_code)
             
-            # Simulate test execution
-            if expect_failure and not implementation_code:
-                # Tests should fail when no implementation
-                return TestResult(
-                    success=False,
-                    passed=0,
-                    failed=len(test_files),
-                    errors=["No implementation found - tests failing as expected"],
-                    output="Tests failed (expected in TDD red phase)",
-                    test_files=test_files
+            # Use the enhanced test executor
+            if self.validator:
+                executor = TestExecutor(self.validator, test_config)
+                result = await executor.execute_tests(
+                    all_code, 
+                    feature_name,
+                    test_files=test_files,
+                    expect_failure=expect_failure
                 )
-            else:
-                # Actual test execution would happen here
-                # For now, we'll do basic validation
-                validation_result = await self.validator.validate_syntax(all_code)
                 
-                return TestResult(
-                    success=validation_result.success,
-                    passed=len(test_files) if validation_result.success else 0,
-                    failed=0 if validation_result.success else len(test_files),
-                    errors=validation_result.errors if not validation_result.success else [],
-                    output=validation_result.details,
-                    test_files=test_files
-                )
+                # Log detailed failure information if available
+                if result.failure_details and len(result.failure_details) > 0:
+                    logger.info(f"Test failure details for {feature_name}:")
+                    for detail in result.failure_details[:3]:  # Show first 3
+                        logger.info(f"  - {detail.test_name}: {detail.failure_type} - {detail.failure_message[:100]}")
+                
+                return result
+            else:
+                # Fallback if no validator available
+                if expect_failure and not implementation_code:
+                    return TestResult(
+                        success=True,  # Success because we expect failure
+                        passed=0,
+                        failed=len(test_files),
+                        errors=["No implementation - tests failing as expected"],
+                        output="Tests failed (RED phase confirmed)",
+                        test_files=test_files,
+                        expected_failure=True
+                    )
+                else:
+                    return TestResult(
+                        success=False,
+                        passed=0,
+                        failed=0,
+                        errors=["No validator available for test execution"],
+                        output="",
+                        test_files=test_files,
+                        expected_failure=expect_failure
+                    )
                 
         except Exception as e:
             logger.error(f"Error running tests: {str(e)}")
@@ -431,7 +519,8 @@ Make the tests pass with minimal, clean code.
                 failed=1,
                 errors=[str(e)],
                 output=f"Test execution error: {str(e)}",
-                test_files=[]
+                test_files=[],
+                expected_failure=expect_failure
             )
     
     async def _review_tests(self, test_code: str, feature: Dict[str, str]) -> 'ReviewResult':
@@ -442,6 +531,20 @@ Make the tests pass with minimal, clean code.
             context={
                 "feature": feature,
                 "purpose": "TDD test review - ensure tests are comprehensive and will guide implementation"
+            }
+        )
+        
+        return await self.review_integration.request_review(review_request)
+    
+    async def _review_implementation(self, implementation_code: str, test_code: str, feature: Dict[str, str]) -> 'ReviewResult':
+        """Review the implementation after tests pass"""
+        review_request = ReviewRequest(
+            phase=ReviewPhase.IMPLEMENTATION,
+            content=implementation_code,
+            context={
+                "feature": feature,
+                "test_code": test_code,
+                "purpose": "TDD implementation review - verify code quality and test compliance"
             }
         )
         
@@ -544,7 +647,8 @@ Output:
 
 def create_tdd_implementer(tracer: WorkflowExecutionTracer,
                           progress_monitor: ProgressMonitor,
-                          review_integration: ReviewIntegration) -> TDDFeatureImplementer:
+                          review_integration: ReviewIntegration,
+                          phase_tracker: Optional[TDDPhaseTracker] = None) -> TDDFeatureImplementer:
     """Factory function to create TDD implementer with default configuration"""
     retry_config = RetryConfig()
     retry_strategy = RetryStrategy()
@@ -554,5 +658,6 @@ def create_tdd_implementer(tracer: WorkflowExecutionTracer,
         progress_monitor=progress_monitor,
         review_integration=review_integration,
         retry_strategy=retry_strategy,
-        retry_config=retry_config
+        retry_config=retry_config,
+        phase_tracker=phase_tracker
     )

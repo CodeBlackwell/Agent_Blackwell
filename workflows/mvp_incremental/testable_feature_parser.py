@@ -6,6 +6,7 @@ import re
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from workflows.logger import workflow_logger as logger
+from workflows.mvp_incremental.tdd_phase_tracker import TDDPhase
 
 
 @dataclass
@@ -20,12 +21,14 @@ class TestCriteria:
 
 @dataclass
 class TestableFeature:
-    """Feature with testable criteria"""
+    """Feature with testable criteria and TDD phase tracking"""
     id: str
     title: str
     description: str
     test_criteria: TestCriteria
     dependencies: List[str] = field(default_factory=list)
+    test_files: List[str] = field(default_factory=list)  # Test file paths
+    tdd_phase: Optional[TDDPhase] = None  # Current TDD phase (RED/YELLOW/GREEN)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format for compatibility"""
@@ -40,8 +43,28 @@ class TestableFeature:
                 "edge_cases": self.test_criteria.edge_cases,
                 "error_conditions": self.test_criteria.error_conditions
             },
-            "dependencies": self.dependencies
+            "dependencies": self.dependencies,
+            "test_files": self.test_files,
+            "tdd_phase": self.tdd_phase.value if self.tdd_phase else None
         }
+    
+    def can_start_implementation(self) -> bool:
+        """Check if feature is in RED phase and ready for implementation"""
+        return self.tdd_phase == TDDPhase.RED
+    
+    def can_transition_to_green(self) -> bool:
+        """Check if feature is in YELLOW phase and ready for final review"""
+        return self.tdd_phase == TDDPhase.YELLOW
+    
+    def is_complete(self) -> bool:
+        """Check if feature has reached GREEN phase"""
+        return self.tdd_phase == TDDPhase.GREEN
+    
+    def get_phase_emoji(self) -> str:
+        """Get visual indicator for current phase"""
+        if not self.tdd_phase:
+            return "❓"
+        return self.tdd_phase.get_emoji()
 
 
 class TestableFeatureParser:
@@ -104,7 +127,9 @@ class TestableFeatureParser:
         """Extract a specific section from feature content"""
         pattern = rf'{section_name}:\s*([^\n]+(?:\n(?![A-Z][a-z]*:)[^\n]+)*)'
         match = re.search(pattern, content, re.IGNORECASE)
-        return match.group(1).strip() if match else ""
+        if match and match.group(1):
+            return match.group(1).strip()
+        return ""
     
     @staticmethod
     def _extract_dependencies(content: str) -> List[str]:

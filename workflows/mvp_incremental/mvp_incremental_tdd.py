@@ -13,6 +13,7 @@ from workflows.mvp_incremental.review_integration import ReviewIntegration, Revi
 from workflows.mvp_incremental.tdd_feature_implementer import TDDFeatureImplementer, create_tdd_implementer
 from workflows.mvp_incremental.test_accumulator import TestAccumulator
 from workflows.mvp_incremental.integration_verification import perform_integration_verification
+from workflows.mvp_incremental.tdd_phase_tracker import TDDPhaseTracker
 from workflows.logger import workflow_logger as logger
 
 
@@ -78,6 +79,7 @@ async def execute_mvp_incremental_tdd_workflow(
     progress_monitor = ProgressMonitor()
     review_integration = ReviewIntegration(feature_reviewer_agent)
     test_accumulator = TestAccumulator()
+    phase_tracker = TDDPhaseTracker()  # Create phase tracker for RED-YELLOW-GREEN tracking
     
     results = []
     validator_session_id = None
@@ -223,8 +225,8 @@ async def execute_mvp_incremental_tdd_workflow(
     accumulated_code = {}  # Track all code files created
     
     if use_tdd:
-        # Create TDD implementer
-        tdd_implementer = create_tdd_implementer(tracer, progress_monitor, review_integration)
+        # Create TDD implementer with phase tracker
+        tdd_implementer = create_tdd_implementer(tracer, progress_monitor, review_integration, phase_tracker)
         
         # Implement each feature using TDD
         for i, feature in enumerate(features):
@@ -353,6 +355,11 @@ async def execute_mvp_incremental_tdd_workflow(
     
     # End workflow and show summary
     progress_monitor.end_workflow()
+    
+    # Show TDD phase tracker summary
+    print("\n" + "="*60)
+    print(phase_tracker.get_summary_report())
+    print("="*60)
     
     # Export metrics
     metrics = progress_monitor.export_metrics()

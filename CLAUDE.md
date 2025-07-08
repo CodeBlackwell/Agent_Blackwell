@@ -62,7 +62,7 @@ pytest tests/unit/                   # Run unit tests
 pytest tests/integration/            # Run integration tests
 ```
 
-See [TEST_GUIDE.md](TEST_GUIDE.md) for comprehensive testing documentation.
+See [Testing Guide](docs/developer-guide/testing-guide.md) for comprehensive testing documentation.
 
 ### Visualization Commands
 
@@ -81,7 +81,7 @@ python workflows/workflow_visualizer.py --output-dir custom   # Custom output di
 
 - **TDD Workflow**: Planning → Design → Test Writing → Implementation → Execution → Review
 - **Full Workflow**: Planning → Design → Implementation → Review  
-- **MVP Incremental Workflow**: Feature-by-feature implementation with validation and reviews (10 phases - see [MVP Incremental Phases](docs/mvp_incremental_phases.md))
+- **MVP Incremental Workflow**: Feature-by-feature implementation with validation and reviews (10 phases - see [MVP Incremental Phases](docs/workflows/mvp-incremental/phases.md))
 - **Individual Steps**: Execute single agent steps (planning, design, implementation, etc.)
 
 ## Important Configuration
@@ -113,7 +113,7 @@ python workflows/workflow_visualizer.py --output-dir custom   # Custom output di
    - Test individual agents with `test_[agent]_debug.py` files
    - Use workflow tests to validate end-to-end flows
    - All test artifacts saved in `tests/outputs/`
-   - See comprehensive [TEST_GUIDE.md](TEST_GUIDE.md) for details
+   - See comprehensive [Testing Guide](docs/developer-guide/testing-guide.md) for details
 
 4. **Error Handling**:
    - Max review retries: 3 (auto-approves after)
@@ -336,4 +336,4 @@ When adding new tests:
 - Agent tests: Create debug script in agent directory
 - Update `TEST_CATEGORIES` in `run.py` for new categories
 
-For complete testing documentation, see [TEST_GUIDE.md](TEST_GUIDE.md).
+For complete testing documentation, see [Testing Guide](docs/developer-guide/testing-guide.md).

@@ -1,9 +1,10 @@
 """
-MVP Incremental Workflow - Phase 10
-Basic feature breakdown and sequential implementation with validation, retry logic, error analysis, progress monitoring, review integration, test execution, and integration verification
+MVP Incremental Workflow - TDD Only Mode
+Mandatory Test-Driven Development with RED→YELLOW→GREEN phases for every feature.
+No configuration options - TDD is the only way this workflow operates.
 """
 import re
-from typing import List, Dict
+from typing import List, Dict, Optional
 from pathlib import Path
 from shared.data_models import CodingTeamInput, TeamMemberResult, TeamMember
 from workflows.monitoring import WorkflowExecutionTracer
@@ -12,54 +13,37 @@ from workflows.mvp_incremental.progress_monitor import ProgressMonitor, StepStat
 from workflows.mvp_incremental.review_integration import ReviewIntegration, ReviewPhase, ReviewRequest, ReviewResult
 from workflows.mvp_incremental.test_execution import TestExecutionConfig, execute_and_fix_tests
 from workflows.mvp_incremental.integration_verification import perform_integration_verification
+from workflows.mvp_incremental.tdd_phase_tracker import TDDPhaseTracker, TDDPhase
+from workflows.mvp_incremental.testable_feature_parser import TestableFeatureParser, TestableFeature
+from workflows.mvp_incremental.tdd_feature_implementer import TDDFeatureImplementer, TDDFeatureResult
 
 
 
 
-def parse_simple_features(design_output: str) -> List[Dict[str, str]]:
+def parse_testable_features(design_output: str, requirements: str) -> List[TestableFeature]:
     """
-    Simple feature parsing - just extract numbered items or bullet points.
-    Returns list of feature dictionaries with title and description.
+    Parse design output into TestableFeature objects for TDD workflow.
+    Each feature will go through mandatory RED→YELLOW→GREEN phases.
     """
-    features = []
+    parser = TestableFeatureParser()
     
-    # Look for numbered features (1. 2. etc) or bullet points
-    # Updated pattern to be more flexible
-    pattern = r'(?:^|\n)\s*(?:\d+\.|-|\*|•)\s+([^\n]+(?:\n(?!\s*(?:\d+\.|-|\*|•))[^\n]+)*)'
-    matches = re.findall(pattern, design_output, re.MULTILINE)
+    # Parse features using the testable feature parser
+    features = parser.parse_features(design_output, requirements)
     
-    if not matches:
-        # Fallback: look for features in sections
-        if "features" in design_output.lower() or "requirements" in design_output.lower():
-            # Try to find feature-like content
-            lines = design_output.split('\n')
-            for line in lines:
-                line = line.strip()
-                if line and len(line) > 10 and len(line) < 200:
-                    # Basic heuristic: non-empty lines of reasonable length
-                    if any(keyword in line.lower() for keyword in ['add', 'create', 'implement', 'support', 'handle', 'method', 'function', 'class']):
-                        features.append({
-                            "id": f"feature_{len(features) + 1}",
-                            "title": line[:100],
-                            "description": line
-                        })
-        
-        # If still no features, create one big feature
-        if not features:
-            features.append({
-                "id": "feature_1",
-                "title": "Complete Implementation",
-                "description": design_output[:500] + "..."
-            })
-    else:
-        for i, match in enumerate(matches, 1):
-            # Clean up the match
-            title = match.strip().split('\n')[0][:100]  # First line, max 100 chars
-            features.append({
-                "id": f"feature_{i}",
-                "title": title,
-                "description": match.strip()
-            })
+    # If no features found, create a single feature for the entire implementation
+    if not features:
+        features = [TestableFeature(
+            id="feature_1",
+            title="Complete Implementation",
+            description=design_output[:500] + "...",
+            test_criteria={
+                "description": "Implement all requirements",
+                "input_examples": ["As per requirements"],
+                "expected_outputs": ["Working implementation"],
+                "edge_cases": ["Handle all edge cases"],
+                "error_conditions": ["Proper error handling"]
+            }
+        )]
     
     return features
 
@@ -69,20 +53,37 @@ async def execute_mvp_incremental_workflow(
     tracer: WorkflowExecutionTracer = None
 ) -> List[TeamMemberResult]:
     """
-    Execute MVP incremental workflow.
-    Planning → Design → Sequential Feature Implementation with Validation and Review
+    Execute MVP incremental workflow with MANDATORY Test-Driven Development.
+    Planning → Design → For each feature: RED→YELLOW→GREEN cycle
+    
+    This workflow enforces TDD - there is no option to disable it.
+    Every feature MUST go through:
+    1. RED phase: Write tests that fail
+    2. YELLOW phase: Make tests pass, await review
+    3. GREEN phase: Code approved and complete
     """
     from orchestrator.orchestrator_agent import run_team_member_with_tracking
     from agents.feature_reviewer.feature_reviewer_agent import feature_reviewer_agent
     
     if not tracer:
-        tracer = WorkflowExecutionTracer("mvp_incremental")
+        tracer = WorkflowExecutionTracer("mvp_incremental_tdd")
     
-    # Phase 6: Initialize progress monitor
+    # Initialize TDD components
     progress_monitor = ProgressMonitor()
-    
-    # Phase 8: Initialize review integration
     review_integration = ReviewIntegration(feature_reviewer_agent)
+    phase_tracker = TDDPhaseTracker()
+    retry_strategy = RetryStrategy()
+    retry_config = RetryConfig()
+    
+    # Create TDD feature implementer
+    tdd_implementer = TDDFeatureImplementer(
+        tracer=tracer,
+        progress_monitor=progress_monitor,
+        review_integration=review_integration,
+        retry_strategy=retry_strategy,
+        retry_config=retry_config,
+        phase_tracker=phase_tracker
+    )
     
     results = []
     validator_session_id = None  # Track validator session
@@ -188,346 +189,143 @@ async def execute_mvp_incremental_workflow(
     else:
         print(f"\n✅ Design Review: APPROVED")
     
-    # Step 3: Parse features from design
-    print("\n🔍 Parsing features from design...")
-    features = parse_simple_features(design_output)
-    print(f"Found {len(features)} features to implement")
+    # Step 3: Parse features for TDD implementation
+    print("\n🔍 Parsing testable features from design...")
+    features = parse_testable_features(design_output, input_data.requirements)
+    print(f"Found {len(features)} features for TDD implementation")
     
-    # Phase 3: Order features by dependencies
+    # Order features by dependencies
     print("\n🔗 Analyzing feature dependencies...")
     from workflows.mvp_incremental.feature_dependency_parser import FeatureDependencyParser
-    features = FeatureDependencyParser.order_features_smart(features, design_output)
+    # Convert to dict format for dependency parser, then back to TestableFeature
+    feature_dicts = [{"id": f.id, "title": f.title, "description": f.description} for f in features]
+    ordered_dicts = FeatureDependencyParser.order_features_smart(feature_dicts, design_output)
+    
+    # Map back to TestableFeature objects maintaining order
+    feature_map = {f.id: f for f in features}
+    features = [feature_map[d["id"]] for d in ordered_dicts]
     print("📊 Features ordered by dependencies")
     
     # Start the workflow with total feature count
     progress_monitor.start_workflow(total_features=len(features))
     
-    # Step 4: Implement features sequentially
-    progress_monitor.start_phase("Implementation")
+    # Step 4: Implement features using mandatory TDD cycle
+    print("\n🚀 Starting TDD implementation cycle...")
+    print("   Each feature will go through: RED → YELLOW → GREEN phases")
+    progress_monitor.start_phase("TDD Implementation")
+    
     accumulated_code = {}  # Track all code files created
-    retry_config = RetryConfig()  # Phase 4: Initialize retry configuration
-    retry_strategy = RetryStrategy()  # Phase 5: Initialize retry strategy with error analyzer
+    tdd_results = []  # Track TDD results for each feature
     
     for i, feature in enumerate(features):
-        # Phase 6: Start tracking feature progress
-        progress_monitor.start_feature(feature['id'], feature['title'], i+1)
+        # Display TDD phase tracker status
+        print(f"\n{'='*60}")
+        print(f"Feature {i+1}/{len(features)}: {feature.title}")
+        print(f"{'='*60}")
         
-        # Phase 4: Retry loop for feature implementation
-        retry_count = 0
-        feature_implemented = False
-        feature_validation_passed = False
-        last_validation_error = None
+        # Start tracking feature progress
+        progress_monitor.start_feature(feature.id, feature.title, i+1)
         
-        while not feature_implemented and retry_count <= retry_config.max_retries:
-            feature_step_id = tracer.start_step(
-                f"feature_{feature['id']}_attempt_{retry_count}",
-                "coder_agent",
-                {"feature": feature['title'], "retry_count": retry_count}
-            )
-        
-            # Prepare context for coder
-            if retry_count > 0 and last_validation_error:
-                # We're retrying - use special retry prompt
-                error_context = retry_strategy.extract_error_context(last_validation_error)
-                coder_context = retry_strategy.create_retry_prompt(
-                    "",  # original context not needed
-                    feature,
-                    last_validation_error,
-                    error_context,
-                    retry_count,
-                    accumulated_code
-                )
-                print(f"   {RetryStrategy.get_backoff_message(retry_count, retry_config.max_retries)}")
-                progress_monitor.update_step(f"feature_{feature['id']}", StepStatus.RETRYING)
-            elif accumulated_code:
-                # We have existing code - tell coder to modify/extend it
-                coder_context = f"""
-You are implementing a specific feature as part of an EXISTING project. DO NOT create a new project.
-
-ORIGINAL REQUIREMENTS:
-{input_data.requirements}
-
-FEATURE TO IMPLEMENT: {feature['title']}
-Description: {feature['description']}
-
-EXISTING CODE THAT YOU MUST BUILD UPON:
-{_format_existing_code(accumulated_code)}
-
-CRITICAL INSTRUCTIONS:
-1. DO NOT create a new project or use "PROJECT CREATED" format
-2. MODIFY or EXTEND the existing files shown above
-3. Only show the files you're changing or adding
-4. Implement ONLY the specific feature requested
-5. Preserve all existing functionality
-6. Use the same code style and structure as the existing code
-
-OUTPUT FORMAT:
-For each file you modify or create, use this format:
-
-```python
-# filename: path/to/file.py
-<file contents>
-```
-"""
-            else:
-                # First feature - create initial structure
-                coder_context = f"""
-You are implementing the FIRST feature of a new project.
-
-ORIGINAL REQUIREMENTS:
-{input_data.requirements}
-
-FEATURE TO IMPLEMENT: {feature['title']}
-Description: {feature['description']}
-
-INSTRUCTIONS:
-1. Create the initial project structure
-2. Implement ONLY this specific feature
-3. Create complete, runnable code
-4. Include all necessary imports
-
-OUTPUT FORMAT:
-For each file you create, use this format:
-
-```python
-# filename: path/to/file.py
-<file contents>
-```
-"""
-        
-            # Run feature coder agent (not regular coder)
-            coder_result = await run_team_member_with_tracking(
-                "feature_coder_agent",
-                coder_context,
-                f"mvp_incremental_feature_{i+1}_attempt_{retry_count}"
-            )
-        
-            # Extract content from response
-            if isinstance(coder_result, list) and len(coder_result) > 0:
-                code_output = coder_result[0].parts[0].content
-            else:
-                code_output = str(coder_result)
-            
-            # Parse files from code output
-            new_files = _parse_code_files(code_output)
-            # For retries, we need to update the accumulated code, not just add
-            if retry_count > 0:
-                # On retry, replace the code completely with the new version
-                accumulated_code.clear()
-                accumulated_code.update(new_files)
-            else:
-                accumulated_code.update(new_files)
-            
-            # Phase 8: Review the feature implementation before validation
-            feature_review_request = ReviewRequest(
-                phase=ReviewPhase.FEATURE_IMPLEMENTATION,
-                content=code_output,
-                context={
-                    "feature_info": feature,
-                    "existing_code": _format_existing_code(accumulated_code) if len(accumulated_code) > 1 else "",
-                    "dependencies": [f['title'] for f in features[:i]],  # Previous features
+        # Execute TDD cycle for this feature
+        try:
+            # Run the complete TDD cycle (RED→YELLOW→GREEN)
+            tdd_result = await tdd_implementer.implement_feature_tdd(
+                feature={
+                    "id": feature.id,
+                    "title": feature.title,
+                    "description": feature.description
                 },
-                feature_id=feature['id'],
-                retry_count=retry_count,
-                previous_feedback=review_integration.get_feature_feedback(feature['id']) if retry_count > 0 else None
+                existing_code=accumulated_code,
+                requirements=input_data.requirements,
+                design_output=design_output,
+                feature_index=i
             )
             
-            feature_review = await review_integration.request_review(feature_review_request)
+            # Store TDD result
+            tdd_results.append(tdd_result)
             
-            if not feature_review.approved:
-                print(f"   🔍 Feature Review: NEEDS REVISION")
-                print(f"      Feedback: {feature_review.feedback}")
-                if feature_review.must_fix:
-                    print(f"      Must fix: {', '.join(feature_review.must_fix)}")
+            # Update accumulated code with implementation
+            if tdd_result.implementation_code:
+                code_files = _parse_code_files(tdd_result.implementation_code)
+                accumulated_code.update(code_files)
             
-            # PHASE 2: Validate the feature implementation
-            validation_passed = True
-            validation_error = None
-        
-            if accumulated_code:  # Only validate if we have code
-                validation_step_id = tracer.start_step(
-                    f"validate_feature_{feature['id']}",
-                    "validator_agent",
-                    {"feature": feature['title']}
-                )
-                
-                try:
-                    # Prepare validation input with session ID if available
-                    validation_input = f"""
-{f'SESSION_ID: {validator_session_id}' if validator_session_id else ''}
-
-Please validate this code implementation for feature: {feature['title']}
-
-{_format_code_for_validator(accumulated_code)}
-"""
-                    
-                    # Run validator agent
-                    validation_result = await run_team_member_with_tracking(
-                        "validator_agent",
-                        validation_input,
-                        f"mvp_incremental_validate_{i+1}"
-                    )
-                    
-                    # Extract validation output
-                    if isinstance(validation_result, list) and len(validation_result) > 0:
-                        validation_output = validation_result[0].parts[0].content
-                    else:
-                        validation_output = str(validation_result)
-                    
-                    # Extract session ID if this is the first validation
-                    if not validator_session_id and "SESSION_ID:" in validation_output:
-                        session_line = [line for line in validation_output.split('\n') if 'SESSION_ID:' in line][0]
-                        validator_session_id = session_line.split('SESSION_ID:')[1].strip()
-                        print(f"   🔑 Validator session created: {validator_session_id}")
-                    
-                    # Check validation result
-                    if "VALIDATION_RESULT: PASS" in validation_output:
-                        validation_passed = True
-                        progress_monitor.update_feature_validation(feature['id'], True)
-                    elif "VALIDATION_RESULT: FAIL" in validation_output:
-                        validation_passed = False
-                        # Extract error details
-                        if "DETAILS:" in validation_output:
-                            validation_error = validation_output.split("DETAILS:")[1].strip()
-                        progress_monitor.update_feature_validation(feature['id'], False, validation_error)
-                    
-                    tracer.complete_step(validation_step_id, {
-                        "validation_passed": validation_passed,
-                        "session_id": validator_session_id,
-                        "status": "completed"
-                    })
-                    
-                except Exception as e:
-                    print(f"   ⚠️  Validation error: {str(e)}")
-                    validation_passed = False  # Mark as failed so we can retry
-                    validation_error = str(e)
-                    tracer.complete_step(validation_step_id, {
-                        "error": str(e),
-                        "status": "failed"
-                    })
-            
-            # Phase 4: Check if we should retry
-            if not validation_passed:
-                last_validation_error = validation_output if 'validation_output' in locals() else str(validation_error)
-                feature_validation_passed = False
-                
-                # Phase 8: Get review input on whether to retry
-                validation_review_request = ReviewRequest(
-                    phase=ReviewPhase.VALIDATION_RESULT,
-                    content=validation_output if 'validation_output' in locals() else f"Validation error: {validation_error}",
-                    context={
-                        "validation_result": {"success": False},
-                        "error_info": validation_error,
-                        "max_retries": retry_config.max_retries
-                    },
-                    feature_id=feature['id'],
-                    retry_count=retry_count
-                )
-                
-                validation_review = await review_integration.request_review(validation_review_request)
-                
-                # Combine retry strategy decision with review recommendation
-                should_retry_technical = retry_strategy.should_retry(validation_error, retry_count, retry_config)
-                should_retry_review, review_reason = review_integration.should_retry_feature(
-                    feature['id'], 
-                    {"success": False, "error": validation_error}
-                )
-                
-                if should_retry_technical and should_retry_review:
-                    retry_count += 1
-                    print(f"   🔄 Retrying based on technical analysis and review recommendation")
-                    if validation_review.suggestions:
-                        print(f"      Suggestions: {', '.join(validation_review.suggestions[:2])}")
-                    tracer.complete_step(feature_step_id, {
-                        "files_created": list(new_files.keys()),
-                        "validation_passed": False,
-                        "will_retry": True,
-                        "retry_count": retry_count,
-                        "status": "retry"
-                    })
-                    continue  # Retry the feature
-                else:
-                    # Max retries reached, non-retryable error, or review recommends not retrying
-                    if not should_retry_technical:
-                        print(f"   ⚠️  Feature {i+1} failed validation - max retries reached or non-retryable error")
-                    else:
-                        print(f"   ⚠️  Feature {i+1} failed validation - review recommends not retrying")
-                        print(f"      Review feedback: {review_reason}")
-                    if validation_error:
-                        print(f"      Final error: {validation_error}")
-                    feature_implemented = True  # Move on to next feature
-                    progress_monitor.update_step(f"feature_{feature['id']}", StepStatus.FAILED, validation_error)
+            # Update progress based on final phase
+            if tdd_result.final_phase == TDDPhase.GREEN:
+                progress_monitor.complete_feature(feature.id, success=True)
+                print(f"\n✅ Feature completed in GREEN phase!")
+                if tdd_result.green_phase_metrics:
+                    metrics = tdd_result.green_phase_metrics
+                    print(f"   Total cycle time: {metrics.get('metrics', {}).get('cycle_time_seconds', 0):.1f}s")
+                    print(f"   Implementation attempts: {metrics.get('metrics', {}).get('implementation_attempts', 1)}")
             else:
-                # Validation passed
-                feature_validation_passed = True
-                feature_implemented = True
-                progress_monitor.update_step(f"feature_{feature['id']}", StepStatus.COMPLETED)
-                
-                # Phase 9: Test Execution after successful validation
-                if hasattr(input_data, 'run_tests') and input_data.run_tests:
-                    print(f"   🧪 Running tests for {feature['title']}...")
-                    from workflows.mvp_incremental.validator import CodeValidator
-                    test_validator = CodeValidator()
-                    test_config = TestExecutionConfig(
-                        run_tests=True,
-                        fix_on_failure=True,
-                        max_fix_attempts=2
-                    )
-                    
-                    # Execute tests and potentially fix failures
-                    tested_code, test_result = await execute_and_fix_tests(
-                        code_output,
-                        feature['title'],
-                        test_validator,
-                        test_config
-                    )
-                    
-                    if test_result.success:
-                        print(f"   ✅ Tests passed: {test_result.passed} tests")
-                        code_output = tested_code  # Use the tested/fixed code
-                    else:
-                        print(f"   ⚠️  Tests failed: {test_result.failed} failures")
-                        print(f"      Errors: {', '.join(test_result.errors[:2])}")
-                        # Continue anyway but log the test failure
-                        feature_validation_passed = False  # Mark as failed due to tests
+                progress_monitor.complete_feature(feature.id, success=False)
+                print(f"\n⚠️  Feature stuck in {tdd_result.final_phase.value if tdd_result.final_phase else 'UNKNOWN'} phase")
             
-            # Record feature result with validation status
+            # Create TeamMemberResult for compatibility
             feature_result = TeamMemberResult(
                 team_member=TeamMember.coder,
-                output=code_output,
-                name=f"coder_feature_{i+1}",
+                output=f"# Test Code:\n{tdd_result.test_code}\n\n# Implementation Code:\n{tdd_result.implementation_code}",
+                name=f"tdd_feature_{i+1}",
                 metadata={
-                    "validation_passed": validation_passed,
-                    "validation_error": validation_error,
-                    "retry_count": retry_count,
-                    "final_success": feature_validation_passed
+                    "tdd_phase": tdd_result.final_phase.value if tdd_result.final_phase else None,
+                    "success": tdd_result.success,
+                    "retry_count": tdd_result.retry_count,
+                    "test_results": {
+                        "initial": {
+                            "failed": tdd_result.initial_test_result.failed,
+                            "expected_failure": tdd_result.initial_test_result.expected_failure
+                        },
+                        "final": {
+                            "passed": tdd_result.final_test_result.passed,
+                            "failed": tdd_result.final_test_result.failed,
+                            "success": tdd_result.final_test_result.success
+                        }
+                    }
                 }
             )
             results.append(feature_result)
             
-            tracer.complete_step(feature_step_id, {
-                "files_created": list(new_files.keys()),
-                "validation_passed": validation_passed,
-                "retry_count": retry_count,
-                "status": "completed"
-            })
+        except Exception as e:
+            print(f"\n❌ TDD cycle failed for feature: {str(e)}")
+            progress_monitor.complete_feature(feature.id, success=False)
+            
+            # Create error result
+            error_result = TeamMemberResult(
+                team_member=TeamMember.coder,
+                output=f"TDD cycle failed: {str(e)}",
+                name=f"tdd_feature_{i+1}_error",
+                metadata={"error": str(e), "success": False}
+            )
+            results.append(error_result)
         
-        # Complete feature tracking
-        progress_monitor.complete_feature(feature['id'], feature_validation_passed)
-        
-        # Show progress bar periodically
+        # Show progress bar with TDD phase information
         if (i + 1) % 2 == 0 or i == len(features) - 1:  # Every 2 features or at the end
             progress_monitor.print_progress_bar()
+            # Show current phase distribution
+            phase_dist = phase_tracker.get_phase_distribution()
+            if phase_dist:
+                print(f"   Phase Distribution: 🔴 RED: {phase_dist.get(TDDPhase.RED, 0)} | 🟡 YELLOW: {phase_dist.get(TDDPhase.YELLOW, 0)} | 🟢 GREEN: {phase_dist.get(TDDPhase.GREEN, 0)}")
     
-    # Create final consolidated result
-    print("\n📦 Consolidating final implementation...")
+    # Create final consolidated result with TDD summary
+    print("\n📦 Consolidating final TDD implementation...")
     final_code = _consolidate_code(accumulated_code)
     
-    # Count validation results - Phase 4: Include retry information
-    validation_results = [r for r in results if hasattr(r, 'metadata') and r.metadata and 'validation_passed' in r.metadata]
-    passed_validations = sum(1 for r in validation_results if r.metadata.get('final_success', r.metadata.get('validation_passed', False)))
-    failed_validations = len(validation_results) - passed_validations
-    retried_features = sum(1 for r in validation_results if r.metadata.get('retry_count', 0) > 0)
+    # Show TDD summary
+    print("\n📊 TDD Workflow Summary:")
+    print(f"   Total features: {len(features)}")
+    print(f"   Features in GREEN phase: {sum(1 for r in tdd_results if r.final_phase == TDDPhase.GREEN)}")
+    print(f"   Features in YELLOW phase: {sum(1 for r in tdd_results if r.final_phase == TDDPhase.YELLOW)}")
+    print(f"   Features in RED phase: {sum(1 for r in tdd_results if r.final_phase == TDDPhase.RED)}")
+    print(f"   Features with retries: {sum(1 for r in tdd_results if r.retry_count > 0)}")
+    
+    # Get phase tracker summary
+    phase_summary = phase_tracker.get_summary()
+    print(f"\n🔄 TDD Phase Transitions: {phase_summary['total_transitions']}")
+    
+    # Count TDD results
+    tdd_success_count = sum(1 for r in tdd_results if r.success and r.final_phase == TDDPhase.GREEN)
+    tdd_partial_count = sum(1 for r in tdd_results if r.final_phase == TDDPhase.YELLOW)
+    tdd_failed_count = sum(1 for r in tdd_results if r.final_phase == TDDPhase.RED or not r.success)
     
     final_result = TeamMemberResult(
         team_member=TeamMember.coder,
@@ -542,18 +340,20 @@ Please validate this code implementation for feature: {feature['title']}
     # Export metrics for potential further analysis
     metrics = progress_monitor.export_metrics()
     
-    # Phase 8: Final review of complete implementation
+    # Final review of complete TDD implementation
     final_review_request = ReviewRequest(
         phase=ReviewPhase.FINAL_IMPLEMENTATION,
         content=final_code,
         context={
             "requirements": input_data.requirements,
-            "feature_summary": {
-                "total": len(validation_results),
-                "successful": passed_validations,
-                "retried": retried_features,
-                "failed": failed_validations
-            }
+            "tdd_summary": {
+                "total_features": len(features),
+                "green_phase": tdd_success_count,
+                "yellow_phase": tdd_partial_count,
+                "red_phase": tdd_failed_count,
+                "total_transitions": phase_summary['total_transitions']
+            },
+            "feature_phases": {f.feature_id: f.final_phase.value for f in tdd_results if f.final_phase}
         }
     )
     
@@ -563,14 +363,15 @@ Please validate this code implementation for feature: {feature['title']}
     print(f"   Status: {'APPROVED' if final_review.approved else 'NEEDS REVISION'}")
     print(f"   Feedback: {final_review.feedback[:200]}...")
     
-    # Generate comprehensive review summary document
-    print("\n📝 Generating review summary document...")
-    review_summary = await _generate_review_summary(
+    # Generate comprehensive TDD review summary document
+    print("\n📝 Generating TDD workflow summary document...")
+    review_summary = await _generate_tdd_review_summary(
         input_data.requirements,
         review_integration,
-        validation_results,
+        tdd_results,
         final_review,
-        metrics
+        metrics,
+        phase_tracker
     )
     
     # Add review summary to accumulated code as README.md
@@ -597,15 +398,17 @@ Please validate this code implementation for feature: {feature['title']}
         from workflows.workflow_config import GENERATED_CODE_PATH
         generated_path = Path(GENERATED_CODE_PATH)
         
-        # Create feature summary for integration verification
+        # Create feature summary for integration verification from TDD results
         feature_summary = []
         for i, feature in enumerate(features):
+            tdd_result = tdd_results[i] if i < len(tdd_results) else None
             feature_data = {
-                "name": feature['title'],
-                "id": feature['id'],
-                "status": "completed" if (i < len(validation_results) and 
-                         validation_results[i].metadata.get('final_success', False)) else "failed",
-                "retries": validation_results[i].metadata.get('retry_count', 0) if i < len(validation_results) else 0
+                "name": feature.title,
+                "id": feature.id,
+                "status": "completed" if (tdd_result and tdd_result.final_phase == TDDPhase.GREEN) else "failed",
+                "tdd_phase": tdd_result.final_phase.value if tdd_result and tdd_result.final_phase else "UNKNOWN",
+                "retries": tdd_result.retry_count if tdd_result else 0,
+                "test_driven": True  # All features are test-driven in this workflow
             }
             feature_summary.append(feature_data)
         
@@ -742,12 +545,13 @@ def _parse_code_files(code_output: str) -> Dict[str, str]:
     return files
 
 
-async def _generate_review_summary(
+async def _generate_tdd_review_summary(
     requirements: str,
     review_integration: ReviewIntegration,
-    validation_results: List[TeamMemberResult],
+    tdd_results: List[TDDFeatureResult],
     final_review: 'ReviewResult',
-    metrics: Dict
+    metrics: Dict,
+    phase_tracker: TDDPhaseTracker
 ) -> str:
     """Generate a comprehensive review summary document using an LLM."""
     from orchestrator.orchestrator_agent import run_team_member_with_tracking
@@ -756,20 +560,30 @@ async def _generate_review_summary(
     approval_summary = review_integration.get_approval_summary()
     all_must_fix = review_integration.get_must_fix_items()
     
-    # Build prompt for summary generation
-    summary_prompt = f"""Generate a comprehensive review summary document in Markdown format for this incremental development project.
+    # Get phase summary
+    phase_summary = phase_tracker.get_summary()
+    
+    # Build prompt for TDD summary generation
+    summary_prompt = f"""Generate a comprehensive review summary document in Markdown format for this Test-Driven Development (TDD) workflow project.
 
 ## Original Requirements
 {requirements}
 
+## TDD Workflow Summary
+This project was implemented using MANDATORY Test-Driven Development with RED→YELLOW→GREEN phases.
+
+### Phase Distribution
+- Features in GREEN (completed): {sum(1 for r in tdd_results if r.final_phase == TDDPhase.GREEN)}
+- Features in YELLOW (tests pass, awaiting review): {sum(1 for r in tdd_results if r.final_phase == TDDPhase.YELLOW)}
+- Features in RED (tests written/failing): {sum(1 for r in tdd_results if r.final_phase == TDDPhase.RED)}
+
+### TDD Metrics
+- Total phase transitions: {phase_summary['total_transitions']}
+- Features with test-first approach: 100% (mandatory)
+- Average retry count: {sum(r.retry_count for r in tdd_results) / len(tdd_results) if tdd_results else 0:.1f}
+
 ## Review Summary by Phase
 {_format_approval_summary(approval_summary)}
-
-## Implementation Metrics
-- Total features: {len(validation_results)}
-- Successfully implemented: {sum(1 for r in validation_results if r.metadata.get('final_success', False))}
-- Features requiring retry: {sum(1 for r in validation_results if r.metadata.get('retry_count', 0) > 0)}
-- Failed features: {sum(1 for r in validation_results if not r.metadata.get('final_success', False))}
 
 ## Workflow Duration
 - Total time: {metrics.get('workflow_duration', 0):.1f}s
@@ -778,6 +592,9 @@ async def _generate_review_summary(
 ## Final Review Assessment
 Status: {final_review.approved}
 Feedback: {final_review.feedback}
+
+## Feature-by-Feature TDD Results
+{_format_tdd_feature_results(tdd_results)}
 
 ## All Must-Fix Items Identified
 {chr(10).join(f'- {item}' for item in all_must_fix) if all_must_fix else 'None'}
@@ -822,6 +639,32 @@ def _format_approval_summary(approval_summary: Dict) -> str:
             for feature_id, approved in data['features'].items():
                 status = "✅" if approved else "❌"
                 lines.append(f"  - {feature_id}: {status}")
+    return '\n'.join(lines)
+
+
+def _format_tdd_feature_results(tdd_results: List[TDDFeatureResult]) -> str:
+    """Format TDD feature results for summary."""
+    if not tdd_results:
+        return "No features implemented"
+    
+    lines = []
+    for result in tdd_results:
+        phase_emoji = {
+            TDDPhase.GREEN: "🟢",
+            TDDPhase.YELLOW: "🟡", 
+            TDDPhase.RED: "🔴"
+        }.get(result.final_phase, "⚫")
+        
+        lines.append(f"### {result.feature_title}")
+        lines.append(f"- Final Phase: {phase_emoji} {result.final_phase.value if result.final_phase else 'UNKNOWN'}")
+        lines.append(f"- Tests Written: {result.initial_test_result.failed} tests (initially failing)")
+        lines.append(f"- Final Test Status: {result.final_test_result.passed} passed, {result.final_test_result.failed} failed")
+        lines.append(f"- Implementation Attempts: {result.retry_count + 1}")
+        if result.green_phase_metrics:
+            cycle_time = result.green_phase_metrics.get('metrics', {}).get('cycle_time_seconds', 0)
+            lines.append(f"- Total Cycle Time: {cycle_time:.1f}s")
+        lines.append("")
+    
     return '\n'.join(lines)
 
 

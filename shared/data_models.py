@@ -78,6 +78,8 @@ class CodingTeamInput:
     # Phase 9 & 10 configuration options
     run_tests: bool = False  # Enable Phase 9: Test Execution
     run_integration_verification: bool = False  # Enable Phase 10: Integration Verification
+    # Output directory configuration
+    output_path: Optional[str] = None  # Custom output directory for generated files
     
     def __post_init__(self):
         # Handle backward compatibility between workflow and workflow_type

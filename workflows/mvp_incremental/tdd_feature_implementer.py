@@ -27,7 +27,7 @@ from workflows.mvp_incremental.tdd_phase_tracker import TDDPhase, TDDPhaseTracke
 from workflows.mvp_incremental.red_phase import RedPhaseOrchestrator, RedPhaseError
 from workflows.mvp_incremental.yellow_phase import YellowPhaseOrchestrator, YellowPhaseError
 from workflows.mvp_incremental.green_phase import GreenPhaseOrchestrator, GreenPhaseMetrics, GreenPhaseError
-from workflows.mvp_incremental.testable_feature_parser import TestableFeature
+from workflows.mvp_incremental.testable_feature_parser import TestableFeature, TestCriteria
 from workflows.mvp_incremental.code_storage_manager import CodeAccumulator
 from workflows.logger import workflow_logger as logger
 
@@ -152,7 +152,13 @@ class TDDFeatureImplementer:
             id=feature_id,
             title=feature_title,
             description=feature['description'],
-            test_criteria=[]  # Will be populated from test code
+            test_criteria=TestCriteria(
+                description=f"Test criteria for {feature_title}",
+                input_examples=[],
+                expected_outputs=[],
+                edge_cases=[],
+                error_conditions=[]
+            )
         )
         
         # Save test code to temporary location for execution
@@ -374,45 +380,48 @@ class TDDFeatureImplementer:
             
                 if impl_review.approved:
                     # Enter GREEN phase after approval
+                    phase_history = self.phase_tracker.get_phase_history(feature_id)
+                    red_phase_start = phase_history[0].timestamp if phase_history else datetime.now()
+                    
                     metrics = GreenPhaseMetrics(
-                    feature_id=feature_id,
-                    feature_title=feature_title,
-                    red_phase_start=self.phase_tracker.get_phase_history(feature_id)[0][1],  # First phase entry time
-                    yellow_phase_start=yellow_context.time_entered_yellow,
-                    green_phase_start=datetime.now(),
-                    implementation_attempts=retry_count + 1,
-                    review_attempts=yellow_context.review_attempts,
-                    test_execution_count=retry_count + 2  # Initial RED + implementation attempts
-                )
-                
-                try:
-                    green_context = self.green_phase_orchestrator.enter_green_phase(
-                        feature=testable_feature,
-                        metrics=metrics,
-                        review_approved=True,
-                        review_feedback=impl_review.feedback
-                    )
-                    logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
-                    
-                    # Complete the feature in GREEN phase
-                    completion_notes = [
-                        f"Tests written first and confirmed to fail",
-                        f"Implementation completed in {retry_count + 1} attempt(s)",
-                        f"All tests passing with implementation",
-                        f"Code reviewed and approved"
-                    ]
-                    
-                    completion_summary = self.green_phase_orchestrator.complete_feature(
-                        green_context,
-                        completion_notes=completion_notes
+                        feature_id=feature_id,
+                        feature_title=feature_title,
+                        red_phase_start=red_phase_start,
+                        yellow_phase_start=yellow_context.time_entered_yellow,
+                        green_phase_start=datetime.now(),
+                        implementation_attempts=retry_count + 1,
+                        review_attempts=yellow_context.review_attempts,
+                        test_execution_count=retry_count + 2  # Initial RED + implementation attempts
                     )
                     
-                    # Log celebration message
-                    logger.info(completion_summary["celebration_message"])
-                    
-                except GreenPhaseError as e:
-                    logger.error(f"Failed to enter GREEN phase: {e}")
-                    implementation_successful = False
+                    try:
+                        green_context = self.green_phase_orchestrator.enter_green_phase(
+                            feature=testable_feature,
+                            metrics=metrics,
+                            review_approved=True,
+                            review_feedback=impl_review.feedback
+                        )
+                        logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
+                        
+                        # Complete the feature in GREEN phase
+                        completion_notes = [
+                            f"Tests written first and confirmed to fail",
+                            f"Implementation completed in {retry_count + 1} attempt(s)",
+                            f"All tests passing with implementation",
+                            f"Code reviewed and approved"
+                        ]
+                        
+                        completion_summary = self.green_phase_orchestrator.complete_feature(
+                            green_context,
+                            completion_notes=completion_notes
+                        )
+                        
+                        # Log celebration message
+                        logger.info(completion_summary["celebration_message"])
+                        
+                    except GreenPhaseError as e:
+                        logger.error(f"Failed to enter GREEN phase: {e}")
+                        implementation_successful = False
                 else:
                     logger.warning(f"Implementation review rejected - back to RED phase")
                     logger.warning(f"Feedback: {impl_review.feedback}")

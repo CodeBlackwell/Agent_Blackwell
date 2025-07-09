@@ -219,6 +219,18 @@ class PreflightChecker:
             return (False,
                    f"Cannot write to generated directory: {str(e)}",
                    "Check directory permissions or disk space")
+    
+    def is_orchestrator_running(self, port: int = 8080) -> bool:
+        """Check if orchestrator server is running (convenience method).
+        
+        Args:
+            port: Port to check (default 8080)
+            
+        Returns:
+            True if orchestrator is running
+        """
+        passed, _, _ = self.check_orchestrator_server(port)
+        return passed
             
     def run_all_checks(self, skip_optional: bool = False) -> Dict[str, Any]:
         """Run all preflight checks.

@@ -124,7 +124,7 @@ class IntegrationVerifier:
             
         # Run tests
         test_paths = [str(f.relative_to(generated_path)) for f in test_files]
-        return await self.test_executor._run_tests(test_paths)
+        return await self.test_executor._run_tests(test_paths, expect_failure=False)
         
     async def _run_integration_tests(self, generated_path: Path) -> Optional[TestResult]:
         """Run integration tests if they exist."""
@@ -137,7 +137,7 @@ class IntegrationVerifier:
             return None
             
         test_paths = [str(f.relative_to(generated_path)) for f in test_files]
-        return await self.test_executor._run_tests(test_paths)
+        return await self.test_executor._run_tests(test_paths, expect_failure=False)
         
     async def _run_smoke_test(self, generated_path: Path) -> Tuple[bool, str]:
         """Run a basic smoke test of the application."""

@@ -265,3 +265,33 @@ class TDDPhaseTracker:
                     f"Feature {feature_id} is in {current_phase.value} phase. "
                     "Cannot start implementation without being in RED phase."
                 )
+    
+    def get_phase_distribution(self) -> Dict[TDDPhase, int]:
+        """
+        Get the distribution of features across phases.
+        
+        Returns:
+            Dictionary mapping each phase to the count of features in that phase
+        """
+        distribution = {phase: 0 for phase in TDDPhase}
+        for phase in self._feature_phases.values():
+            distribution[phase] += 1
+        return distribution
+    
+    def get_summary(self) -> Dict[str, any]:
+        """
+        Get a summary of the tracker state.
+        
+        Returns:
+            Dictionary with summary information including total transitions
+        """
+        total_transitions = sum(len(history) for history in self._phase_history.values())
+        return {
+            "total_transitions": total_transitions,
+            "total_features": len(self._feature_phases),
+            "phase_distribution": self.get_phase_distribution(),
+            "features_by_phase": {
+                phase.value: self.get_features_in_phase(phase)
+                for phase in TDDPhase
+            }
+        }

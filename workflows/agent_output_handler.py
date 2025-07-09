@@ -143,6 +143,25 @@ class RealTimeOutputHandler:
         )
         self.interactions.append(interaction)
         
+        # Log to debug logger if available
+        try:
+            from demos.lib.debug_logger import get_debug_logger
+            debug_logger = get_debug_logger()
+            if debug_logger:
+                debug_logger.log_agent_interaction(
+                    agent_name=agent_name,
+                    input_data=input_text,
+                    output_data=output_text,
+                    metadata={
+                        **(metadata or {}),
+                        "duration": duration,
+                        "timestamp": start_time,
+                        "step_number": step_number
+                    }
+                )
+        except:
+            pass  # Silently ignore if debug logger not available
+        
         if self.display_mode == "minimal":
             # Determine success/failure
             success = True

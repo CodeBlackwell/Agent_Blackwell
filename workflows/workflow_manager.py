@@ -11,6 +11,14 @@ def verify_imports():
     """Verify all imports are working correctly and print diagnostics"""
     print("\n===== WORKFLOW IMPORT VERIFICATION =====")
     
+    # Try to get debug logger if available
+    debug_logger = None
+    try:
+        from demos.lib.debug_logger import get_debug_logger
+        debug_logger = get_debug_logger()
+    except:
+        pass
+    
     import_checks = {
         "shared.data_models": ["TeamMember", "TeamMemberResult", "CodingTeamInput", "WorkflowStep"],
         "workflows.tdd.tdd_workflow": ["execute_tdd_workflow"],
@@ -29,16 +37,31 @@ def verify_imports():
             print(f"✅ Successfully imported {module_name}")
             
             # Check if each expected item exists in the module
+            items_found = []
             for item in items:
                 if hasattr(module, item):
                     print(f"  ✅ Found {item} in {module_name}")
+                    items_found.append(item)
                 else:
                     print(f"  ❌ ERROR: {item} not found in {module_name}")
                     all_imports_successful = False
+            
+            # Log to debug logger if available
+            if debug_logger:
+                debug_logger.log_import_verification(
+                    module_name, items, True, 
+                    error=None if len(items_found) == len(items) else f"Missing items: {set(items) - set(items_found)}"
+                )
                     
         except Exception as e:
             print(f"❌ ERROR importing {module_name}: {str(e)}")
             all_imports_successful = False
+            
+            # Log to debug logger if available
+            if debug_logger:
+                debug_logger.log_import_verification(
+                    module_name, items, False, error=str(e)
+                )
     
     if all_imports_successful:
         print("✅ All imports verified successfully")
@@ -82,9 +105,12 @@ async def execute_workflow(input_data: CodingTeamInput,
     Returns:
         Tuple of (team member results, execution report)
     """
-    print("\n===== WORKFLOW DEBUG: Starting execute_workflow =====")
-    print(f"Input data type: {type(input_data)}")
-    print(f"Input data attributes: {dir(input_data)}")
+    import logging
+    logger = logging.getLogger("workflow_manager")
+    
+    logger.info("\n===== WORKFLOW EXECUTION STARTED =====")
+    logger.info(f"Input type: {type(input_data).__name__}")
+    logger.info(f"Requirements preview: {input_data.requirements[:200]}..." if len(input_data.requirements) > 200 else f"Requirements: {input_data.requirements}")
     
     # Extract workflow type properly
     workflow_type = None
@@ -92,41 +118,41 @@ async def execute_workflow(input_data: CodingTeamInput,
     # First check workflow_type field (new style)
     if hasattr(input_data, 'workflow_type') and input_data.workflow_type:
         workflow_type = input_data.workflow_type.lower()
-        print(f"DEBUG: Found workflow_type attribute: {workflow_type}")
+        logger.info(f"🎯 Workflow type: {workflow_type}")
     # Then check workflow field (legacy style with enum)
     elif hasattr(input_data, 'workflow') and input_data.workflow:
         # Handle enum value
         if hasattr(input_data.workflow, 'value'):
             workflow_type = input_data.workflow.value.replace('_workflow', '').lower()
-            print(f"DEBUG: Found workflow enum with value: {workflow_type}")
+            logger.info(f"🎯 Workflow type (enum): {workflow_type}")
         else:
             workflow_type = str(input_data.workflow).replace('_workflow', '').lower()
-            print(f"DEBUG: Found workflow string: {workflow_type}")
+            logger.info(f"🎯 Workflow type (string): {workflow_type}")
     
     # Validate workflow type
     if not workflow_type:
-        print("ERROR: No workflow type specified in input data")
+        logger.error("❌ No workflow type specified in input data")
         raise ValueError("No workflow type specified in input data")
     
     # Normalize workflow type
     workflow_type = workflow_type.strip().lower()
-    print(f"DEBUG: Normalized workflow type: {workflow_type}")
+    logger.info(f"📋 Normalized workflow: {workflow_type}")
     
     # Create tracer if not provided
     if tracer is None:
-        print("DEBUG: Creating new tracer")
+        logger.info("📊 Creating new execution tracer")
         tracer = WorkflowExecutionTracer(workflow_type)
     else:
-        print("DEBUG: Using provided tracer")
+        logger.info("📊 Using provided execution tracer")
     
     # Add input metadata to tracer
-    print(f"DEBUG: Adding metadata to tracer")
+    logger.info(f"📝 Adding metadata to tracer")
     tracer.add_metadata('input_requirements', input_data.requirements)
     tracer.add_metadata('workflow_type', workflow_type)
     
     # Add team members if available
     if hasattr(input_data, 'team_members') and input_data.team_members:
-        print(f"DEBUG: Processing team members: {input_data.team_members}")
+        logger.info(f"👥 Processing team members: {len(input_data.team_members)}")
         team_member_names = []
         for member in input_data.team_members:
             if hasattr(member, 'name'):
@@ -136,59 +162,58 @@ async def execute_workflow(input_data: CodingTeamInput,
             else:
                 team_member_names.append(str(member))
         tracer.add_metadata('team_members', team_member_names)
-        print(f"DEBUG: Added team members to metadata: {team_member_names}")
+        logger.info(f"👥 Team: {', '.join(team_member_names)}")
     
     try:
         # Log workflow start
-        print(f" Executing {workflow_type} workflow...")
+        logger.info(f"🚀 Executing {workflow_type} workflow...")
         
         # Execute the appropriate workflow with monitoring
         if workflow_type == "tdd" or workflow_type == "tdd_workflow":
-            print(f"DEBUG: Executing TDD workflow")
+            logger.info(f"🧪 Executing TDD (Test-Driven Development) workflow")
             results = await execute_tdd_workflow(input_data, tracer)
-            print(f"DEBUG: TDD workflow completed, results type: {type(results)}")
+            logger.info(f"✅ TDD workflow completed successfully")
         elif workflow_type == "full" or workflow_type == "full_workflow":
-            print(f"DEBUG: Executing full workflow")
+            logger.info(f"📋 Executing full workflow")
             results = await execute_full_workflow(input_data, tracer)
-            print(f"DEBUG: Full workflow completed, results type: {type(results)}")
+            logger.info(f"✅ Full workflow completed successfully")
         elif workflow_type == "incremental" or workflow_type == "incremental_workflow":
-            print(f"DEBUG: Executing incremental workflow")
+            logger.info(f"🔄 Executing incremental workflow")
             results = await execute_incremental_workflow(input_data, tracer)
-            print(f"DEBUG: Incremental workflow completed, results type: {type(results)}")
+            logger.info(f"✅ Incremental workflow completed successfully")
         elif workflow_type == "mvp_incremental" or workflow_type == "mvp_incremental_workflow":
-            print(f"DEBUG: Executing MVP incremental workflow")
+            logger.info(f"🎯 Executing MVP incremental workflow")
             results = await execute_mvp_incremental_workflow(input_data, tracer)
-            print(f"DEBUG: MVP incremental workflow completed, results type: {type(results)}")
+            logger.info(f"✅ MVP incremental workflow completed successfully")
         elif workflow_type == "mvp_incremental_tdd" or workflow_type == "mvp_tdd":
-            print(f"DEBUG: Executing MVP incremental TDD workflow")
+            logger.info(f"🧪 Executing MVP incremental TDD workflow")
             results = await execute_mvp_incremental_tdd_workflow(input_data, tracer)
-            print(f"DEBUG: MVP incremental TDD workflow completed, results type: {type(results)}")
+            logger.info(f"✅ MVP incremental TDD workflow completed successfully")
         elif workflow_type in ["individual", "planning", "design", "test_writing", "implementation", "review"]:
             # For individual workflows, set the step type if not already set
             if workflow_type != "individual" and not input_data.step_type:
-                print(f"DEBUG: Setting step_type to {workflow_type} for individual workflow")
+                logger.info(f"🎯 Setting step type to '{workflow_type}' for individual workflow")
                 input_data.step_type = workflow_type
-            print(f"DEBUG: Executing individual workflow")
+            logger.info(f"👤 Executing individual workflow: {input_data.step_type or workflow_type}")
             results = await execute_individual_workflow(input_data, tracer)
-            print(f"DEBUG: Individual workflow completed, results type: {type(results)}")
+            logger.info(f"✅ Individual workflow completed successfully")
         else:
             error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, mvp_incremental, mvp_incremental_tdd, mvp_tdd, individual, planning, design, test_writing, implementation, review"
-            print(f"ERROR: {error_msg}")
+            logger.error(f"❌ {error_msg}")
             tracer.complete_execution(error=error_msg)
             raise ValueError(error_msg)
         
-        print(f"DEBUG: Raw results: {results}")
+        logger.info(f"📈 Processing workflow results...")
         
         # Ensure results is a list
         if not isinstance(results, list):
-            print(f"DEBUG: Converting single result to list")
+            logger.info(f"🔄 Converting single result to list")
             results = [results] if results else []
         
         # Ensure all results are TeamMemberResult objects
         validated_results = []
-        print(f"DEBUG: Processing {len(results)} results")
+        logger.info(f"📦 Processing {len(results)} results")
         for i, result in enumerate(results):
-            print(f"DEBUG: Processing result {i}, type: {type(result)}")
             if isinstance(result, TeamMemberResult):
                 print(f"DEBUG: Result {i} is already TeamMemberResult")
                 validated_results.append(result)

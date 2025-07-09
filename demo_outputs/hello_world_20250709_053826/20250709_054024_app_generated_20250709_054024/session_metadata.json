@@ -1,0 +1,185 @@
+{
+  "workflow_type": "mvp_incremental_tdd",
+  "requirements": "\nCreate a simple REST API with the following single feature:\n\nFeature: Hello World Endpoint\n- Create a GET endpoint at /hello that returns {\"message\": \"Hello, World!\"}\n- The API should run on port 8000\n- Include proper error handling\n- Use FastAPI framework\n- Include a simple test to verify the endpoint works\n\nProject Structure:\n- main.py (API implementation)\n- test_main.py (Tests)\n- requirements.txt (Dependencies)\n",
+  "features_implemented": 5,
+  "tdd_summary": {
+    "green_features": 1,
+    "yellow_features": 0,
+    "red_features": 4
+  },
+  "metrics": {
+    "workflow_duration": 70.378873,
+    "total_steps": 7,
+    "total_features": 5,
+    "successful_features": 0,
+    "failed_features": 5,
+    "retried_features": 0,
+    "phase_times": {
+      "planning": 12.979059,
+      "design": 9.69223
+    },
+    "tdd_metrics": {
+      "features_with_tests": 0,
+      "features_tests_passing": 0,
+      "total_test_files": 0,
+      "total_test_functions": 0,
+      "average_coverage": null,
+      "phase_metrics": {
+        "RED": {
+          "count": 0,
+          "total_duration": 0.0,
+          "avg_duration": 0.0
+        },
+        "YELLOW": {
+          "count": 0,
+          "total_duration": 0.0,
+          "avg_duration": 0.0
+        },
+        "GREEN": {
+          "count": 0,
+          "total_duration": 0.0,
+          "avg_duration": 0.0
+        }
+      },
+      "test_execution_metrics": {
+        "total_test_files": 0,
+        "total_test_functions": 0,
+        "avg_test_execution_time": 0.0,
+        "total_fix_iterations": 0,
+        "avg_coverage": 0.0
+      }
+    },
+    "feature_details": {
+      "feature_1": {
+        "title": "Project Setup and Configuration",
+        "passed": false,
+        "attempts": 0,
+        "errors": [],
+        "tests_written": false,
+        "tests_passing": false,
+        "test_files": 0,
+        "test_functions": 0,
+        "coverage": null,
+        "tdd_phase": null,
+        "phase_durations": {},
+        "phase_transitions": [],
+        "test_fix_iterations": 0,
+        "review_attempts": 0,
+        "test_execution_times": [],
+        "test_failure_counts": {}
+      },
+      "feature_5": {
+        "title": "Documentation",
+        "passed": false,
+        "attempts": 0,
+        "errors": [],
+        "tests_written": false,
+        "tests_passing": false,
+        "test_files": 0,
+        "test_functions": 0,
+        "coverage": null,
+        "tdd_phase": null,
+        "phase_durations": {},
+        "phase_transitions": [],
+        "test_fix_iterations": 0,
+        "review_attempts": 0,
+        "test_execution_times": [],
+        "test_failure_counts": {}
+      },
+      "feature_2": {
+        "title": "Implement Hello World Endpoint",
+        "passed": false,
+        "attempts": 0,
+        "errors": [],
+        "tests_written": false,
+        "tests_passing": false,
+        "test_files": 0,
+        "test_functions": 0,
+        "coverage": null,
+        "tdd_phase": null,
+        "phase_durations": {},
+        "phase_transitions": [],
+        "test_fix_iterations": 0,
+        "review_attempts": 0,
+        "test_execution_times": [],
+        "test_failure_counts": {}
+      },
+      "feature_3": {
+        "title": "Error Handling",
+        "passed": false,
+        "attempts": 0,
+        "errors": [],
+        "tests_written": false,
+        "tests_passing": false,
+        "test_files": 0,
+        "test_functions": 0,
+        "coverage": null,
+        "tdd_phase": null,
+        "phase_durations": {},
+        "phase_transitions": [],
+        "test_fix_iterations": 0,
+        "review_attempts": 0,
+        "test_execution_times": [],
+        "test_failure_counts": {}
+      },
+      "feature_4": {
+        "title": "Testing the Endpoint",
+        "passed": false,
+        "attempts": 0,
+        "errors": [],
+        "tests_written": false,
+        "tests_passing": false,
+        "test_files": 0,
+        "test_functions": 0,
+        "coverage": null,
+        "tdd_phase": null,
+        "phase_durations": {},
+        "phase_transitions": [],
+        "test_fix_iterations": 0,
+        "review_attempts": 0,
+        "test_execution_times": [],
+        "test_failure_counts": {}
+      }
+    },
+    "review_summary": {
+      "planning": {
+        "approved": 0,
+        "rejected": 1,
+        "features": {}
+      },
+      "design": {
+        "approved": 0,
+        "rejected": 1,
+        "features": {}
+      },
+      "test": {
+        "approved": 0,
+        "rejected": 1,
+        "features": {
+          "specification_global": false
+        }
+      },
+      "implementation": {
+        "approved": 0,
+        "rejected": 1,
+        "features": {}
+      },
+      "final": {
+        "approved": 0,
+        "rejected": 1,
+        "features": {
+          "implementation_global": false
+        }
+      }
+    }
+  },
+  "timestamp": "2025-07-09T05:40:24.807577",
+  "files_count": 4,
+  "files": [
+    "main.py",
+    "README.md",
+    "test_main.py",
+    "tests/test_hello_world.py"
+  ],
+  "session_path": "demo_outputs/hello_world_20250709_053826/20250709_054024_app_generated_20250709_054024"
+}

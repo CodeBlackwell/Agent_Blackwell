@@ -64,6 +64,18 @@ from workflows.agent_output_handler import RealTimeOutputHandler, get_output_han
 # Load environment variables from .env file
 load_dotenv()
 
+# Configure logging
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Create orchestrator logger
+logger = logging.getLogger("orchestrator")
+logger.setLevel(logging.INFO)
+
 server = Server()
 
 # ============================================================================
@@ -337,6 +349,9 @@ async def run_team_member_with_tracking(agent: str, input: str, objective_name: 
 # Original run_team_member function (keeping for compatibility)
 async def run_team_member(agent: str, input: str) -> list[Message]:
     """Calls a team member agent using ACP protocol"""
+    import logging
+    logger = logging.getLogger("orchestrator")
+    
     agent_ports = {
         "planner_agent": 8080,
         "designer_agent": 8080,
@@ -365,14 +380,30 @@ async def run_team_member(agent: str, input: str) -> list[Message]:
     port = agent_ports.get(agent, 8080)
     base_url = f"http://localhost:{port}"
     
+    # Log agent call details
+    logger.info(f"🤖 Calling agent: {agent} ({internal_agent_name})")
+    logger.info(f"📍 Agent endpoint: {base_url}")
+    logger.info(f"📝 Input preview: {input[:200]}..." if len(input) > 200 else f"📝 Input: {input}")
+    
     async with Client(base_url=base_url) as client:
         try:
+            start_time = time.time()
             run = await client.run_sync(
                 agent=internal_agent_name,
                 input=[Message(parts=[MessagePart(content=input, content_type="text/plain")])]
             )
+            duration = time.time() - start_time
+            
+            # Log successful completion
+            output_preview = ""
+            if run.output and len(run.output) > 0 and hasattr(run.output[0], 'parts'):
+                output_preview = run.output[0].parts[0].content[:200]
+            logger.info(f"✅ Agent {agent} completed in {duration:.2f}s")
+            logger.info(f"📤 Output preview: {output_preview}..." if len(output_preview) >= 200 else f"📤 Output: {output_preview}")
+            
             return run.output
         except Exception as e:
+            logger.error(f"❌ Error calling {agent} on {base_url}: {e}")
             print(f"❌ Error calling {agent} on {base_url}: {e}")
             return [Message(parts=[MessagePart(content=f"Error from {agent}: {e}", content_type="text/plain")])]
 
@@ -500,6 +531,15 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInputModel, ToolRunOptions, CodingTe
         )
         set_output_handler(output_handler)
         
+        import logging
+        logger = logging.getLogger("orchestrator")
+        
+        logger.info(f"🚀 Starting Enhanced Workflow: {input.workflow_type}")
+        logger.info(f"📋 Session ID: {session_id}")
+        logger.info(f"📝 Requirements: {input.requirements[:200]}..." if len(input.requirements) > 200 else f"📝 Requirements: {input.requirements}")
+        logger.info(f"⚙️ Max retries: {input.max_retries}, Timeout: {input.timeout_seconds}s")
+        logger.info(f"📺 Output Mode: {display_mode}")
+        
         print(f"🚀 Starting Enhanced Workflow: {input.workflow_type}")
         print(f"📋 Session ID: {session_id}")
         print(f"📺 Output Mode: {display_mode}")
@@ -525,7 +565,9 @@ class EnhancedCodingTeamTool(Tool[CodingTeamInputModel, ToolRunOptions, CodingTe
             )
             
             # Execute the workflow with comprehensive monitoring
+            logger.info(f"🔄 Executing workflow via workflow_manager...")
             results, execution_report = await execute_workflow(workflow_input, tracer=tracer)
+            logger.info(f"✅ Workflow execution completed with {len(results)} results")
             
             # Analyze test results from outputs
             await self._analyze_test_results(results)

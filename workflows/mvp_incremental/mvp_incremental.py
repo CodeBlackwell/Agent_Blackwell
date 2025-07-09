@@ -28,7 +28,7 @@ def parse_testable_features(design_output: str, requirements: str) -> List[Testa
     parser = TestableFeatureParser()
     
     # Parse features using the testable feature parser
-    features = parser.parse_features(design_output, requirements)
+    features = parser.parse_features_with_criteria(design_output)
     
     # If no features found, create a single feature for the entire implementation
     if not features:
@@ -215,6 +215,7 @@ async def execute_mvp_incremental_workflow(
     progress_monitor.start_phase("TDD Implementation")
     
     accumulated_code = {}  # Track all code files created
+    accumulated_test_code = {}  # Track all test files created
     tdd_results = []  # Track TDD results for each feature
     
     for i, feature in enumerate(features):
@@ -248,6 +249,11 @@ async def execute_mvp_incremental_workflow(
             if tdd_result.implementation_code:
                 code_files = _parse_code_files(tdd_result.implementation_code)
                 accumulated_code.update(code_files)
+            
+            # Update accumulated test code
+            if tdd_result.test_code:
+                test_files = _parse_code_files(tdd_result.test_code)
+                accumulated_test_code.update(test_files)
             
             # Update progress based on final phase
             if tdd_result.final_phase == TDDPhase.GREEN:
@@ -389,14 +395,72 @@ async def execute_mvp_incremental_workflow(
     # Add metrics to the final result
     final_result.metadata = metrics
     
+    # Save the accumulated code to disk
+    from workflows.mvp_incremental.code_saver import CodeSaver
+    from datetime import datetime
+    from pathlib import Path
+    
+    print("\n💾 Saving generated code to disk...")
+    # Use custom output path if provided, otherwise use default
+    if hasattr(input_data, 'output_path') and input_data.output_path:
+        code_saver = CodeSaver(base_path=Path(input_data.output_path))
+    else:
+        code_saver = CodeSaver()
+    
+    # Create a session directory with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    session_name = f"app_generated_{timestamp}"
+    session_path = code_saver.create_session_directory(session_name)
+    
+    # Save all accumulated code files
+    if accumulated_code:
+        saved_files = code_saver.save_code_files(accumulated_code)
+        print(f"   ✅ Saved {len(saved_files)} files to {session_path}")
+        
+    # Save test files
+    if accumulated_test_code:
+        test_saved_files = code_saver.save_code_files(accumulated_test_code, feature_name="tests")
+        print(f"   ✅ Saved {len(test_saved_files)} test files to {session_path}")
+        
+        # Extract dependencies and create requirements.txt if needed
+        from workflows.mvp_incremental.code_saver import extract_dependencies_from_code
+        dependencies = extract_dependencies_from_code(accumulated_code)
+        if dependencies:
+            code_saver.create_requirements_file(dependencies)
+            print(f"   ✅ Created requirements.txt with {len(dependencies)} dependencies")
+            
+        # Save metadata about the workflow
+        metadata = {
+            "workflow_type": "mvp_incremental_tdd",
+            "requirements": input_data.requirements[:500] + "..." if len(input_data.requirements) > 500 else input_data.requirements,
+            "features_implemented": len(features),
+            "tdd_summary": {
+                "green_features": sum(1 for r in tdd_results if r.final_phase == TDDPhase.GREEN),
+                "yellow_features": sum(1 for r in tdd_results if r.final_phase == TDDPhase.YELLOW),
+                "red_features": sum(1 for r in tdd_results if r.final_phase == TDDPhase.RED)
+            },
+            "metrics": metrics
+        }
+        code_saver.save_metadata(metadata)
+        print(f"   ✅ Saved session metadata")
+    else:
+        print("   ⚠️  No code files to save")
+    
+    # Create a symlink to latest for easy access
+    latest_link = code_saver.base_path / "app_generated_latest"
+    if latest_link.exists() and latest_link.is_symlink():
+        latest_link.unlink()
+    if accumulated_code or accumulated_test_code:  # Create symlink if we saved any code
+        latest_link.symlink_to(session_path.name)
+        print(f"   ✅ Created symlink: app_generated_latest -> {session_path.name}")
+    
     # Phase 10: Integration Verification
     if hasattr(input_data, 'run_integration_verification') and input_data.run_integration_verification:
         print("\n🔍 Starting Integration Verification...")
         progress_monitor.start_phase("Integration Verification")
         
-        # Determine output path from workflow config
-        from workflows.workflow_config import GENERATED_CODE_PATH
-        generated_path = Path(GENERATED_CODE_PATH)
+        # Use the session path we just created
+        generated_path = session_path
         
         # Create feature summary for integration verification from TDD results
         feature_summary = []

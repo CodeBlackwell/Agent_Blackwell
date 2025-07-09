@@ -284,6 +284,43 @@ Progress: [{bar}] {percentage:.0f}%
             json.dump(data, f, indent=2, default=str)
             
         return output_file
+    
+    def print_banner(self, title: str, subtitle: Optional[str] = None, width: int = 60) -> None:
+        """Print a banner with title and optional subtitle.
+        
+        Args:
+            title: Main title text
+            subtitle: Optional subtitle text
+            width: Banner width
+        """
+        print("\n" + "=" * width)
+        print(title.center(width))
+        if subtitle:
+            print(subtitle.center(width))
+        print("=" * width + "\n")
+    
+    def print_section(self, title: str, width: int = 60) -> None:
+        """Print a section header.
+        
+        Args:
+            title: Section title
+            width: Section width
+        """
+        print(f"\n{title}")
+        print("-" * min(len(title) + 5, width))
+    
+    def show_error(self, message: str, suggestions: Optional[List[str]] = None) -> None:
+        """Show an error message with optional suggestions.
+        
+        Args:
+            message: Error message
+            suggestions: List of suggested actions
+        """
+        print(f"\n❌ Error: {message}")
+        if suggestions:
+            print("\n💡 Suggestions:")
+            for suggestion in suggestions:
+                print(f"   • {suggestion}")
 
 
 # Convenience formatters for different modes

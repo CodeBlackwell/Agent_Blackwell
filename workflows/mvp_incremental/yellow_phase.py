@@ -43,8 +43,8 @@ class YellowPhaseContext:
             "feature_title": self.feature.title,
             "test_results": {
                 "success": self.test_results.success,
-                "test_count": len(self.test_results.logs) if self.test_results.logs else 0,
-                "output_summary": self.test_results.stdout[:500] if self.test_results.stdout else ""
+                "test_count": len(self.test_results.test_files) if self.test_results.test_files else 0,
+                "output_summary": self.test_results.output[:500] if self.test_results.output else ""
             },
             "implementation_path": self.implementation_path,
             "time_entered_yellow": self.time_entered_yellow.isoformat(),
@@ -103,7 +103,7 @@ class YellowPhaseOrchestrator:
         self.phase_tracker.transition_to(
             feature.id,
             TDDPhase.YELLOW,
-            f"Tests passing - awaiting review. All {len(test_results.logs or [])} tests passed."
+            f"Tests passing - awaiting review. {test_results.passed} tests passed."
         )
         
         logger.info(f"Feature {feature.id} entered YELLOW phase - tests passing, awaiting review")
@@ -157,7 +157,7 @@ class YellowPhaseOrchestrator:
             },
             "test_status": {
                 "all_passing": context.test_results.success,
-                "test_count": len(context.test_results.logs) if context.test_results.logs else 0,
+                "test_count": context.test_results.passed + context.test_results.failed,
                 "execution_time": getattr(context.test_results, 'execution_time', 'Unknown')
             },
             "yellow_phase_info": {

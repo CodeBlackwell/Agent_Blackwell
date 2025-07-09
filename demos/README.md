@@ -27,19 +27,28 @@ python run.py --help
 
 ```
 demos/
-├── README.md              # This file
-├── examples/              # Pre-configured example projects
-│   ├── calculator.yaml    # Simple calculator example
-│   ├── todo_api.yaml      # TODO REST API example
-│   └── auth_system.yaml   # Authentication system example
-├── legacy/                # Old demo scripts (deprecated)
+├── README.md                    # This file
+├── run_all_tests.py            # Run all test categories
+├── build_calculator.py         # TDD workflow calculator demo
+├── build_rest_api.py          # MVP incremental API demo
+├── build_cli_tool.py          # Full workflow CLI demo
+├── compare_workflows.py        # Compare different workflows
+├── quick_prototype.py          # Individual agent steps demo
+├── test_driven_refactor.py     # TDD refactoring demo
+├── performance_benchmark.py    # Workflow performance comparison
+├── test_coverage_demo.py       # Test coverage validation demo
+├── examples/                   # Pre-configured example projects
+│   ├── calculator.yaml         # Simple calculator example
+│   ├── todo_api.yaml          # TODO REST API example
+│   └── auth_system.yaml       # Authentication system example
+├── legacy/                     # Old demo scripts (deprecated)
 │   ├── hello_agents.py
 │   ├── quickstart.py
 │   └── simple_example.py
-├── advanced/              # Advanced demonstrations
+├── advanced/                   # Advanced demonstrations
 │   ├── mvp_incremental_demo.py
 │   └── api_demo.py
-└── lib/                   # Helper modules for demos
+└── lib/                        # Helper modules for demos
     ├── config_loader.py
     ├── interactive_menu.py
     ├── workflow_runner.py
@@ -90,6 +99,93 @@ The `legacy/` directory contains the original demo scripts. These are deprecated
 - **simple_example.py** - Basic example with command-line arguments
 
 ⚠️ **Note**: These scripts will show deprecation warnings. Please use `run.py` instead.
+
+## Standalone Demo Scripts
+
+The demos directory now includes several standalone scripts that explore interesting user stories:
+
+### 🧪 run_all_tests.py
+Run all test categories with comprehensive reporting.
+```bash
+python demos/run_all_tests.py              # Run all tests
+python demos/run_all_tests.py unit         # Run only unit tests
+```
+- Shows test results for unit, integration, workflow, agent, executor, and API tests
+- Provides execution summary with timing and success rates
+- Saves detailed results to JSON
+
+### 🧮 build_calculator.py
+Build a calculator using Test-Driven Development (TDD).
+```bash
+python demos/build_calculator.py           # Simple calculator
+python demos/build_calculator.py advanced  # Advanced calculator
+```
+- Demonstrates the RED-YELLOW-GREEN TDD cycle
+- Shows how tests drive implementation
+- Educational walkthrough of TDD principles
+
+### 🌐 build_rest_api.py
+Build a REST API using MVP Incremental workflow.
+```bash
+python demos/build_rest_api.py          # TODO API (default)
+python demos/build_rest_api.py blog     # Blog API
+python demos/build_rest_api.py auth     # Authentication API
+```
+- Shows all 10 phases of MVP Incremental development
+- Tracks progress through each phase
+- Generates production-ready API code
+
+### 🖥️ build_cli_tool.py
+Build a command-line tool using Full workflow.
+```bash
+python demos/build_cli_tool.py                # File manager CLI
+python demos/build_cli_tool.py text-processor # Text processing CLI
+```
+- Complete planning through implementation
+- Shows all 4 phases of Full workflow
+- Creates fully functional CLI applications
+
+### ⚖️ compare_workflows.py
+Compare different workflows with the same requirements.
+```bash
+python demos/compare_workflows.py                    # Default comparison
+python demos/compare_workflows.py "Your custom req"  # Custom requirements
+```
+- Runs TDD, Full, and MVP Incremental on same task
+- Shows timing and approach differences
+- Helps choose the right workflow for your needs
+
+### ⚡ quick_prototype.py
+Use individual agent steps for rapid prototyping.
+```bash
+python demos/quick_prototype.py              # Interactive mode
+python demos/quick_prototype.py algorithm    # Algorithm prototype
+python demos/quick_prototype.py api-endpoint # API endpoint prototype
+```
+- Call specific agents directly
+- Chain agent outputs together
+- Perfect for quick experiments
+
+### ♻️ test_driven_refactor.py
+Safely refactor code using TDD principles.
+```bash
+python demos/test_driven_refactor.py              # Interactive mode
+python demos/test_driven_refactor.py example.py   # Refactor specific file
+```
+- Ensures tests exist before refactoring
+- Maintains functionality while improving code
+- Shows common refactoring patterns
+
+### ⚡ performance_benchmark.py
+Benchmark workflow performance and efficiency.
+```bash
+python demos/performance_benchmark.py              # Full benchmark
+python demos/performance_benchmark.py --quick      # Quick benchmark
+python demos/performance_benchmark.py --workflows tdd,full  # Specific workflows
+```
+- Measures execution time and efficiency
+- Compares quality vs speed trade-offs
+- Generates detailed performance reports
 
 ## Advanced Demos
 

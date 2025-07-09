@@ -219,141 +219,141 @@ class TDDFeatureImplementer:
         
         try:
             while not implementation_successful and retry_count <= self.retry_config.max_retries:
-                    impl_step_id = self.tracer.start_step(
-                        f"tdd_implement_{feature_id}_attempt_{retry_count}",
-                        "coder_agent",
-                        {"feature": feature_title, "retry": retry_count}
-                    )
+                impl_step_id = self.tracer.start_step(
+                    f"tdd_implement_{feature_id}_attempt_{retry_count}",
+                    "coder_agent",
+                    {"feature": feature_title, "retry": retry_count}
+                )
                 
-                    # Create implementation context with RED phase info
-                    if retry_count > 0 and self.retry_config.modify_prompt_on_retry:
-                        # Use enhanced retry prompt for subsequent attempts
-                        error_context = self.retry_strategy.extract_error_context(
-                            str(final_test_result.errors) if final_test_result.errors else "",
-                            test_failure_contexts=test_failure_contexts
-                        )
-                        
-                        coder_context = self.retry_strategy.create_retry_prompt(
-                            original_context="",  # Not used in TDD mode
-                            feature=feature,
-                            validation_output=str(final_test_result.errors) if final_test_result.errors else "",
-                            error_context=error_context,
-                            retry_count=retry_count,
-                            accumulated_code=code_accumulator.get_accumulated_code(),
-                            test_failure_contexts=test_failure_contexts,
-                            config=self.retry_config
-                        )
+                # Create implementation context with RED phase info
+                if retry_count > 0 and self.retry_config.modify_prompt_on_retry:
+                # Use enhanced retry prompt for subsequent attempts
+                error_context = self.retry_strategy.extract_error_context(
+                    str(final_test_result.errors) if final_test_result.errors else "",
+                    test_failure_contexts=test_failure_contexts
+                )
+                
+                coder_context = self.retry_strategy.create_retry_prompt(
+                    original_context="",  # Not used in TDD mode
+                    feature=feature,
+                    validation_output=str(final_test_result.errors) if final_test_result.errors else "",
+                    error_context=error_context,
+                    retry_count=retry_count,
+                    accumulated_code=code_accumulator.get_accumulated_code(),
+                    test_failure_contexts=test_failure_contexts,
+                    config=self.retry_config
+                )
+            else:
+                # Initial attempt - use standard TDD context
+                coder_context = self._create_coder_context_tdd(
+                    feature,
+                    test_code,
+                    initial_test_result if retry_count == 0 else final_test_result,
+                    existing_code,
+                    requirements,
+                    retry_count,
+                    red_phase_context=red_phase_info if retry_count == 0 else None
+                )
+            
+            # Run coder agent
+            coder_result = await run_team_member_with_tracking(
+                "feature_coder_agent",
+                coder_context,
+                f"mvp_tdd_implement_{feature_index}_attempt_{retry_count}"
+            )
+            
+            implementation_code = self._extract_implementation_code(coder_result)
+            
+            # Update accumulated code for retry context using efficient storage
+            code_files = self._parse_code_files(implementation_code)
+            code_accumulator.add_retry_attempt(retry_count, code_files, 
+                                              {"errors": final_test_result.errors} if final_test_result.errors else None)
+            
+            self.tracer.complete_step(impl_step_id, {
+                "implementation_complete": True,
+                "retry_count": retry_count
+            })
+            
+            # Phase 4: Run tests again (expect success)
+            logger.info(f"Running tests for {feature_title} (expecting success)...")
+            updated_code = existing_code.copy()
+            updated_code.update(code_accumulator.get_accumulated_code())
+            
+            final_test_result = await self._run_tests(
+                test_code,
+                updated_code,
+                feature_title,
+                expect_failure=False
+            )
+            
+            if final_test_result.success:
+                # Tests are now passing - transition to YELLOW phase using orchestrator
+                yellow_context = await self.yellow_phase_orchestrator.enter_yellow_phase(
+                    feature=testable_feature,
+                    test_results=final_test_result,
+                    implementation_path=f"Feature {feature_id} implementation",
+                    implementation_summary=f"Implemented {feature_title} based on test requirements"
+                )
+                logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
+                
+                # Validate test coverage with enhanced metrics
+                logger.info(f"Validating test coverage for {feature_title}...")
+                coverage_success, coverage_msg, coverage_result = await validate_tdd_test_coverage(
+                    test_code,
+                    implementation_code,
+                    minimum_coverage=80.0,
+                    minimum_branch_coverage=70.0,
+                    feature_id=feature_id
+                )
+                
+                if coverage_success:
+                    implementation_successful = True
+                    logger.info(f"✅ Tests passing with sufficient coverage for {feature_title}")
+                    for line in coverage_msg.split('\n'):
+                        if line.strip():
+                            logger.info(f"   {line.strip()}")
+                    
+                    # Log test quality score
+                    if coverage_result and coverage_result.test_quality_score > 0:
+                        logger.info(f"   📊 Test Quality Score: {coverage_result.test_quality_score:.1f}/100")
+                    
+                    # Check if coverage improved
+                    if coverage_result and coverage_result.coverage_improved:
+                        logger.info(f"   📈 Coverage improved from {coverage_result.previous_coverage:.1f}% to {coverage_result.coverage_report.coverage_percentage:.1f}%")
+                else:
+                    logger.warning(f"⚠️  Tests pass but coverage insufficient for {feature_title}")
+                    for line in coverage_msg.split('\n'):
+                        if line.strip():
+                            logger.warning(f"   {line.strip()}")
+                    
+                    # Log suggestions
+                    if coverage_result and coverage_result.suggestions:
+                        logger.warning(f"   💡 Suggestions:")
+                        for suggestion in coverage_result.suggestions[:3]:  # Show top 3
+                            logger.warning(f"      - {suggestion}")
+                    
+                    # Continue anyway but log the issue
+                    implementation_successful = True
+            else:
+                # Tests still failing, may need to retry
+                if self.retry_strategy.should_retry(str(final_test_result.errors), retry_count, self.retry_config):
+                    retry_count += 1
+                    logger.info(f"🔄 Retrying implementation for {feature_title} (attempt {retry_count})")
+                    
+                    # Extract new test failure contexts from the latest test run
+                    # This helps track which tests started passing and which are still failing
+                    if hasattr(self.red_phase_orchestrator, 'extract_failure_context'):
+                        # Use the RED phase orchestrator's method to extract failure context
+                        test_failure_contexts = self.red_phase_orchestrator.extract_failure_context({
+                            "status": "failed",
+                            "output": str(final_test_result.errors) if final_test_result.errors else ""
+                        })
                     else:
-                        # Initial attempt - use standard TDD context
-                        coder_context = self._create_coder_context_tdd(
-                            feature,
-                            test_code,
-                            initial_test_result if retry_count == 0 else final_test_result,
-                            existing_code,
-                            requirements,
-                            retry_count,
-                            red_phase_context=red_phase_info if retry_count == 0 else None
-                        )
-                    
-                    # Run coder agent
-                    coder_result = await run_team_member_with_tracking(
-                        "feature_coder_agent",
-                        coder_context,
-                        f"mvp_tdd_implement_{feature_index}_attempt_{retry_count}"
-                    )
-                    
-                    implementation_code = self._extract_implementation_code(coder_result)
-                    
-                    # Update accumulated code for retry context using efficient storage
-                    code_files = self._parse_code_files(implementation_code)
-                    code_accumulator.add_retry_attempt(retry_count, code_files, 
-                                                      {"errors": final_test_result.errors} if final_test_result.errors else None)
-                    
-                    self.tracer.complete_step(impl_step_id, {
-                        "implementation_complete": True,
-                        "retry_count": retry_count
-                    })
-                    
-                    # Phase 4: Run tests again (expect success)
-                    logger.info(f"Running tests for {feature_title} (expecting success)...")
-                    updated_code = existing_code.copy()
-                    updated_code.update(code_accumulator.get_accumulated_code())
-                    
-                    final_test_result = await self._run_tests(
-                        test_code,
-                        updated_code,
-                        feature_title,
-                        expect_failure=False
-                    )
-                    
-                    if final_test_result.success:
-                        # Tests are now passing - transition to YELLOW phase using orchestrator
-                        yellow_context = await self.yellow_phase_orchestrator.enter_yellow_phase(
-                            feature=testable_feature,
-                            test_results=final_test_result,
-                            implementation_path=f"Feature {feature_id} implementation",
-                            implementation_summary=f"Implemented {feature_title} based on test requirements"
-                        )
-                        logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
-                        
-                        # Validate test coverage with enhanced metrics
-                        logger.info(f"Validating test coverage for {feature_title}...")
-                        coverage_success, coverage_msg, coverage_result = await validate_tdd_test_coverage(
-                            test_code,
-                            implementation_code,
-                            minimum_coverage=80.0,
-                            minimum_branch_coverage=70.0,
-                            feature_id=feature_id
-                        )
-                        
-                        if coverage_success:
-                            implementation_successful = True
-                            logger.info(f"✅ Tests passing with sufficient coverage for {feature_title}")
-                            for line in coverage_msg.split('\n'):
-                                if line.strip():
-                                    logger.info(f"   {line.strip()}")
-                            
-                            # Log test quality score
-                            if coverage_result and coverage_result.test_quality_score > 0:
-                                logger.info(f"   📊 Test Quality Score: {coverage_result.test_quality_score:.1f}/100")
-                            
-                            # Check if coverage improved
-                            if coverage_result and coverage_result.coverage_improved:
-                                logger.info(f"   📈 Coverage improved from {coverage_result.previous_coverage:.1f}% to {coverage_result.coverage_report.coverage_percentage:.1f}%")
-                        else:
-                            logger.warning(f"⚠️  Tests pass but coverage insufficient for {feature_title}")
-                            for line in coverage_msg.split('\n'):
-                                if line.strip():
-                                    logger.warning(f"   {line.strip()}")
-                            
-                            # Log suggestions
-                            if coverage_result and coverage_result.suggestions:
-                                logger.warning(f"   💡 Suggestions:")
-                                for suggestion in coverage_result.suggestions[:3]:  # Show top 3
-                                    logger.warning(f"      - {suggestion}")
-                            
-                            # Continue anyway but log the issue
-                            implementation_successful = True
-                    else:
-                        # Tests still failing, may need to retry
-                        if self.retry_strategy.should_retry(str(final_test_result.errors), retry_count, self.retry_config):
-                            retry_count += 1
-                            logger.info(f"🔄 Retrying implementation for {feature_title} (attempt {retry_count})")
-                            
-                            # Extract new test failure contexts from the latest test run
-                            # This helps track which tests started passing and which are still failing
-                            if hasattr(self.red_phase_orchestrator, 'extract_failure_context'):
-                                # Use the RED phase orchestrator's method to extract failure context
-                                test_failure_contexts = self.red_phase_orchestrator.extract_failure_context({
-                                    "status": "failed",
-                                    "output": str(final_test_result.errors) if final_test_result.errors else ""
-                                })
-                            else:
-                                # Keep using original failure contexts if extraction method not available
-                                pass
-                        else:
-                            logger.error(f"❌ Tests still failing for {feature_title} after {retry_count} attempts")
-                            break
+                        # Keep using original failure contexts if extraction method not available
+                        pass
+                else:
+                    logger.error(f"❌ Tests still failing for {feature_title} after {retry_count} attempts")
+                    break
             
             # Phase 5: Review implementation if tests are passing (YELLOW → GREEN)
             if implementation_successful and self.phase_tracker.get_current_phase(feature_id) == TDDPhase.YELLOW:

@@ -22,6 +22,7 @@ from collections import defaultdict
 from workflows.logger import workflow_logger as logger
 from workflows.mvp_incremental.validator import CodeValidator
 from workflows.mvp_incremental.error_analyzer import SimplifiedErrorAnalyzer, ErrorContext
+from workflows.mvp_incremental.test_cache_manager import get_test_cache
 
 
 @dataclass
@@ -66,32 +67,20 @@ class TestExecutionConfig:
     verbose_output: bool = True  # Include detailed test output
 
 
+# Legacy cache class kept for compatibility but now uses enhanced cache manager
 class TestResultCache:
     """Cache for test results to avoid re-running identical tests."""
     
     def __init__(self):
-        self._cache: Dict[str, TestResult] = {}
-        self._max_cache_size = 100
-    
-    def _generate_key(self, code: str, test_files: List[str]) -> str:
-        """Generate cache key from code and test files."""
-        content = f"{code}:{':'.join(sorted(test_files))}"
-        return hashlib.md5(content.encode()).hexdigest()
+        self._enhanced_cache = get_test_cache()
     
     def get(self, code: str, test_files: List[str]) -> Optional[TestResult]:
         """Get cached result if available."""
-        key = self._generate_key(code, test_files)
-        return self._cache.get(key)
+        return self._enhanced_cache.get(code, test_files)
     
     def set(self, code: str, test_files: List[str], result: TestResult):
         """Cache a test result."""
-        if len(self._cache) >= self._max_cache_size:
-            # Remove oldest entry
-            oldest_key = next(iter(self._cache))
-            del self._cache[oldest_key]
-        
-        key = self._generate_key(code, test_files)
-        self._cache[key] = result
+        self._enhanced_cache.set(code, test_files, result)
 
 
 class TestExecutor:
@@ -101,7 +90,8 @@ class TestExecutor:
         self.validator = validator
         self.config = config
         self.error_analyzer = SimplifiedErrorAnalyzer()
-        self._result_cache = TestResultCache() if config.cache_results else None
+        # Use enhanced cache manager directly
+        self._result_cache = get_test_cache() if config.cache_results else None
         
     async def execute_tests(self, 
                           code: str, 
@@ -146,11 +136,15 @@ class TestExecutor:
                 expected_failure=expect_failure
             )
         
-        # Check cache if enabled
+        # Check cache if enabled (pass feature_name for better cache keys)
         if self._result_cache and not expect_failure:
-            cached_result = self._result_cache.get(code, test_files)
+            cached_result = self._result_cache.get(code, test_files, feature_name)
             if cached_result:
                 logger.info(f"Using cached test results for {feature_name}")
+                # Log cache statistics periodically
+                stats = self._result_cache.get_statistics()
+                if stats["total_requests"] % 10 == 0:  # Every 10 requests
+                    logger.debug(f"Cache stats: {stats['hit_rate']} hit rate, {stats['entries']} entries")
                 return cached_result
             
         # Run the tests
@@ -174,9 +168,13 @@ class TestExecutor:
                 result.success = True
                 result.expected_failure = True
         
-        # Cache successful results
+        # Cache successful results with feature context
         if self._result_cache and not expect_failure and result.success:
-            self._result_cache.set(code, test_files, result)
+            self._result_cache.set(code, test_files, result, feature_name)
+            # Save persistent cache periodically
+            stats = self._result_cache.get_statistics()
+            if stats["entries"] % 50 == 0:  # Every 50 entries
+                self._result_cache.save_persistent_cache()
             
         return result
         

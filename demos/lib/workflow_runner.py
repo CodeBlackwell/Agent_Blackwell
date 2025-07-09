@@ -25,7 +25,7 @@ class WorkflowRunner:
     # Workflow configurations
     WORKFLOW_CONFIGS = {
         "tdd": {
-            "name": "Test-Driven Development",
+            "name": "Test-Driven Development (RED-YELLOW-GREEN)",
             "team": [
                 TeamMember.planner,
                 TeamMember.designer,
@@ -34,7 +34,56 @@ class WorkflowRunner:
                 TeamMember.executor,
                 TeamMember.reviewer
             ],
-            "description": "Write tests first, then implement code"
+            "description": "🔴🟡🟢 Mandatory test-first development with phase enforcement",
+            "config_options": {
+                "enforce_red_phase": True,
+                "enable_test_caching": True,
+                "parallel_test_execution": True,
+                "retry_with_hints": True,
+                "test_coverage_threshold": 85
+            }
+        },
+        "tdd_optimized": {
+            "name": "TDD Performance-Optimized",
+            "team": [
+                TeamMember.planner,
+                TeamMember.designer,
+                TeamMember.test_writer,
+                TeamMember.coder,
+                TeamMember.executor,
+                TeamMember.reviewer
+            ],
+            "workflow_type": "tdd",
+            "description": "🚀 TDD with all performance optimizations enabled",
+            "config_options": {
+                "enforce_red_phase": True,
+                "enable_test_caching": True,
+                "parallel_test_execution": True,
+                "retry_with_hints": True,
+                "test_coverage_threshold": 85,
+                "memory_spillover": True,
+                "stream_responses": True
+            }
+        },
+        "tdd_quick": {
+            "name": "TDD Quick Demo",
+            "team": [
+                TeamMember.planner,
+                TeamMember.designer,
+                TeamMember.test_writer,
+                TeamMember.coder,
+                TeamMember.executor,
+                TeamMember.reviewer
+            ],
+            "workflow_type": "tdd",
+            "description": "⚡ Simplified TDD for quick demonstrations",
+            "config_options": {
+                "enforce_red_phase": True,
+                "enable_test_caching": False,
+                "parallel_test_execution": False,
+                "retry_with_hints": True,
+                "test_coverage_threshold": 70
+            }
         },
         "full": {
             "name": "Full Workflow",
@@ -55,7 +104,12 @@ class WorkflowRunner:
         "mvp_incremental_tdd": {
             "name": "MVP Incremental with TDD",
             "team": [],  # Team configured by workflow
-            "description": "Incremental development with test-first approach"
+            "description": "🔴🟡🟢 Incremental development with mandatory test-first approach",
+            "config_options": {
+                "enforce_red_phase": True,
+                "enable_test_caching": True,
+                "parallel_test_execution": True
+            }
         },
         "planning": {
             "name": "Planning Only",
@@ -134,6 +188,13 @@ class WorkflowRunner:
         # Prepare configuration
         if config is None:
             config = {}
+            
+        # Apply workflow-specific config options if available
+        if 'config_options' in workflow_config:
+            # Merge workflow config options with user config (user config takes precedence)
+            for key, value in workflow_config['config_options'].items():
+                if key not in config:
+                    config[key] = value
             
         # Create session ID if not provided
         if session_id is None:
@@ -287,6 +348,37 @@ class WorkflowRunner:
                 base_time *= 1.3
                 
         return f"{int(base_time)}-{int(base_time * 1.5)} minutes"
+        
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get current performance statistics.
+        
+        Returns:
+            Dictionary with performance metrics
+        """
+        try:
+            # Try to import performance monitoring modules
+            from workflows.tdd.performance_monitor import PerformanceMonitor
+            monitor = PerformanceMonitor.get_instance()
+            
+            stats = {
+                "test_cache_enabled": monitor.is_cache_enabled(),
+                "cache_hit_rate": monitor.get_cache_hit_rate(),
+                "parallel_execution": monitor.is_parallel_enabled(),
+                "memory_usage_mb": monitor.get_memory_usage_mb(),
+                "total_tests_run": monitor.get_total_tests_run(),
+                "average_test_time": monitor.get_average_test_time()
+            }
+            return stats
+        except ImportError:
+            # Return basic stats if performance monitoring not available
+            return {
+                "test_cache_enabled": False,
+                "cache_hit_rate": 0.0,
+                "parallel_execution": False,
+                "memory_usage_mb": 0,
+                "total_tests_run": 0,
+                "average_test_time": 0.0
+            }
 
 
 # Convenience function for quick workflow execution

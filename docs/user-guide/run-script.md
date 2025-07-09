@@ -2,20 +2,19 @@
 
 The `run.py` script is the unified entry point for all operations in the Multi-Agent Orchestrator System.
 
-## 🚧 Under Construction
+## 🆕 New Features
 
-This documentation is currently being developed. For now, please refer to:
-- [Quick Start Guide](quick-start.md) for basic usage
-- [Examples](examples.md) for common use cases
+**[TDD Features Guide](run-script-tdd.md)** - Comprehensive guide to using Test-Driven Development features with Operation Red Yellow's RED-YELLOW-GREEN phases.
 
 ## Overview
 
 The `run.py` script provides a single, consistent interface for:
 - Running examples
-- Executing workflows
+- Executing workflows (including TDD with RED-YELLOW-GREEN phases)
 - Running tests
-- Interactive mode
+- Interactive mode with TDD-specific menus
 - Configuration management
+- Performance monitoring and optimization
 
 ## Basic Usage
 

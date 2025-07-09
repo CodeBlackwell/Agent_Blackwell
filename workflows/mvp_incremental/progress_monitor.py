@@ -21,7 +21,9 @@ class StepStatus(Enum):
     TESTS_WRITTEN = "tests_written"
     TESTS_FAILING = "tests_failing"  # Red phase
     IMPLEMENTING = "implementing"
-    TESTS_PASSING = "tests_passing"   # Green phase
+    TESTS_PASSING = "tests_passing"   # Yellow phase (was Green)
+    AWAITING_REVIEW = "awaiting_review"  # Yellow phase
+    APPROVED = "approved"              # Green phase
     REFACTORING = "refactoring"       # Refactor phase
 
 
@@ -68,6 +70,10 @@ class FeatureProgress:
     test_file_count: int = 0
     test_function_count: int = 0
     code_coverage: Optional[float] = None
+    # TDD phase tracking
+    tdd_phase: Optional[str] = None  # RED, YELLOW, GREEN
+    time_entered_yellow: Optional[datetime] = None
+    review_attempts: int = 0
 
 
 class ProgressMonitor:
@@ -149,7 +155,11 @@ class ProgressMonitor:
             elif status == StepStatus.IMPLEMENTING:
                 print(f"   🔨 Implementing code to pass tests...")
             elif status == StepStatus.TESTS_PASSING:
-                print(f"   🟢 Tests passing (TDD green phase)")
+                print(f"   🟡 Tests passing - awaiting review (TDD yellow phase)")
+            elif status == StepStatus.AWAITING_REVIEW:
+                print(f"   🟡 Implementation awaiting review...")
+            elif status == StepStatus.APPROVED:
+                print(f"   🟢 Implementation approved (TDD green phase)")
             elif status == StepStatus.REFACTORING:
                 print(f"   🔧 Refactoring code...")
                 
@@ -191,6 +201,32 @@ class ProgressMonitor:
             
             status_icon = "✅" if passed else "❌"
             print(f"   {status_icon} Validation: {'PASSED' if passed else 'FAILED'}")
+            
+    def update_tdd_phase(self, feature_id: str, phase: str, status: Optional[StepStatus] = None):
+        """Update TDD phase for a feature"""
+        if feature_id in self.features:
+            feature = self.features[feature_id]
+            feature.tdd_phase = phase
+            
+            if phase == "YELLOW" and feature.time_entered_yellow is None:
+                feature.time_entered_yellow = datetime.now()
+                
+            if status:
+                feature.current_status = status
+                
+            # Print phase transition
+            phase_icons = {
+                "RED": "🔴",
+                "YELLOW": "🟡", 
+                "GREEN": "🟢"
+            }
+            icon = phase_icons.get(phase, "⚪")
+            print(f"   {icon} TDD Phase: {phase}")
+            
+    def increment_review_attempts(self, feature_id: str):
+        """Increment review attempts for a feature in YELLOW phase"""
+        if feature_id in self.features:
+            self.features[feature_id].review_attempts += 1
             
     def complete_feature(self, feature_id: str, success: bool):
         """Mark feature as complete"""
@@ -281,6 +317,9 @@ class ProgressMonitor:
             # TDD stats
             features_with_tests = sum(1 for f in self.features.values() if f.tests_written)
             features_tests_passing = sum(1 for f in self.features.values() if f.tests_passing)
+            features_in_yellow = sum(1 for f in self.features.values() if f.tdd_phase == "YELLOW")
+            features_in_green = sum(1 for f in self.features.values() if f.tdd_phase == "GREEN")
+            total_review_attempts = sum(f.review_attempts for f in self.features.values())
             total_test_files = sum(f.test_file_count for f in self.features.values())
             total_test_functions = sum(f.test_function_count for f in self.features.values())
             avg_coverage = self._calculate_average_coverage()
@@ -292,6 +331,13 @@ class ProgressMonitor:
             print(f"   - Total test functions: {total_test_functions}")
             if avg_coverage is not None:
                 print(f"   - Average code coverage: {avg_coverage:.1f}%")
+                
+            print(f"\n🚦 TDD Phase Status:")
+            print(f"   - 🔴 RED (implementing): {len(self.features) - features_in_yellow - features_in_green}")
+            print(f"   - 🟡 YELLOW (awaiting review): {features_in_yellow}")
+            print(f"   - 🟢 GREEN (approved): {features_in_green}")
+            if total_review_attempts > 0:
+                print(f"   - Total review attempts: {total_review_attempts}")
             
         # Error summary
         all_errors = []

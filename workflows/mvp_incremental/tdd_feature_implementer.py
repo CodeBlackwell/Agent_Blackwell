@@ -10,19 +10,24 @@ Uses the RED-YELLOW-GREEN phase tracking system from Operation Red Yellow.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
+from datetime import datetime
 
 from shared.data_models import TeamMemberResult, TeamMember
 from workflows.monitoring import WorkflowExecutionTracer
 from workflows.mvp_incremental.retry_strategy import RetryStrategy, RetryConfig
 from workflows.mvp_incremental.progress_monitor import ProgressMonitor, StepStatus
 from workflows.mvp_incremental.review_integration import ReviewIntegration, ReviewPhase, ReviewRequest
-from workflows.mvp_incremental.test_execution import TestExecutionConfig, TestResult, execute_and_fix_tests
+from workflows.mvp_incremental.test_execution import TestExecutionConfig, TestResult, execute_and_fix_tests, TestExecutor
 from workflows.mvp_incremental.validator import CodeValidator
 from workflows.mvp_incremental.coverage_validator import TestCoverageValidator, validate_tdd_test_coverage
 from workflows.mvp_incremental.tdd_phase_tracker import TDDPhase, TDDPhaseTracker
+from workflows.mvp_incremental.red_phase import RedPhaseOrchestrator, RedPhaseError
+from workflows.mvp_incremental.yellow_phase import YellowPhaseOrchestrator, YellowPhaseError
+from workflows.mvp_incremental.green_phase import GreenPhaseOrchestrator, GreenPhaseMetrics, GreenPhaseError
+from workflows.mvp_incremental.testable_feature_parser import TestableFeature
 from workflows.logger import workflow_logger as logger
 
 
@@ -39,6 +44,7 @@ class TDDFeatureResult:
     retry_count: int = 0
     success: bool = False
     final_phase: Optional[TDDPhase] = None
+    green_phase_metrics: Optional[Dict[str, Any]] = None  # Metrics from GREEN phase completion
 
 
 class TDDFeatureImplementer:
@@ -58,6 +64,20 @@ class TDDFeatureImplementer:
         self.retry_config = retry_config
         self.validator = CodeValidator()
         self.phase_tracker = phase_tracker or TDDPhaseTracker()
+        # Initialize test executor for RED phase orchestrator
+        test_config = TestExecutionConfig(
+            run_tests=True,
+            fix_on_failure=False,
+            test_timeout=30,
+            expect_failure=True,
+            cache_results=True,
+            extract_coverage=False,
+            verbose_output=True
+        )
+        self.test_executor = TestExecutor(self.validator, test_config)
+        self.red_phase_orchestrator = RedPhaseOrchestrator(self.test_executor, self.phase_tracker)
+        self.yellow_phase_orchestrator = YellowPhaseOrchestrator(self.phase_tracker)
+        self.green_phase_orchestrator = GreenPhaseOrchestrator(self.phase_tracker)
         
     async def implement_feature_tdd(self,
                                   feature: Dict[str, str],
@@ -123,29 +143,69 @@ class TDDFeatureImplementer:
         if not test_review.approved:
             logger.warning(f"Test review not approved for {feature_title}: {test_review.feedback}")
         
-        # Phase 2: Run tests (expect failure) - Confirm RED phase
-        logger.info(f"Running tests for {feature_title} (expecting failure)...")
-        initial_test_result = await self._run_tests(
-            test_code, 
-            existing_code, 
-            feature_title,
-            expect_failure=True
+        # Phase 2: Run tests (expect failure) - Confirm RED phase using orchestrator
+        logger.info(f"Validating RED phase for {feature_title} (expecting tests to fail)...")
+        
+        # Create TestableFeature for RED phase validation
+        testable_feature = TestableFeature(
+            id=feature_id,
+            title=feature_title,
+            description=feature['description'],
+            test_criteria=[]  # Will be populated from test code
         )
         
-        if initial_test_result.success:
-            logger.warning(f"Tests passed before implementation for {feature_title} - tests may be invalid")
-            # Tests should fail in RED phase
-        else:
-            logger.info(f"✅ Tests failing as expected - RED phase confirmed")
-            # RED phase is confirmed - tests are failing without implementation
+        # Save test code to temporary location for execution
+        import tempfile
+        import os
+        test_dir = tempfile.mkdtemp(prefix="tdd_tests_")
+        test_file_path = os.path.join(test_dir, "test_feature.py")
+        with open(test_file_path, 'w') as f:
+            f.write(test_code)
         
-        # Phase 3: Implement feature to make tests pass
-        # Enforce RED phase before allowing implementation
         try:
-            self.phase_tracker.enforce_red_phase_start(feature_id)
-        except Exception as e:
-            logger.error(f"Cannot start implementation: {e}")
-            raise ValueError(f"Feature {feature_id} must be in RED phase before implementation can begin")
+            # Use RED phase orchestrator to validate and extract failure context
+            red_phase_context = await self.red_phase_orchestrator.enforce_red_phase(
+                testable_feature,
+                test_file_path,
+                os.getcwd()  # Use current working directory as project root
+            )
+            
+            logger.info(f"✅ RED phase validated - {red_phase_context['failure_summary']['total_failures']} test failures detected")
+            
+            # Log failure types for visibility
+            failure_types = red_phase_context['failure_summary'].get('failure_types', [])
+            if failure_types:
+                logger.info(f"   Failure types: {', '.join(failure_types)}")
+            
+            # Log missing components to guide implementation
+            missing_components = red_phase_context.get('missing_components', [])
+            if missing_components:
+                logger.info(f"   Missing components: {', '.join(missing_components[:3])}")
+            
+            # Store RED phase context for use in implementation
+            red_phase_info = red_phase_context
+            
+        except RedPhaseError as e:
+            logger.error(f"RED phase validation failed: {e}")
+            # Clean up temp directory
+            import shutil
+            shutil.rmtree(test_dir, ignore_errors=True)
+            raise ValueError(f"Cannot proceed: {e}")
+        finally:
+            # Clean up temp directory
+            import shutil
+            shutil.rmtree(test_dir, ignore_errors=True)
+        
+        # Convert failure context to TestResult for backward compatibility
+        initial_test_result = TestResult(
+            success=False,  # Tests should fail in RED phase
+            passed=0,
+            failed=red_phase_context['failure_summary']['total_failures'],
+            errors=[f['failure_message'] for f in red_phase_context['detailed_failures']],
+            output="RED phase validated - tests failing as expected",
+            test_files=self._extract_test_files(test_code),
+            expected_failure=True
+        )
         
         retry_count = 0
         implementation_successful = False
@@ -159,14 +219,15 @@ class TDDFeatureImplementer:
                 {"feature": feature_title, "retry": retry_count}
             )
             
-            # Create implementation context
+            # Create implementation context with RED phase info
             coder_context = self._create_coder_context_tdd(
                 feature,
                 test_code,
                 initial_test_result if retry_count == 0 else final_test_result,
                 existing_code,
                 requirements,
-                retry_count
+                retry_count,
+                red_phase_context=red_phase_info if retry_count == 0 else None
             )
             
             # Run coder agent
@@ -196,12 +257,12 @@ class TDDFeatureImplementer:
             )
             
             if final_test_result.success:
-                # Tests are now passing - transition to YELLOW phase
-                self.phase_tracker.transition_to(
-                    feature_id, 
-                    TDDPhase.YELLOW,
-                    "Tests passing - awaiting review",
-                    {"test_count": final_test_result.passed}
+                # Tests are now passing - transition to YELLOW phase using orchestrator
+                yellow_context = await self.yellow_phase_orchestrator.enter_yellow_phase(
+                    feature=testable_feature,
+                    test_results=final_test_result,
+                    implementation_path=f"Feature {feature_id} implementation",
+                    implementation_summary=f"Implemented {feature_title} based on test requirements"
                 )
                 logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
                 
@@ -255,25 +316,62 @@ class TDDFeatureImplementer:
         # Phase 5: Review implementation if tests are passing (YELLOW → GREEN)
         if implementation_successful and self.phase_tracker.get_current_phase(feature_id) == TDDPhase.YELLOW:
             logger.info(f"Requesting implementation review for {feature_title}...")
+            
+            # Get review context from YELLOW phase orchestrator
+            review_context = self.yellow_phase_orchestrator.prepare_review_context(feature_id)
+            
+            # Perform the review
             impl_review = await self._review_implementation(implementation_code, test_code, feature)
             
+            # Handle review result through orchestrator
+            next_phase = await self.yellow_phase_orchestrator.handle_review_result(
+                feature_id=feature_id,
+                approved=impl_review.approved,
+                feedback=impl_review.feedback
+            )
+            
             if impl_review.approved:
-                # Transition to GREEN phase - feature complete!
-                self.phase_tracker.transition_to(
-                    feature_id,
-                    TDDPhase.GREEN,
-                    "Implementation reviewed and approved",
-                    {"reviewer": "feature_reviewer_agent"}
+                # Enter GREEN phase after approval
+                metrics = GreenPhaseMetrics(
+                    feature_id=feature_id,
+                    feature_title=feature_title,
+                    red_phase_start=self.phase_tracker.get_phase_history(feature_id)[0][1],  # First phase entry time
+                    yellow_phase_start=yellow_context.time_entered_yellow,
+                    green_phase_start=datetime.now(),
+                    implementation_attempts=retry_count + 1,
+                    review_attempts=yellow_context.review_attempts,
+                    test_execution_count=retry_count + 2  # Initial RED + implementation attempts
                 )
-                logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
+                
+                try:
+                    green_context = self.green_phase_orchestrator.enter_green_phase(
+                        feature=testable_feature,
+                        metrics=metrics,
+                        review_approved=True,
+                        review_feedback=impl_review.feedback
+                    )
+                    logger.info(f"{self.phase_tracker.get_visual_status(feature_id)}")
+                    
+                    # Complete the feature in GREEN phase
+                    completion_notes = [
+                        f"Tests written first and confirmed to fail",
+                        f"Implementation completed in {retry_count + 1} attempt(s)",
+                        f"All tests passing with implementation",
+                        f"Code reviewed and approved"
+                    ]
+                    
+                    completion_summary = self.green_phase_orchestrator.complete_feature(
+                        green_context,
+                        completion_notes=completion_notes
+                    )
+                    
+                    # Log celebration message
+                    logger.info(completion_summary["celebration_message"])
+                    
+                except GreenPhaseError as e:
+                    logger.error(f"Failed to enter GREEN phase: {e}")
+                    implementation_successful = False
             else:
-                # Review rejected - back to RED phase
-                self.phase_tracker.transition_to(
-                    feature_id,
-                    TDDPhase.RED,
-                    f"Review rejected: {impl_review.feedback[:100]}",
-                    {"needs_rework": True}
-                )
                 logger.warning(f"Implementation review rejected - back to RED phase")
                 logger.warning(f"Feedback: {impl_review.feedback}")
                 implementation_successful = False
@@ -287,7 +385,17 @@ class TDDFeatureImplementer:
                 # For now, we'll skip actual refactoring
                 refactored = False
         
-        # Create result
+        # Create result with GREEN phase metrics if available
+        green_metrics = None
+        if implementation_successful and self.phase_tracker.get_current_phase(feature_id) == TDDPhase.GREEN:
+            # Get completion summary from GREEN phase orchestrator
+            completion_report = self.green_phase_orchestrator.get_completion_report()
+            # Find this feature's metrics
+            for feature_data in completion_report.get("features", []):
+                if feature_data["feature_id"] == feature_id:
+                    green_metrics = feature_data
+                    break
+        
         result = TDDFeatureResult(
             feature_id=feature_id,
             feature_title=feature_title,
@@ -298,7 +406,8 @@ class TDDFeatureImplementer:
             refactored=refactored,
             retry_count=retry_count,
             success=implementation_successful,
-            final_phase=self.phase_tracker.get_current_phase(feature_id)
+            final_phase=self.phase_tracker.get_current_phase(feature_id),
+            green_phase_metrics=green_metrics
         )
         
         # Update progress monitor
@@ -396,8 +505,9 @@ Write tests that clearly define what the feature should do.
                                 test_result: TestResult,
                                 existing_code: Dict[str, str],
                                 requirements: str,
-                                retry_count: int) -> str:
-        """Create context for coder agent in TDD mode"""
+                                retry_count: int,
+                                red_phase_context: Optional[Dict[str, Any]] = None) -> str:
+        """Create context for coder agent in TDD mode with RED phase guidance"""
         
         # Base context
         context = f"""
@@ -413,6 +523,23 @@ FAILING TESTS:
 TEST RESULTS:
 {self._format_test_results(test_result)}
 """
+
+        # Add RED phase context if available
+        if red_phase_context:
+            context += f"""
+RED PHASE ANALYSIS:
+- Total failures: {red_phase_context['failure_summary']['total_failures']}
+- Failure types: {', '.join(red_phase_context['failure_summary']['failure_types'])}
+"""
+            if red_phase_context.get('missing_components'):
+                context += f"- Missing components: {', '.join(red_phase_context['missing_components'])}\n"
+            
+            if red_phase_context.get('implementation_hints'):
+                context += "\nIMPLEMENTATION HINTS:\n"
+                for hint in red_phase_context['implementation_hints']:
+                    context += f"- {hint}\n"
+            
+            context += "\n"
         
         if retry_count > 0:
             context += f"""

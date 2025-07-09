@@ -2,6 +2,10 @@
 
 Welcome to the comprehensive documentation for the Multi-Agent Orchestrator System. This documentation is organized to help different audiences find the information they need quickly.
 
+## 🆕 Recent Updates
+
+**[Recent Features Summary](recent-features-summary.md)** - Overview of the latest features including Operation Red Yellow TDD transformation and performance optimizations.
+
 ## 📚 User Guide
 
 For users who want to get started quickly and understand how to use the system.
@@ -19,6 +23,7 @@ For developers who want to understand the architecture, contribute, or extend th
 
 - **[Architecture Overview](developer-guide/architecture/README.md)** - System design and components
   - [ACP Architecture Insights](developer-guide/architecture/acp-insights.md)
+  - [TDD Architecture Guide](developer-guide/architecture/tdd-architecture.md) 🆕
   - [Implementation Guide](developer-guide/architecture/implementation-guide.md)
   - [Architectural Lessons](developer-guide/architecture/lessons-learned.md)
   - [Job Pipeline Implementation](developer-guide/architecture/job-pipeline.md)
@@ -31,11 +36,14 @@ For developers who want to understand the architecture, contribute, or extend th
 Detailed documentation for each workflow type and their usage.
 
 - **[Workflows Overview](workflows/README.md)** - Understanding workflow types
+- **[TDD Workflow](workflows/tdd-workflow.md)** - Test-driven development with RED-YELLOW-GREEN phases 🆕
+  - [TDD Quick Reference](workflows/tdd-quick-reference.md) 🆕
 - **[MVP Incremental Workflow](workflows/mvp-incremental/README.md)** - Feature-by-feature development
   - [User Guide](workflows/mvp-incremental/user-guide.md)
   - [Quick Reference](workflows/mvp-incremental/quick-reference.md)
-  - [Phases Documentation](workflows/mvp-incremental/phases.md)
+  - [Phases Documentation](workflows/mvp-incremental/phases.md) (Updated with phases 9-10)
   - [TDD Enhancement](workflows/mvp-incremental/tdd-enhancement.md)
+  - [Test Results](workflows/mvp-incremental/test-results.md) (Updated)
 - **[Data Flow](workflows/data-flow.md)** - How data flows through workflows
 - **[Workflow Visualizations](workflow_visualizations/)** - Visual representations
 
@@ -52,6 +60,8 @@ API documentation and technical references.
 
 Operational guides for deployment and maintenance.
 
+- **[Operation Red Yellow](operations/operation-red-yellow.md)** - Complete TDD transformation documentation 🆕
+- **[Performance Optimizations](operations/performance-optimizations.md)** - Comprehensive performance guide 🆕
 - **[Docker Operations](operations/docker-cleanup.md)** - Docker maintenance and cleanup
 - **[Deployment Guide](operations/deployment.md)** - Production deployment
 - **[Monitoring](operations/monitoring.md)** - System monitoring and metrics
@@ -73,6 +83,7 @@ Links to documentation within component directories:
 - **[Main Project README](../README.md)** - Project overview
 - **[Claude AI Instructions](../CLAUDE.md)** - AI coding assistant configuration
 - **[Run Script Guide](user-guide/run-script.md)** - Using the unified `run.py` script
+- **[MCP Filesystem Integration](mcp-filesystem-integration.md)** - Secure file operations
 
 ## 📚 Archive
 

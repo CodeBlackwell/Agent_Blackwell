@@ -211,6 +211,8 @@ class TDDFeatureImplementer:
         implementation_successful = False
         implementation_code = ""
         final_test_result = initial_test_result
+        accumulated_code = {}  # Track code for retry context
+        test_failure_contexts = red_phase_context.get('detailed_failures', [])  # Get failure contexts
         
         while not implementation_successful and retry_count <= self.retry_config.max_retries:
             impl_step_id = self.tracer.start_step(
@@ -220,15 +222,34 @@ class TDDFeatureImplementer:
             )
             
             # Create implementation context with RED phase info
-            coder_context = self._create_coder_context_tdd(
-                feature,
-                test_code,
-                initial_test_result if retry_count == 0 else final_test_result,
-                existing_code,
-                requirements,
-                retry_count,
-                red_phase_context=red_phase_info if retry_count == 0 else None
-            )
+            if retry_count > 0 and self.retry_config.modify_prompt_on_retry:
+                # Use enhanced retry prompt for subsequent attempts
+                error_context = self.retry_strategy.extract_error_context(
+                    str(final_test_result.errors) if final_test_result.errors else "",
+                    test_failure_contexts=test_failure_contexts
+                )
+                
+                coder_context = self.retry_strategy.create_retry_prompt(
+                    original_context="",  # Not used in TDD mode
+                    feature=feature,
+                    validation_output=str(final_test_result.errors) if final_test_result.errors else "",
+                    error_context=error_context,
+                    retry_count=retry_count,
+                    accumulated_code=accumulated_code,
+                    test_failure_contexts=test_failure_contexts,
+                    config=self.retry_config
+                )
+            else:
+                # Initial attempt - use standard TDD context
+                coder_context = self._create_coder_context_tdd(
+                    feature,
+                    test_code,
+                    initial_test_result if retry_count == 0 else final_test_result,
+                    existing_code,
+                    requirements,
+                    retry_count,
+                    red_phase_context=red_phase_info if retry_count == 0 else None
+                )
             
             # Run coder agent
             coder_result = await run_team_member_with_tracking(
@@ -239,6 +260,10 @@ class TDDFeatureImplementer:
             
             implementation_code = self._extract_implementation_code(coder_result)
             
+            # Update accumulated code for retry context
+            code_files = self._parse_code_files(implementation_code)
+            accumulated_code.update(code_files)
+            
             self.tracer.complete_step(impl_step_id, {
                 "implementation_complete": True,
                 "retry_count": retry_count
@@ -247,7 +272,7 @@ class TDDFeatureImplementer:
             # Phase 4: Run tests again (expect success)
             logger.info(f"Running tests for {feature_title} (expecting success)...")
             updated_code = existing_code.copy()
-            updated_code.update(self._parse_code_files(implementation_code))
+            updated_code.update(accumulated_code)
             
             final_test_result = await self._run_tests(
                 test_code,
@@ -309,6 +334,18 @@ class TDDFeatureImplementer:
                 if self.retry_strategy.should_retry(str(final_test_result.errors), retry_count, self.retry_config):
                     retry_count += 1
                     logger.info(f"🔄 Retrying implementation for {feature_title} (attempt {retry_count})")
+                    
+                    # Extract new test failure contexts from the latest test run
+                    # This helps track which tests started passing and which are still failing
+                    if hasattr(self.red_phase_orchestrator, 'extract_failure_context'):
+                        # Use the RED phase orchestrator's method to extract failure context
+                        test_failure_contexts = self.red_phase_orchestrator.extract_failure_context({
+                            "status": "failed",
+                            "output": str(final_test_result.errors) if final_test_result.errors else ""
+                        })
+                    else:
+                        # Keep using original failure contexts if extraction method not available
+                        pass
                 else:
                     logger.error(f"❌ Tests still failing for {feature_title} after {retry_count} attempts")
                     break

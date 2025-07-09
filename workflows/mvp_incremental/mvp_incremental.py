@@ -417,9 +417,16 @@ async def execute_mvp_incremental_workflow(
         saved_files = code_saver.save_code_files(accumulated_code)
         print(f"   ✅ Saved {len(saved_files)} files to {session_path}")
         
-    # Save test files
+    # Save test files with deduplication
     if accumulated_test_code:
-        test_saved_files = code_saver.save_code_files(accumulated_test_code, feature_name="tests")
+        # Deduplicate test files, preferring those in tests/ directory
+        deduplicated_test_files = _deduplicate_test_files(accumulated_test_code)
+        
+        # Log deduplication if any occurred
+        if len(deduplicated_test_files) < len(accumulated_test_code):
+            print(f"   📋 Deduplicated {len(accumulated_test_code)} test files to {len(deduplicated_test_files)}")
+        
+        test_saved_files = code_saver.save_code_files(deduplicated_test_files)
         print(f"   ✅ Saved {len(test_saved_files)} test files to {session_path}")
         
         # Extract dependencies and create requirements.txt if needed
@@ -746,5 +753,56 @@ def _consolidate_code(code_dict: Dict[str, str]) -> str:
         output_parts.append("```")
     
     return "\n".join(output_parts)
+
+
+def _deduplicate_test_files(test_files: Dict[str, str]) -> Dict[str, str]:
+    """
+    Deduplicate test files, preferring those in tests/ directory.
+    Consolidates tests for the same module into a single file.
+    """
+    from collections import defaultdict
+    
+    # Group files by their base name (without directory)
+    file_groups = defaultdict(list)
+    
+    for filepath, content in test_files.items():
+        # Extract base name (e.g., test_main.py from tests/test_main.py or test_main.py)
+        basename = filepath.split('/')[-1]
+        file_groups[basename].append((filepath, content))
+    
+    # For each group, prefer the one in tests/ directory
+    deduplicated = {}
+    
+    for basename, file_list in file_groups.items():
+        if len(file_list) == 1:
+            # No duplicates
+            deduplicated[file_list[0][0]] = file_list[0][1]
+        else:
+            # Multiple files with same base name
+            # Prefer the one in tests/ directory
+            tests_dir_file = None
+            root_file = None
+            
+            for filepath, content in file_list:
+                if filepath.startswith('tests/'):
+                    tests_dir_file = (filepath, content)
+                else:
+                    root_file = (filepath, content)
+            
+            if tests_dir_file:
+                deduplicated[tests_dir_file[0]] = tests_dir_file[1]
+            elif root_file:
+                # If no tests/ version, use root but move to tests/
+                new_path = f"tests/{root_file[0]}"
+                deduplicated[new_path] = root_file[1]
+    
+    # Ensure all test files are in tests/ directory
+    final_files = {}
+    for filepath, content in deduplicated.items():
+        if not filepath.startswith('tests/'):
+            filepath = f"tests/{filepath}"
+        final_files[filepath] = content
+    
+    return final_files
 
 

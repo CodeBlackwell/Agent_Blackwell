@@ -22,8 +22,9 @@ from shared.data_models import CodingTeamInput
 class HelloWorldBuilder:
     """Demo script for building a simple hello world API."""
     
-    def __init__(self, workflow_type: str = "mvp_incremental", output_dir: Optional[str] = None):
+    def __init__(self, workflow_type: str = "mvp_incremental", output_dir: Optional[str] = None, step_type: Optional[str] = None):
         self.workflow_type = workflow_type
+        self.step_type = step_type
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = output_dir or f"demo_outputs/hello_world_{self.timestamp}"
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
@@ -51,13 +52,16 @@ Project Structure:
         print(f"\n🚀 Starting Hello World Builder Demo")
         print(f"📁 Output directory: {self.output_dir}")
         print(f"🔄 Workflow type: {self.workflow_type}")
+        if self.workflow_type == "individual" and self.step_type:
+            print(f"📌 Step type: {self.step_type}")
         print(f"📋 Requirements: Single feature - Hello World endpoint\n")
         
         # Create workflow request
         request = CodingTeamInput(
             requirements=requirements,
             workflow_type=self.workflow_type,
-            output_path=self.output_dir
+            output_path=self.output_dir,
+            step_type=self.step_type if self.workflow_type == "individual" else None
         )
         
         # Save request for debugging
@@ -163,8 +167,8 @@ def main():
         "-w",
         type=str,
         default="mvp_incremental",
-        choices=["full", "tdd", "mvp_incremental", "planning", "design", "implementation", "review"],
-        help="Workflow type to use (default: mvp_incremental)"
+        choices=["full", "tdd", "incremental", "mvp_incremental", "individual"],
+        help="Workflow type to use (default: mvp_incremental) - full: all phases, tdd: legacy TDD, incremental: feature-by-feature, mvp_incremental: flagship TDD workflow, individual: single phase"
     )
     
     parser.add_argument(
@@ -174,12 +178,25 @@ def main():
         help="Output directory (default: demo_outputs/hello_world_TIMESTAMP)"
     )
     
+    parser.add_argument(
+        "--step",
+        "-s",
+        type=str,
+        choices=["planning", "design", "implementation", "review", "test_writing"],
+        help="Step type for individual workflow (required when using --workflow individual)"
+    )
+    
     args = parser.parse_args()
+    
+    # Validate arguments
+    if args.workflow == "individual" and not args.step:
+        parser.error("--step is required when using --workflow individual")
     
     # Create and run the builder
     builder = HelloWorldBuilder(
         workflow_type=args.workflow,
-        output_dir=args.output
+        output_dir=args.output,
+        step_type=args.step
     )
     
     # Run the async function

@@ -473,6 +473,15 @@ class TDDFeatureImplementer:
             # Clean up code accumulator resources
             code_accumulator.cleanup()
     
+    def _feature_to_snake_case(self, feature_title: str) -> str:
+        """Convert feature title to snake_case for test file naming"""
+        # Remove special characters and convert to lowercase
+        cleaned = re.sub(r'[^\w\s]', '', feature_title.lower())
+        # Replace spaces with underscores
+        snake_case = re.sub(r'\s+', '_', cleaned.strip())
+        # Remove leading/trailing underscores
+        return snake_case.strip('_')
+    
     def _create_test_writer_context(self,
                                   feature: Dict[str, str],
                                   existing_code: Dict[str, str],
@@ -506,6 +515,13 @@ class TDDFeatureImplementer:
                 for error in test_criteria['error_conditions']:
                     criteria_section += f"\n  - {error}"
         
+        # Generate appropriate test file name
+        feature_snake_case = self._feature_to_snake_case(feature['title'])
+        if 'main' in feature_snake_case or 'setup' in feature_snake_case or 'project' in feature_snake_case:
+            test_filename = "tests/test_main.py"
+        else:
+            test_filename = f"tests/test_{feature_snake_case}.py"
+        
         context = f"""
 You are implementing Test-Driven Development (TDD) for a specific feature.
 Your task is to write tests BEFORE the implementation exists.
@@ -536,7 +552,7 @@ REQUIRED OUTPUT FORMAT:
 Generate ONLY executable test files in this format:
 
 ```python
-# filename: tests/test_[feature_name].py
+# filename: {test_filename}
 import pytest
 from main import FeatureName  # This import will fail initially
 
@@ -549,6 +565,11 @@ def test_edge_case():
     with pytest.raises(ValueError):
         FeatureName.invalid_input()
 ```
+
+IMPORTANT: 
+- Always use exactly this filename: {test_filename}
+- Do NOT create multiple test files for the same feature
+- If testing the main API endpoints, add tests to the existing test file
 
 Write tests that clearly define what the feature should do.
 """

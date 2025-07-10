@@ -1,8 +1,0 @@
-{
-  "requirements": "\nCreate a simple REST API with the following single feature:\n\nFeature: Hello World Endpoint\n- Create a GET endpoint at /hello that returns {\"message\": \"Hello, World!\"}\n- The API should run on port 8000\n- Include proper error handling\n- Use FastAPI framework\n- Include a simple test to verify the endpoint works\n\nProject Structure:\n- main.py (API implementation)\n- test_main.py (Tests)\n- requirements.txt (Dependencies)\n",
-  "workflow_type": "mvp_incremental",
-  "language": "python",
-  "framework": "fastapi",
-  "output_dir": "demo_outputs/hello_world_20250709_053826",
-  "timestamp": "20250709_053826"
-}

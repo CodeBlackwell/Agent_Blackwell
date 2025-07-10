@@ -455,11 +455,26 @@ async def execute_mvp_incremental_workflow(
     
     # Create a symlink to latest for easy access
     latest_link = code_saver.base_path / "app_generated_latest"
-    if latest_link.exists() and latest_link.is_symlink():
-        latest_link.unlink()
-    if accumulated_code or accumulated_test_code:  # Create symlink if we saved any code
-        latest_link.symlink_to(session_path.name)
-        print(f"   ✅ Created symlink: app_generated_latest -> {session_path.name}")
+    try:
+        # Remove existing symlink/directory
+        if latest_link.exists() or latest_link.is_symlink():
+            if latest_link.is_symlink():
+                latest_link.unlink()
+            elif latest_link.is_dir():
+                import shutil
+                shutil.rmtree(latest_link)
+            else:
+                latest_link.unlink()
+        
+        # Create new symlink if we saved any code
+        if accumulated_code or accumulated_test_code:
+            # Use relative path from parent directory
+            relative_target = Path(session_path.name)
+            latest_link.symlink_to(relative_target)
+            print(f"   ✅ Created symlink: app_generated_latest -> {session_path.name}")
+    except Exception as e:
+        print(f"   ⚠️  Warning: Could not create symlink: {e}")
+        # Continue execution - symlink is not critical
     
     # Phase 10: Integration Verification
     if hasattr(input_data, 'run_integration_verification') and input_data.run_integration_verification:

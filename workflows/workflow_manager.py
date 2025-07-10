@@ -198,7 +198,7 @@ async def execute_workflow(input_data: CodingTeamInput,
             results = await execute_individual_workflow(input_data, tracer)
             logger.info(f"✅ Individual workflow completed successfully")
         else:
-            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, mvp_incremental, mvp_incremental_tdd, mvp_tdd, individual, planning, design, test_writing, implementation, review"
+            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, mvp_incremental, mvp_incremental_tdd, mvp_tdd, flagship, individual, planning, design, test_writing, implementation, review"
             logger.error(f"❌ {error_msg}")
             tracer.complete_execution(error=error_msg)
             raise ValueError(error_msg)

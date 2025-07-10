@@ -414,6 +414,12 @@ class UnifiedRunner:
                 result.get('generated_path')
             ))
             
+            # Show output files location
+            if result.get('generated_path'):
+                print(f"\n📁 Workflow files saved to generated directory:")
+                print(f"   - {result['generated_path']}/workflow_request.json")
+                print(f"   - {result['generated_path']}/workflow_result.json")
+            
             # Show next steps
             self.menu.print_section("Next Steps")
             print("1. Navigate to the generated code directory")

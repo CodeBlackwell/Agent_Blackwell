@@ -72,8 +72,17 @@ class TestRunnerFlagship:
                 impl_file = temp_path / "calculator.py"
             elif "from greet import" in test_code:
                 impl_file = temp_path / "greet.py"
+            elif "from person import" in test_code:
+                impl_file = temp_path / "person.py"
             else:
-                impl_file = temp_path / "main.py"
+                # Try to extract module name from import statement
+                import re
+                import_match = re.search(r'from\s+(\w+)\s+import', test_code)
+                if import_match:
+                    module_name = import_match.group(1)
+                    impl_file = temp_path / f"{module_name}.py"
+                else:
+                    impl_file = temp_path / "main.py"
             
             yield f"Writing test files to temporary directory...\n"
             

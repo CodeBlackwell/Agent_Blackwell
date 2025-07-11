@@ -68,37 +68,89 @@ class TestWriterFlagship:
     
     def _analyze_requirements(self, requirements: str) -> Dict[str, Any]:
         """Analyze requirements to determine what tests to write"""
-        # Simple analysis for the MVP
-        # In a real system, this would use NLP or more sophisticated parsing
+        import re
         
         test_plan = {
             "test_categories": [],
             "test_count": 0,
-            "edge_cases": []
+            "edge_cases": [],
+            "classes": [],
+            "methods": [],
+            "properties": [],
+            "validations": []
         }
         
-        # Basic heuristics
         requirements_lower = requirements.lower()
         
-        if "calculator" in requirements_lower:
-            test_plan["test_categories"] = ["basic_operations", "edge_cases", "error_handling"]
-            test_plan["test_count"] = 8
-            test_plan["edge_cases"] = ["division by zero", "invalid input types"]
-        elif "api" in requirements_lower:
-            test_plan["test_categories"] = ["endpoints", "validation", "error_responses"]
-            test_plan["test_count"] = 10
-            test_plan["edge_cases"] = ["missing parameters", "invalid data"]
-        else:
-            # Generic test plan
-            test_plan["test_categories"] = ["basic_functionality", "edge_cases"]
-            test_plan["test_count"] = 5
-            test_plan["edge_cases"] = ["null inputs", "boundary conditions"]
+        # Extract class names
+        class_pattern = r'\b(?:class|create\s+a|create\s+an?)\s+(\w+)'
+        class_matches = re.findall(class_pattern, requirements, re.IGNORECASE)
+        # Filter out common words that aren't class names
+        exclude_words = {'with', 'and', 'or', 'the', 'a', 'an', 'to', 'for', 'of', 'in', 'on', 'at'}
+        test_plan["classes"] = [match.capitalize() for match in class_matches if match.lower() not in exclude_words]
+        
+        # Extract properties/attributes
+        prop_patterns = [
+            r'with\s+([\w\s,]+?)\s+(?:property|properties|attribute|attributes)',
+            r'(\w+)\s+(?:property|properties|attribute|attributes)',
+            r'(?:property|properties|attribute|attributes):\s*([\w\s,]+)'
+        ]
+        for pattern in prop_patterns:
+            matches = re.findall(pattern, requirements, re.IGNORECASE)
+            for match in matches:
+                if isinstance(match, str):
+                    # Handle "name and age" pattern
+                    props = re.split(r'\s+and\s+|\s*,\s*', match)
+                    props = [p.strip() for p in props if p.strip() and p.strip() not in exclude_words]
+                    test_plan["properties"].extend(props)
+        
+        # Extract methods
+        method_patterns = [
+            r'(?:method|methods|function|functions)\s+(?:for|to|that)?\s*(\w+)',
+            r'(\w+)\s+method',
+            r'include\s+(\w+)\s+method'
+        ]
+        for pattern in method_patterns:
+            matches = re.findall(pattern, requirements, re.IGNORECASE)
+            test_plan["methods"].extend(matches)
+        
+        # Extract validation rules
+        if "must be" in requirements_lower or "should be" in requirements_lower:
+            validation_pattern = r'(\w+)\s+(?:must|should)\s+be\s+([^.]+)'
+            validations = re.findall(validation_pattern, requirements, re.IGNORECASE)
+            test_plan["validations"] = validations
+        
+        # Determine test categories based on requirements
+        if test_plan["classes"]:
+            test_plan["test_categories"].append("class_instantiation")
+        if test_plan["properties"]:
+            test_plan["test_categories"].append("property_access")
+        if test_plan["methods"]:
+            test_plan["test_categories"].append("method_functionality")
+        if test_plan["validations"]:
+            test_plan["test_categories"].append("validation")
+            test_plan["edge_cases"].append("invalid inputs")
+        
+        # Add common edge cases
+        if "age" in requirements_lower:
+            test_plan["edge_cases"].extend(["negative age", "age over limit"])
+        if "name" in requirements_lower:
+            test_plan["edge_cases"].extend(["empty name", "name with special characters"])
+        
+        # Calculate test count
+        test_plan["test_count"] = len(test_plan["test_categories"]) * 2 + len(test_plan["edge_cases"])
         
         return test_plan
     
     def _format_test_plan(self, test_plan: Dict[str, Any]) -> str:
         """Format the test plan for display"""
         lines = []
+        if test_plan.get('classes'):
+            lines.append(f"- Classes: {', '.join(test_plan['classes'])}")
+        if test_plan.get('properties'):
+            lines.append(f"- Properties: {', '.join(test_plan['properties'])}")
+        if test_plan.get('methods'):
+            lines.append(f"- Methods: {', '.join(test_plan['methods'])}")
         lines.append(f"- Test Categories: {', '.join(test_plan['test_categories'])}")
         lines.append(f"- Number of Tests: {test_plan['test_count']}")
         lines.append(f"- Edge Cases: {', '.join(test_plan['edge_cases'])}")
@@ -106,11 +158,14 @@ class TestWriterFlagship:
     
     def _generate_test_code(self, requirements: str, test_plan: Dict[str, Any]) -> str:
         """Generate actual test code based on requirements"""
-        # For the MVP, we'll generate calculator tests as the default example
-        if "calculator" in requirements.lower():
+        # Check for specific known patterns first
+        if "calculator" in requirements.lower() and not test_plan.get('classes'):
             return self._generate_calculator_tests()
-        elif "greet" in requirements.lower():
+        elif "greet" in requirements.lower() and not test_plan.get('classes'):
             return self._generate_greet_tests()
+        elif test_plan.get('classes') or test_plan.get('methods') or test_plan.get('properties'):
+            # Use the analyzed test plan to generate appropriate tests
+            return self._generate_tests_from_plan(requirements, test_plan)
         else:
             return self._generate_generic_tests(requirements)
     
@@ -206,6 +261,107 @@ class TestGreet:
         """Test greeting with very long name"""
         long_name = "A" * 100
         assert greet(long_name) == f"Hello, {long_name}!"'''
+    
+    def _generate_tests_from_plan(self, requirements: str, test_plan: Dict[str, Any]) -> str:
+        """Generate tests based on the analyzed test plan"""
+        imports = ["import pytest"]
+        
+        # Determine what to import
+        if test_plan['classes']:
+            class_name = test_plan['classes'][0]
+            # Create a module name from class name (Person -> person)
+            module_name = class_name.lower()
+            imports.append(f"from {module_name} import {class_name}")
+        else:
+            imports.append("from main import *")
+        
+        test_code = '\n'.join(imports) + '\n\n\n'
+        
+        # Generate test class for each main class
+        for class_name in test_plan['classes']:
+            test_code += f'class Test{class_name}:\n'
+            test_code += f'    """Test suite for {class_name} class"""\n\n'
+            
+            # Removed setup_method generation as it was creating instances without required arguments
+            # Each test method creates its own instances with proper parameters
+            
+            # Test instantiation
+            test_code += '    def test_instantiation(self):\n'
+            test_code += f'        """Test {class_name} instantiation"""\n'
+            
+            # Generate constructor based on properties
+            if 'name' in test_plan['properties'] and 'age' in test_plan['properties']:
+                test_code += f'        person = {class_name}("John Doe", 30)\n'
+                test_code += '        assert person is not None\n'
+                test_code += '        assert isinstance(person, ' + class_name + ')\n\n'
+            else:
+                test_code += f'        obj = {class_name}()\n'
+                test_code += '        assert obj is not None\n\n'
+            
+            # Test properties with getters
+            for prop in test_plan['properties']:
+                if prop and prop.lower() not in ['and', 'or', '']:  # Filter out parsing artifacts
+                    test_code += f'    def test_{prop.lower()}_property(self):\n'
+                    test_code += f'        """Test {prop} property and getter"""\n'
+                    
+                    if prop.lower() == 'name':
+                        test_code += f'        person = {class_name}("Alice Smith", 25)\n'
+                        test_code += '        assert person.get_name() == "Alice Smith"\n'
+                        test_code += '        assert person.name == "Alice Smith"\n\n'
+                    elif prop.lower() == 'age':
+                        test_code += f'        person = {class_name}("Bob Jones", 45)\n'
+                        test_code += '        assert person.get_age() == 45\n'
+                        test_code += '        assert person.age == 45\n\n'
+                    else:
+                        test_code += f'        # Test for {prop} property\n'
+                        test_code += f'        obj = {class_name}()\n'
+                        test_code += f'        assert hasattr(obj, "{prop}")\n\n'
+            
+            # Test validations
+            if test_plan['validations']:
+                test_code += '    def test_validations(self):\n'
+                test_code += '        """Test input validations"""\n'
+                
+                for field, rule in test_plan['validations']:
+                    if 'name' in field.lower() and 'empty' in rule:
+                        test_code += '        # Name must not be empty\n'
+                        test_code += '        with pytest.raises(ValueError, match="Name cannot be empty"):\n'
+                        test_code += f'            {class_name}("", 30)\n'
+                    if 'age' in field.lower() and 'positive' in rule:
+                        test_code += '        # Age must be positive\n'
+                        test_code += '        with pytest.raises(ValueError, match="Age must be positive"):\n'
+                        test_code += f'            {class_name}("John", -5)\n'
+                
+                test_code += '\n'
+            
+            # Edge cases
+            if 'age' in [p.lower() for p in test_plan['properties']]:
+                test_code += '    def test_age_boundaries(self):\n'
+                test_code += '        """Test age boundary conditions"""\n'
+                test_code += '        # Test minimum age\n'
+                test_code += f'        person = {class_name}("Young", 0)\n'
+                test_code += '        assert person.get_age() == 0\n'
+                test_code += '        \n'
+                test_code += '        # Test maximum age\n'
+                test_code += f'        person = {class_name}("Old", 150)\n'
+                test_code += '        assert person.get_age() == 150\n'
+                test_code += '        \n'
+                test_code += '        # Test over limit\n'
+                test_code += '        with pytest.raises(ValueError, match="Age must be between 0 and 150"):\n'
+                test_code += f'            {class_name}("TooOld", 151)\n\n'
+            
+            if 'name' in [p.lower() for p in test_plan['properties']]:
+                test_code += '    def test_name_edge_cases(self):\n'
+                test_code += '        """Test name edge cases"""\n'
+                test_code += '        # Test with special characters\n'
+                test_code += f'        person = {class_name}("José García-López", 30)\n'
+                test_code += '        assert person.get_name() == "José García-López"\n'
+                test_code += '        \n'
+                test_code += '        # Test with unicode\n'
+                test_code += f'        person = {class_name}("李明", 25)\n'
+                test_code += '        assert person.get_name() == "李明"\n'
+        
+        return test_code.rstrip()
     
     def _generate_generic_tests(self, requirements: str) -> str:
         """Generate generic failing tests based on requirements"""

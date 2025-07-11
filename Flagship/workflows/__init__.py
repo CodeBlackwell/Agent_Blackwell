@@ -1,10 +1,11 @@
 """Flagship Workflows Module - TDD workflow coordination"""
 
-from .flagship_workflow import FlagshipTDDWorkflow
+# Temporarily comment out to fix circular import
+# from .flagship_workflow import FlagshipTDDWorkflow
 from .tdd_orchestrator import TDDOrchestrator, TDDPhase, TDDFeature, TDDOrchestratorConfig
 
 __all__ = [
-    "FlagshipTDDWorkflow",
+    # "FlagshipTDDWorkflow",
     "TDDOrchestrator",
     "TDDPhase",
     "TDDFeature",

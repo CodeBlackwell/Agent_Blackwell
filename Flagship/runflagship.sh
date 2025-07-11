@@ -48,6 +48,7 @@ fi
 echo ""
 echo -e "${BLUE}================================================${NC}"
 echo -e "${BLUE}🚀 Flagship TDD Orchestrator Runner${NC}"
+echo -e "${BLUE}   Enhanced Version with Requirements Analysis${NC}"
 echo -e "${BLUE}================================================${NC}"
 echo ""
 
@@ -80,10 +81,10 @@ start_server() {
     
     # Start server in background and redirect output to log
     if [ "$USE_STREAMING" = true ]; then
-        python flagship_server_streaming.py > server.log 2>&1 &
+        python run_enhanced_flagship.py --streaming > server.log 2>&1 &
     else
-        # Use simple server to avoid stdout redirection issues
-        python flagship_server_simple.py > server.log 2>&1 &
+        # Use launcher to ensure proper imports
+        python run_enhanced_flagship.py > server.log 2>&1 &
     fi
     SERVER_PID=$!
     

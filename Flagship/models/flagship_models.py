@@ -20,6 +20,8 @@ class AgentType(Enum):
     CODER = "coder_flagship"
     TEST_RUNNER = "test_runner_flagship"
     ORCHESTRATOR = "flagship_orchestrator"
+    PLANNER = "planner_flagship"  # Added for enhanced workflow
+    DESIGNER = "designer_flagship"  # Added for enhanced workflow
 
 
 class TestStatus(Enum):

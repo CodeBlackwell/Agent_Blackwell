@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
 
+# Add the current directory to Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel

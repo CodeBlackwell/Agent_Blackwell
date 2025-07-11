@@ -15,14 +15,16 @@ from .enhanced_models import (
 class EnhancedAgentCoordinator:
     """Enhanced coordinator for agent invocations with planning agents support"""
     
-    def __init__(self, run_team_member_func: Optional[Callable] = None):
+    def __init__(self, run_team_member_func: Optional[Callable] = None, tracer: Optional[Any] = None):
         """
         Initialize enhanced coordinator
         Args:
             run_team_member_func: Function to run team members (for parent system integration)
+            tracer: ExecutionTracer instance for comprehensive logging
         """
         self.run_team_member_func = run_team_member_func
         self.invocation_history: List[Dict[str, Any]] = []
+        self.tracer = tracer
         
         # Extended phase-agent mapping
         self.phase_agent_map = {
@@ -89,6 +91,16 @@ class EnhancedAgentCoordinator:
             "input": agent_input
         }
         
+        # Start agent exchange tracking if tracer available
+        exchange_id = None
+        if self.tracer:
+            exchange_id = self.tracer.start_agent_exchange(
+                agent_name=agent_name,
+                phase=context.phase.value,
+                iteration=context.attempt_number,
+                request_data=agent_input
+            )
+        
         try:
             if self.run_team_member_func:
                 # Use external function (parent system integration)
@@ -105,6 +117,14 @@ class EnhancedAgentCoordinator:
             invocation["output"] = self._serialize_result(processed_result)
             invocation["duration_seconds"] = (datetime.now() - start_time).total_seconds()
             
+            # Complete agent exchange tracking
+            if self.tracer and exchange_id:
+                self.tracer.complete_agent_exchange(
+                    exchange_id=exchange_id,
+                    response_data={"result": self._serialize_result(processed_result)},
+                    success=True
+                )
+            
             return processed_result
             
         except Exception as e:
@@ -112,6 +132,16 @@ class EnhancedAgentCoordinator:
             invocation["success"] = False
             invocation["error"] = str(e)
             invocation["duration_seconds"] = (datetime.now() - start_time).total_seconds()
+            
+            # Complete agent exchange tracking with error
+            if self.tracer and exchange_id:
+                self.tracer.complete_agent_exchange(
+                    exchange_id=exchange_id,
+                    response_data={},
+                    success=False,
+                    error=str(e)
+                )
+            
             raise
         
         finally:
@@ -139,8 +169,8 @@ class EnhancedAgentCoordinator:
             # Designer needs expanded requirements and project type
             base_context.update({
                 "task": "design_architecture",
-                "expanded_requirements": context.expanded_requirements.__dict__ if context.expanded_requirements else None,
-                "project_type": context.expanded_requirements.project_type if context.expanded_requirements else "unknown",
+                "expanded_requirements": self._serialize_object(context.expanded_requirements) if context.expanded_requirements else None,
+                "project_type": context.expanded_requirements.project_type if context.expanded_requirements else "web_app",
                 "create_file_structure": True,
                 "define_components": True,
                 "specify_apis": True
@@ -149,10 +179,10 @@ class EnhancedAgentCoordinator:
         elif agent_name == "test_writer":
             # Enhanced test writer with feature awareness
             base_context.update({
-                "current_feature": context.current_feature.__dict__ if context.current_feature else None,
+                "current_feature": self._serialize_object(context.current_feature) if context.current_feature else None,
                 "architecture": self._simplify_architecture(context.architecture),
                 "existing_files": list(context.generated_files.keys()),
-                "test_criteria": context.current_feature.test_criteria if context.current_feature else [],
+                "test_criteria": [self._serialize_object(tc) for tc in context.current_feature.test_criteria] if context.current_feature else [],
                 "generate_comprehensive_tests": True
             })
             
@@ -160,7 +190,7 @@ class EnhancedAgentCoordinator:
             # Enhanced coder with multi-file support
             base_context.update({
                 "test_code": context.phase_context.get("test_code", ""),
-                "current_feature": context.current_feature.__dict__ if context.current_feature else None,
+                "current_feature": self._serialize_object(context.current_feature) if context.current_feature else None,
                 "architecture": self._simplify_architecture(context.architecture),
                 "existing_files": context.generated_files,
                 "support_multi_file": True,
@@ -180,7 +210,7 @@ class EnhancedAgentCoordinator:
         elif agent_name == "validator":
             # Validator needs full context
             base_context.update({
-                "expanded_requirements": context.expanded_requirements.__dict__ if context.expanded_requirements else None,
+                "expanded_requirements": self._serialize_object(context.expanded_requirements) if context.expanded_requirements else None,
                 "architecture": self._simplify_architecture(context.architecture),
                 "generated_files": list(context.generated_files.keys()),
                 "validate_requirements": True,
@@ -432,3 +462,29 @@ class EnhancedAgentCoordinator:
             return json.dumps(result)
         else:
             return str(result)
+    
+    def _serialize_object(self, obj: Any) -> Any:
+        """Serialize complex objects to JSON-compatible format"""
+        if obj is None:
+            return None
+        elif hasattr(obj, 'to_dict'):
+            return obj.to_dict()
+        elif hasattr(obj, '__dict__'):
+            # Recursively serialize attributes
+            result = {}
+            for key, value in obj.__dict__.items():
+                if isinstance(value, (str, int, float, bool, type(None))):
+                    result[key] = value
+                elif isinstance(value, (list, tuple)):
+                    result[key] = [self._serialize_object(item) for item in value]
+                elif isinstance(value, dict):
+                    result[key] = {k: self._serialize_object(v) for k, v in value.items()}
+                else:
+                    result[key] = self._serialize_object(value)
+            return result
+        elif isinstance(obj, (list, tuple)):
+            return [self._serialize_object(item) for item in obj]
+        elif isinstance(obj, dict):
+            return {k: self._serialize_object(v) for k, v in obj.items()}
+        else:
+            return str(obj)

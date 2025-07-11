@@ -1,4 +1,9 @@
-"""Enhanced Coder Agent for multi-file implementation"""
+"""Enhanced Coder Agent for multi-file implementation
+
+WARNING: This file contains hardcoded calculator templates and should not be used
+for general code generation. This is an experimental/legacy version in the Flagship directory.
+Use the main coder agent at agents/coder/coder_agent.py instead.
+"""
 
 import asyncio
 from typing import AsyncGenerator, Dict, Any, List
@@ -140,7 +145,7 @@ class CoderEnhancedFlagship:
         files = {}
         
         # Backend config
-        files["backend/config.py"] = '''"""Configuration for calculator application"""
+        files["backend/config.py"] = '''"""Configuration for application"""
 import os
 from dotenv import load_dotenv
 

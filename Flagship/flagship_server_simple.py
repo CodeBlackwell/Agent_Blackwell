@@ -119,8 +119,18 @@ async def run_workflow_simple(session_id: str, requirements: str, config_type: s
         # Get configuration
         config = get_config(config_type)
         
+        # Capture original command
+        original_command = {
+            "endpoint": "/tdd/start",
+            "method": "POST",
+            "requirements": requirements,
+            "config_type": config_type,
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat()
+        }
+        
         # Create and run orchestrator
-        orchestrator = FlagshipOrchestrator(config, session_id=session_id)
+        orchestrator = FlagshipOrchestrator(config, session_id=session_id, original_command=original_command)
         
         # Capture output by collecting from workflow
         output_buffer = []

@@ -33,9 +33,9 @@ from utils.enhanced_file_manager import EnhancedFileManager
 class FlagshipOrchestratorEnhanced:
     """Enhanced orchestrator that uses the new TDD workflow with planning phases"""
     
-    def __init__(self, config: TDDWorkflowConfig = None, session_id: str = None, project_root: Path = None):
+    def __init__(self, config: TDDWorkflowConfig = None, session_id: str = None, project_root: Path = None, original_command: Dict[str, Any] = None):
         self.session_id = session_id or f"tdd_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
-        self.tracer = ExecutionTracer(self.session_id)
+        self.tracer = ExecutionTracer(self.session_id, original_command)
         
         # Initialize file manager
         if project_root is None:
@@ -45,8 +45,13 @@ class FlagshipOrchestratorEnhanced:
         # Convert config to enhanced config
         enhanced_config = self._convert_to_enhanced_config(config)
         
-        # Initialize enhanced orchestrator
-        self.enhanced_orchestrator = EnhancedTDDOrchestrator(enhanced_config)
+        # Initialize enhanced orchestrator with session_id and tracer
+        self.enhanced_orchestrator = EnhancedTDDOrchestrator(
+            enhanced_config, 
+            session_id=self.session_id,
+            base_output_dir=str(self.file_manager.session_dir.parent),  # Get the 'generated' directory
+            tracer=self.tracer
+        )
         
         # For compatibility, maintain a state object
         self.state: Optional[TDDWorkflowState] = None
@@ -219,11 +224,11 @@ class FlagshipOrchestratorEnhanced:
             }
         
         # Save state
-        state_file = self.file_manager.get_session_path() / "workflow_state.json"
+        state_file = self.file_manager.session_dir / "workflow_state.json"
         state_file.write_text(json.dumps(state_data, indent=2))
         
         # Also save detailed execution report from tracer
-        self.tracer.save_report(self.file_manager.get_session_path())
+        self.tracer.save_report(self.file_manager.session_dir)
     
     def _output(self, message: str):
         """Output message and store for streaming"""

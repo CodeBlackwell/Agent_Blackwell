@@ -1,11 +1,37 @@
 """Execution Tracer - Comprehensive tracing of all TDD workflow events"""
 
 import json
+import copy
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 from enum import Enum
 from dataclasses import dataclass, field, asdict
+
+
+class CustomJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles non-serializable objects"""
+    def default(self, obj):
+        # Handle dataclasses
+        if hasattr(obj, '__dataclass_fields__'):
+            return asdict(obj)
+        # Handle objects with to_dict method
+        elif hasattr(obj, 'to_dict'):
+            return obj.to_dict()
+        # Handle objects with __dict__
+        elif hasattr(obj, '__dict__'):
+            return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
+        # Handle enums
+        elif isinstance(obj, Enum):
+            return obj.value
+        # Handle datetime
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
+        # Handle Path
+        elif isinstance(obj, Path):
+            return str(obj)
+        # Let the base class default method raise the TypeError
+        return super().default(obj)
 
 
 class EventType(Enum):
@@ -130,9 +156,10 @@ class TestExecution:
 class ExecutionTracer:
     """Traces all events during TDD workflow execution"""
     
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: str, original_command: Optional[Dict[str, Any]] = None):
         self.session_id = session_id
         self.start_time = datetime.now()
+        self.original_command = original_command or {}
         self.events: List[TracedEvent] = []
         self.agent_exchanges: List[AgentExchange] = []
         self.command_executions: List[CommandExecution] = []
@@ -318,6 +345,7 @@ class ExecutionTracer:
         
         report = {
             "session_id": self.session_id,
+            "original_command": self.original_command,
             "start_time": self.start_time.isoformat(),
             "end_time": end_time.isoformat(),
             "duration_ms": total_duration,
@@ -377,8 +405,38 @@ class ExecutionTracer:
         """Save execution report to file"""
         report = self.generate_report()
         
+        # Save with session ID
         output_file = output_dir / f"execution_report_{self.session_id}.json"
-        with open(output_file, 'w') as f:
-            json.dump(report, f, indent=2)
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(report, f, indent=2, cls=CustomJSONEncoder)
+        except Exception as e:
+            print(f"❌ Error saving execution report with session ID: {e}")
+            # Try to save without problematic data
+            try:
+                # Create a simplified report
+                simple_report = copy.deepcopy(report)
+                # Remove potentially problematic nested objects
+                for exchange in simple_report.get('agent_exchanges', []):
+                    if 'request_data' in exchange:
+                        exchange['request_data'] = str(exchange['request_data'])
+                    if 'response_data' in exchange:
+                        exchange['response_data'] = str(exchange['response_data'])
+                
+                with open(output_file, 'w') as f:
+                    json.dump(simple_report, f, indent=2)
+            except Exception as e2:
+                print(f"❌ Failed to save simplified report: {e2}")
+        
+        # Also save a copy without session ID for easier access
+        simple_file = output_dir / "execution_report.json"
+        try:
+            # Use a fresh copy to avoid any serialization issues
+            report_copy = copy.deepcopy(report)
+            with open(simple_file, 'w') as f:
+                json.dump(report_copy, f, indent=2, cls=CustomJSONEncoder)
+        except Exception as e:
+            print(f"⚠️ Warning: Could not save plain execution_report.json: {e}")
+            # Non-critical error, continue
         
         return output_file

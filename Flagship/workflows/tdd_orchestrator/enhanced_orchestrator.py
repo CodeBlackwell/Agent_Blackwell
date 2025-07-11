@@ -6,6 +6,22 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
 import json
+import sys
+
+# Add import path for parent modules
+parent_path = Path(__file__).parent.parent.parent
+if str(parent_path) not in sys.path:
+    sys.path.insert(0, str(parent_path))
+
+# Import EventType from the right location
+try:
+    from models.execution_tracer import EventType
+except ImportError:
+    # Define EventType locally if import fails
+    from enum import Enum
+    class EventType(Enum):
+        PHASE_START = "phase_start"
+        PHASE_END = "phase_end"
 
 from .enhanced_models import (
     EnhancedTDDPhase, TDDFeature, EnhancedTDDOrchestratorConfig, 
@@ -25,19 +41,31 @@ class EnhancedTDDOrchestrator:
     """Enhanced orchestrator for TDD workflow with comprehensive planning"""
     
     def __init__(self, config: EnhancedTDDOrchestratorConfig = None, 
-                 run_team_member_func: Optional[Callable] = None):
+                 run_team_member_func: Optional[Callable] = None,
+                 session_id: Optional[str] = None,
+                 base_output_dir: Optional[str] = None,
+                 tracer: Optional[Any] = None):
         """
         Initialize Enhanced TDD Orchestrator
         Args:
             config: Configuration for the orchestrator
             run_team_member_func: Optional function to run team members
+            session_id: Session ID for the workflow (used for directory naming)
+            base_output_dir: Base directory for output (defaults to ./generated)
+            tracer: ExecutionTracer instance for comprehensive logging
         """
         self.config = config or EnhancedTDDOrchestratorConfig()
+        self.session_id = session_id
+        self.tracer = tracer
         self.phase_manager = PhaseManager()
-        self.agent_coordinator = EnhancedAgentCoordinator(run_team_member_func)
+        self.agent_coordinator = EnhancedAgentCoordinator(run_team_member_func, tracer)
         self.retry_coordinator = RetryCoordinator(self.config.__dict__)
         self.metrics_collector = MetricsCollector()
-        self.project_manager = ProjectStructureManager()
+        self.project_manager = ProjectStructureManager(
+            session_id=session_id,
+            base_output_dir=base_output_dir,
+            tracer=tracer
+        )
         self.test_generator = FeatureBasedTestGenerator()
         
         # Output handlers
@@ -81,6 +109,14 @@ class EnhancedTDDOrchestrator:
                 print(f"\n{'='*60}")
                 print(f"📋 Phase 1: Requirements Analysis")
                 print(f"{'='*60}\n")
+                
+                # Trace phase start
+                if self.tracer:
+                    self.tracer.trace_event(
+                        EventType.PHASE_START,
+                        phase="REQUIREMENTS",
+                        data={"feature_id": feature.id, "requirements": requirements}
+                    )
                 
                 expanded_requirements = await self._analyze_requirements(feature)
                 if not expanded_requirements:
@@ -420,6 +456,16 @@ class EnhancedTDDOrchestrator:
             
             test_passed = result.get("all_tests_passed", False)
             
+            # Trace test execution if tracer available
+            if self.tracer and isinstance(result, dict):
+                test_results = result.get("test_results", [])
+                if test_results:
+                    self.tracer.trace_test_execution(
+                        test_file=f"{feature.title}_tests",
+                        test_results=test_results,
+                        duration_ms=(time.time() - start_time) * 1000
+                    )
+            
             return PhaseResult(
                 phase=EnhancedTDDPhase.GREEN,
                 success=test_passed,
@@ -518,7 +564,7 @@ class EnhancedTDDOrchestrator:
             
             return ExpandedRequirements(
                 original_requirements=original_requirements,
-                project_type=expanded_data.get("project_type", "unknown"),
+                project_type=expanded_data.get("project_type", "web_app"),
                 expanded_description=result.get("output", ""),  # The text output
                 features=testable_features,
                 technical_requirements=expanded_data.get("technical_requirements", []),
@@ -528,7 +574,7 @@ class EnhancedTDDOrchestrator:
         # Fallback if result format is unexpected
         return ExpandedRequirements(
             original_requirements=original_requirements,
-            project_type="unknown",
+            project_type="web_app",
             expanded_description=str(result),
             features=[],
             technical_requirements=[],
@@ -570,7 +616,7 @@ class EnhancedTDDOrchestrator:
                 ))
             
             return ProjectArchitecture(
-                project_type=arch_data.get("project_type", "unknown"),
+                project_type=arch_data.get("project_type", "web_app"),
                 structure=arch_data.get("structure", {}),
                 technology_stack=arch_data.get("technology_stack", {}),
                 components=components,
@@ -579,7 +625,7 @@ class EnhancedTDDOrchestrator:
             )
         
         # Fallback if result format is unexpected
-        project_type = expanded_requirements.project_type if expanded_requirements else "unknown"
+        project_type = expanded_requirements.project_type if expanded_requirements else "web_app"
         return ProjectArchitecture(
             project_type=project_type,
             structure={},

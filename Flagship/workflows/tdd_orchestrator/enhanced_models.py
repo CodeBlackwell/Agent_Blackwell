@@ -1,6 +1,6 @@
 """Enhanced TDD models with requirements analysis and architecture planning phases"""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum, auto
 from typing import Dict, List, Optional, Any
@@ -66,6 +66,18 @@ class TestableFeature:
     test_criteria: List['TestCriteria']
     complexity: str  # Low, Medium, High
     dependencies: List[str] = field(default_factory=list)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization"""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "components": self.components,
+            "test_criteria": [tc.to_dict() if hasattr(tc, 'to_dict') else asdict(tc) for tc in self.test_criteria],
+            "complexity": self.complexity,
+            "dependencies": self.dependencies
+        }
 
 
 @dataclass

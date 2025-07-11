@@ -14,20 +14,26 @@ from models.flagship_models import (
     TDDWorkflowConfig, TestStatus, TestResult, AgentType
 )
 from models.execution_tracer import ExecutionTracer, EventType
+from utils.enhanced_file_manager import EnhancedFileManager
 
 
 class FlagshipOrchestrator:
     """Orchestrates the TDD workflow through RED-YELLOW-GREEN phases"""
     
-    def __init__(self, config: TDDWorkflowConfig = None, session_id: str = None):
+    def __init__(self, config: TDDWorkflowConfig = None, session_id: str = None, project_root: Path = None):
         self.config = config or TDDWorkflowConfig()
-        self.session_id = session_id or f"tdd_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.session_id = session_id or f"tdd_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
         self.tracer = ExecutionTracer(self.session_id)
         
-        # Initialize agents with tracer
-        self.test_writer = TestWriterFlagship()
-        self.coder = CoderFlagship()
-        self.test_runner = TestRunnerFlagship(tracer=self.tracer)
+        # Initialize file manager
+        if project_root is None:
+            project_root = Path(__file__).parent
+        self.file_manager = EnhancedFileManager(self.session_id, project_root)
+        
+        # Initialize agents with tracer and file manager
+        self.test_writer = TestWriterFlagship(file_manager=self.file_manager)
+        self.coder = CoderFlagship(file_manager=self.file_manager)
+        self.test_runner = TestRunnerFlagship(tracer=self.tracer, file_manager=self.file_manager)
         self.state: Optional[TDDWorkflowState] = None
         
     async def run_tdd_workflow(self, requirements: str) -> TDDWorkflowState:
@@ -494,7 +500,8 @@ class FlagshipOrchestrator:
         
         print(f"Workflow state saved to: {state_file}")
         
-        # Save generated code
+        # Save generated code (file manager already saved during execution)
+        # Also save to output directory for backward compatibility
         if self.state.generated_tests:
             test_file = output_path / "test_generated.py"
             test_file.write_text(self.state.generated_tests[-1])
@@ -504,6 +511,10 @@ class FlagshipOrchestrator:
             impl_file = output_path / "implementation_generated.py"
             impl_file.write_text(self.state.generated_code[-1])
             print(f"Implementation saved to: {impl_file}")
+        
+        # Save file manager session metadata
+        self.file_manager.save_session_metadata()
+        print(f"Session metadata saved to: {self.file_manager.session_dir}")
 
 
 async def main():

@@ -12,9 +12,10 @@ from models.flagship_models import (
 class CoderFlagship:
     """Agent responsible for writing minimal code to pass tests in the YELLOW phase"""
     
-    def __init__(self):
+    def __init__(self, file_manager=None):
         self.agent_type = AgentType.CODER
         self.phase = TDDPhase.YELLOW
+        self.file_manager = file_manager
     
     async def write_code(self, test_code: str, test_results: List[TestResult], 
                         context: Dict[str, Any] = None) -> AsyncGenerator[str, None]:
@@ -31,9 +32,30 @@ class CoderFlagship:
         """
         yield f"🟡 YELLOW Phase: Writing minimal code to pass tests...\n"
         
+        # Check for existing implementation if file manager is available
+        if self.file_manager:
+            file_context = self.file_manager.get_file_context("coder")
+            test_files = file_context.get("test_files", [])
+            impl_files = file_context.get("implementation_files", [])
+            
+            if test_files:
+                yield f"📁 Found {len(test_files)} test file(s)\n"
+                # Read test file if not provided
+                if not test_code and test_files:
+                    test_code = self.file_manager.read_file(test_files[0]) or test_code
+                    
+            if impl_files:
+                yield f"📁 Found {len(impl_files)} existing implementation file(s)\n"
+                # Read and analyze existing implementations
+                for impl_file in impl_files[:2]:  # Limit to first 2 files
+                    content = self.file_manager.read_file(impl_file)
+                    if content:
+                        yield f"  - {impl_file}: {len(content.splitlines())} lines\n"
+                        # Could analyze existing code here to build upon it
+        
         # Analyze failing tests
         failing_tests = [t for t in test_results if t.status.name in ['FAILED', 'ERROR']]
-        yield f"Found {len(failing_tests)} failing tests to fix\n\n"
+        yield f"\nFound {len(failing_tests)} failing tests to fix\n\n"
         
         # Extract requirements from test code
         requirements = self._extract_requirements_from_tests(test_code)
@@ -52,6 +74,11 @@ class CoderFlagship:
         
         # Store the implementation code
         self._implementation_code = implementation_code
+        
+        # Save implementation code to file manager if available
+        if self.file_manager:
+            self.file_manager.write_file("implementation_generated.py", implementation_code)
+            yield "\n✅ Implementation code saved to session directory"
     
     def _extract_requirements_from_tests(self, test_code: str) -> Dict[str, Any]:
         """Extract implementation requirements from test code"""

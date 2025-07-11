@@ -12,9 +12,10 @@ from models.flagship_models import (
 class TestWriterFlagship:
     """Agent responsible for writing failing tests in the RED phase"""
     
-    def __init__(self):
+    def __init__(self, file_manager=None):
         self.agent_type = AgentType.TEST_WRITER
         self.phase = TDDPhase.RED
+        self.file_manager = file_manager
     
     async def write_tests(self, requirements: str, context: Dict[str, Any] = None) -> AsyncGenerator[str, None]:
         """
@@ -30,9 +31,21 @@ class TestWriterFlagship:
         yield f"🔴 RED Phase: Writing failing tests for requirements...\n"
         yield f"Requirements: {requirements}\n\n"
         
+        # Check for existing tests if file manager is available
+        if self.file_manager:
+            file_context = self.file_manager.get_file_context("test_writer")
+            existing_tests = file_context.get("existing_tests", [])
+            if existing_tests:
+                yield f"📁 Found {len(existing_tests)} existing test file(s)\n"
+                # Read and analyze existing tests
+                for test_file in existing_tests[:3]:  # Limit to first 3 files
+                    content = self.file_manager.read_file(test_file)
+                    if content:
+                        yield f"  - {test_file}: {len(content.splitlines())} lines\n"
+        
         # Analyze requirements
         test_plan = self._analyze_requirements(requirements)
-        yield f"Test Plan:\n{self._format_test_plan(test_plan)}\n"
+        yield f"\nTest Plan:\n{self._format_test_plan(test_plan)}\n"
         
         # Generate test code
         test_code = self._generate_test_code(requirements, test_plan)
@@ -47,6 +60,11 @@ class TestWriterFlagship:
         
         # Store the test code in the result
         self._test_code = test_code
+        
+        # Save test code to file manager if available
+        if self.file_manager:
+            self.file_manager.write_file("test_generated.py", test_code)
+            yield "\n✅ Test code saved to session directory"
     
     def _analyze_requirements(self, requirements: str) -> Dict[str, Any]:
         """Analyze requirements to determine what tests to write"""

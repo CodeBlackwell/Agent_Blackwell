@@ -17,10 +17,11 @@ from utils.command_tracer import create_traced_runner
 class TestRunnerFlagship:
     """Agent responsible for running tests and validating they pass in the GREEN phase"""
     
-    def __init__(self, tracer: ExecutionTracer = None):
+    def __init__(self, tracer: ExecutionTracer = None, file_manager=None):
         self.agent_type = AgentType.TEST_RUNNER
         self.phase = TDDPhase.GREEN
         self.tracer = tracer
+        self.file_manager = file_manager
         self.run_command = create_traced_runner(tracer)
     
     async def run_tests(self, test_code: str, implementation_code: str, 
@@ -37,6 +38,27 @@ class TestRunnerFlagship:
             Test execution results as they're generated
         """
         yield f"🟢 GREEN Phase: Running tests to validate implementation...\n"
+        
+        # Check if we should use file manager to get files
+        if self.file_manager:
+            file_context = self.file_manager.get_file_context("test_runner")
+            all_files = file_context.get("all_python_files", [])
+            
+            if all_files:
+                yield f"📁 Found {len(all_files)} Python file(s) in session\n"
+                
+                # Try to read test and implementation from file manager
+                if not test_code:
+                    test_file = next((f for f in all_files if "test" in f), None)
+                    if test_file:
+                        test_code = self.file_manager.read_file(test_file) or test_code
+                        yield f"  - Loaded test code from {test_file}\n"
+                        
+                if not implementation_code:
+                    impl_file = next((f for f in all_files if "test" not in f and f.endswith(".py")), None)
+                    if impl_file:
+                        implementation_code = self.file_manager.read_file(impl_file) or implementation_code
+                        yield f"  - Loaded implementation from {impl_file}\n"
         
         # Create temporary directory for test execution
         with tempfile.TemporaryDirectory() as temp_dir:

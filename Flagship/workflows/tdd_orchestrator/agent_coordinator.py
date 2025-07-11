@@ -116,7 +116,7 @@ class AgentCoordinator:
             test_code = agent.get_test_code()
             
             # Create result object similar to parent system
-            from shared.data_models import TeamMemberResult, TeamMember
+            from models.parent_compatibility import TeamMemberResult, TeamMember
             return TeamMemberResult(
                 team_member=TeamMember.test_writer,
                 output=test_code
@@ -135,7 +135,7 @@ class AgentCoordinator:
             # Get the actual implementation code
             impl_code = agent.get_implementation_code()
             
-            from shared.data_models import TeamMemberResult, TeamMember
+            from models.parent_compatibility import TeamMemberResult, TeamMember
             return TeamMemberResult(
                 team_member=TeamMember.coder,
                 output=impl_code
@@ -161,7 +161,7 @@ class AgentCoordinator:
                 failed_count = len([t for t in test_results if t.status.name != 'PASSED'])
                 result_output += f", {failed_count} failed"
             
-            from shared.data_models import TeamMemberResult, TeamMember
+            from models.parent_compatibility import TeamMemberResult, TeamMember
             return TeamMemberResult(
                 team_member=TeamMember.executor,
                 output=result_output

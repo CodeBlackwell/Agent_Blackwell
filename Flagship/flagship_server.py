@@ -170,8 +170,8 @@ async def run_workflow_async(session_id: str, requirements: str, config_type: st
                 "end_time": datetime.now().isoformat()
             })
             
-            # Save workflow state
-            orchestrator.save_workflow_state(f"generated/session_{session_id}")
+            # Save workflow state (uses file manager's session directory)
+            orchestrator.save_workflow_state()
             
         finally:
             # Restore stdout

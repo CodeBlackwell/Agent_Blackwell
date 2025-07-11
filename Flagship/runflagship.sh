@@ -244,7 +244,7 @@ show_generated_files() {
     echo -e "${BLUE}=================${NC}"
     
     # Look for generated files
-    GEN_DIR="generated/session_$session_id"
+    GEN_DIR="generated/$session_id"
     if [ -d "$GEN_DIR" ]; then
         echo "Files in $GEN_DIR:"
         ls -la "$GEN_DIR"

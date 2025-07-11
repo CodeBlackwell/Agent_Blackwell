@@ -467,8 +467,8 @@ class FlagshipOrchestrator:
         if not self.state:
             return
         
-        output_path = Path(output_dir) / f"session_{self.session_id}"
-        output_path.mkdir(parents=True, exist_ok=True)
+        # Use the file manager's session directory instead of creating a new one
+        output_path = self.file_manager.session_dir
         
         # Save execution report
         execution_report_file = self.tracer.save_report(output_path)
@@ -500,17 +500,8 @@ class FlagshipOrchestrator:
         
         print(f"Workflow state saved to: {state_file}")
         
-        # Save generated code (file manager already saved during execution)
-        # Also save to output directory for backward compatibility
-        if self.state.generated_tests:
-            test_file = output_path / "test_generated.py"
-            test_file.write_text(self.state.generated_tests[-1])
-            print(f"Test code saved to: {test_file}")
-        
-        if self.state.generated_code:
-            impl_file = output_path / "implementation_generated.py"
-            impl_file.write_text(self.state.generated_code[-1])
-            print(f"Implementation saved to: {impl_file}")
+        # Files are already saved by the file manager during agent execution
+        # No need to save them again here
         
         # Save file manager session metadata
         self.file_manager.save_session_metadata()

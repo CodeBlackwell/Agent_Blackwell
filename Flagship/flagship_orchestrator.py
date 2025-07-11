@@ -53,8 +53,8 @@ class FlagshipOrchestrator:
                 "requirements": requirements,
                 "config": {
                     "max_iterations": self.config.max_iterations,
-                    "phase_timeout": self.config.phase_timeout,
-                    "enable_refactoring": self.config.enable_refactoring
+                    "timeout_seconds": self.config.timeout_seconds,
+                    "auto_refactor": self.config.auto_refactor
                 }
             }
         )

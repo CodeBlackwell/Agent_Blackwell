@@ -262,9 +262,10 @@ class ExecutionTracer:
     def trace_test_execution(self, test_file: str, test_results: List[Dict[str, Any]],
                            duration_ms: float):
         """Trace test execution results"""
-        passed = sum(1 for t in test_results if t.get("status") == "passed")
-        failed = sum(1 for t in test_results if t.get("status") == "failed")
-        errors = sum(1 for t in test_results if t.get("status") == "error")
+        # Handle enum values from TestStatus: NOT_RUN=1, PASSED=2, FAILED=3, ERROR=4, SKIPPED=5
+        passed = sum(1 for t in test_results if t.get("status") == 2)  # TestStatus.PASSED
+        failed = sum(1 for t in test_results if t.get("status") == 3)  # TestStatus.FAILED
+        errors = sum(1 for t in test_results if t.get("status") == 4)  # TestStatus.ERROR
         
         test_exec = TestExecution(
             test_file=test_file,

@@ -18,8 +18,8 @@ async def test_execution_report():
     session_id = "test_execution_report"
     config = TDDWorkflowConfig(
         max_iterations=3,
-        phase_timeout=60,
-        enable_refactoring=False
+        timeout_seconds=60,
+        auto_refactor=False
     )
     
     orchestrator = FlagshipOrchestrator(config=config, session_id=session_id)

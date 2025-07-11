@@ -1,12 +1,13 @@
 #!/bin/bash
 # Run Flagship TDD Orchestrator - Complete automation script
-# Usage: ./runflagship.sh [optional description]
-# Example: ./runflagship.sh "Create a temperature converter"
+# Usage: ./runflagship.sh [optional description] [--streaming]
+# Example: ./runflagship.sh "Create a temperature converter" --streaming
 
 # Configuration
 PORT=8100
 SERVER_URL="http://localhost:$PORT"
 DEFAULT_REQUEST="Create a Calculator class with methods for add, subtract, multiply, and divide. The divide method should handle division by zero by raising a ValueError."
+USE_STREAMING=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -15,13 +16,33 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Get user request or use default
-if [ $# -eq 0 ]; then
+# Parse arguments
+USER_REQUEST=""
+for arg in "$@"; do
+    if [ "$arg" = "--streaming" ]; then
+        USE_STREAMING=true
+    elif [ "$arg" = "--restart" ]; then
+        # Keep for compatibility
+        true
+    else
+        if [ -z "$USER_REQUEST" ]; then
+            USER_REQUEST="$arg"
+        else
+            USER_REQUEST="$USER_REQUEST $arg"
+        fi
+    fi
+done
+
+# Use default if no request provided
+if [ -z "$USER_REQUEST" ]; then
     echo -e "${YELLOW}No description provided. Using default: Calculator application${NC}"
     USER_REQUEST="$DEFAULT_REQUEST"
 else
-    USER_REQUEST="$*"
     echo -e "${GREEN}Using provided description: $USER_REQUEST${NC}"
+fi
+
+if [ "$USE_STREAMING" = true ]; then
+    echo -e "${BLUE}Streaming mode enabled${NC}"
 fi
 
 echo ""
@@ -58,7 +79,12 @@ start_server() {
     kill_port $PORT
     
     # Start server in background and redirect output to log
-    python flagship_server.py > server.log 2>&1 &
+    if [ "$USE_STREAMING" = true ]; then
+        python flagship_server_streaming.py > server.log 2>&1 &
+    else
+        # Use simple server to avoid stdout redirection issues
+        python flagship_server_simple.py > server.log 2>&1 &
+    fi
     SERVER_PID=$!
     
     # Wait for server to be ready
@@ -190,15 +216,22 @@ except json.JSONDecodeError as e:
     print('Raw response:', sys.stdin.read())
     sys.exit(1)
 
-results = data.get('results', {})
+results = data.get('results')
+if results is None:
+    results = {}
 
 print(f\"Status: {data.get('status', 'unknown')}\")
-print(f\"All Tests Passing: {results.get('all_tests_passing', False)}\")
-print(f\"Iterations: {results.get('iterations', 0)}\")
-print(f\"Test Summary: {results.get('test_summary', {})}\")
-print(f\"Duration: {results.get('duration', 0):.1f} seconds\")
-print(f\"Generated Tests: {results.get('generated_tests', 0)} file(s)\")
-print(f\"Generated Code: {results.get('generated_code', 0)} file(s)\")
+
+# Handle both possible result structures
+if isinstance(results, dict):
+    print(f\"All Tests Passing: {results.get('all_tests_passing', False)}\")
+    print(f\"Iterations: {results.get('iterations', 0)}\")
+    print(f\"Test Summary: {results.get('test_summary', {})}\")
+    print(f\"Duration: {results.get('duration', 0):.1f} seconds\")
+    print(f\"Generated Tests: {results.get('generated_tests', 0)} file(s)\")
+    print(f\"Generated Code: {results.get('generated_code', 0)} file(s)\")
+else:
+    print(f\"Results: {results}\")
 " || echo -e "${RED}Failed to parse results${NC}"
 }
 

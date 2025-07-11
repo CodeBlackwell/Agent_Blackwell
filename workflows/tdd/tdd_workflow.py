@@ -87,14 +87,13 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     if SESSION_CONFIG.get("use_single_directory", True):
         # Extract project name from requirements if possible
         req_lower = input_data.requirements.lower()
-        if "calculator" in req_lower:
-            session_name = "calculator"
-        elif "todo" in req_lower:
+        if "todo" in req_lower:
             session_name = "todo_app"
         elif "string" in req_lower and "util" in req_lower:
             session_name = "string_utils"
         else:
-            session_name = SESSION_CONFIG.get("session_name_prefix", "tdd")
+            # Use a more descriptive default session name
+            session_name = SESSION_CONFIG.get("session_name_prefix", "project")
         
         # Create the session directory
         project_path = code_saver.create_session_directory(session_name)

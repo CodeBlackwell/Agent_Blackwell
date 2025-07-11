@@ -1,0 +1,24 @@
+name: String Utilities Library
+description: Collection of useful string manipulation functions
+difficulty: beginner
+time_estimate: 10-15 minutes
+requirements: |
+  Create a Python string utilities module with the following functions:
+  
+  1. reverse_string(s) - Reverses a string
+  2. is_palindrome(s) - Checks if a string is a palindrome (case-insensitive)
+  3. count_vowels(s) - Counts the number of vowels in a string
+  4. capitalize_words(s) - Capitalizes the first letter of each word
+  5. remove_duplicates(s) - Removes duplicate characters while preserving order
+  
+  Requirements:
+  - Include comprehensive unit tests for each function
+  - Handle edge cases (empty strings, special characters, etc.)
+  - Add proper docstrings with examples
+  - Achieve 100% test coverage
+  
+config:
+  workflow_type: tdd
+  run_tests: true
+  test_coverage_threshold: 100
+  enforce_red_phase: true

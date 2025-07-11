@@ -1,0 +1,16 @@
+name: Hello World API
+description: Simple REST API that returns "Hello, World!"
+difficulty: beginner
+time_estimate: 5 minutes
+requirements: |
+  Create a simple REST API with the following:
+  
+  1. A single endpoint GET /hello that returns {"message": "Hello, World!"}
+  2. Proper error handling for 404 routes
+  3. Basic tests to verify the endpoint works
+  4. Use FastAPI or Flask framework
+  
+config:
+  workflow_type: tdd
+  run_tests: true
+  test_coverage_threshold: 80

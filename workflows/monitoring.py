@@ -404,3 +404,20 @@ class WorkflowExecutionTracer:
         """Save the execution report to a file."""
         with open(filepath, 'w') as f:
             f.write(self.to_json())
+        
+        # Also generate CSV version
+        try:
+            from utils.execution_report_csv_converter import convert_execution_report
+            import os
+            
+            # Generate CSV files in the same directory
+            output_dir = os.path.dirname(filepath)
+            csv_files = convert_execution_report(filepath, output_dir)
+            
+            # Log CSV generation
+            print(f"📊 CSV reports generated:")
+            for csv_type, csv_path in csv_files.items():
+                print(f"   - {csv_type}: {os.path.basename(csv_path)}")
+        except Exception as e:
+            # Don't fail if CSV generation fails
+            print(f"⚠️  Could not generate CSV reports: {e}")

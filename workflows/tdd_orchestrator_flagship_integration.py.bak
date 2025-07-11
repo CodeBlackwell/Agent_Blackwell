@@ -1,0 +1,82 @@
+"""
+TDD Orchestrator Adapter - Integration layer between Flagship TDD and parent workflow system
+
+This module provides the integration point that allows the Flagship TDD orchestrator
+to be used within the larger workflow management system.
+"""
+
+import sys
+from pathlib import Path
+from typing import List, Tuple, Optional, Any
+import asyncio
+
+# Add Flagship directory to path for imports
+flagship_path = Path(__file__).parent.parent / "Flagship"
+sys.path.insert(0, str(flagship_path))
+
+# Import from Flagship's parent system adapter
+from integrations.parent_system_adapter import (
+    execute_tdd_workflow_for_parent,
+    TDDOrchestrator,
+    TDDFeature,
+    TDDOrchestratorConfig,
+    TDDPhase
+)
+
+# Import additional Flagship components if needed
+from workflows.tdd_orchestrator.phase_manager import PhaseManager
+from workflows.tdd_orchestrator.agent_coordinator import AgentCoordinator
+from workflows.tdd_orchestrator.retry_coordinator import RetryCoordinator
+from workflows.tdd_orchestrator.metrics_collector import MetricsCollector
+
+# Import shared models from parent system
+from shared.data_models import (
+    CodingTeamInput,
+    TeamMemberResult
+)
+
+# Import monitoring from parent system
+from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
+
+# Re-export Flagship components for test compatibility
+__all__ = [
+    "TDDOrchestrator",
+    "TDDFeature",
+    "TDDOrchestratorConfig",
+    "TDDPhase",
+    "PhaseManager",
+    "AgentCoordinator",
+    "RetryCoordinator",
+    "MetricsCollector",
+    "execute_tdd_workflow"
+]
+
+
+async def execute_tdd_workflow(
+    input_data: CodingTeamInput,
+    tracer: Optional[WorkflowExecutionTracer] = None
+) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+    """
+    Execute TDD workflow using Flagship orchestrator
+    
+    This function simply delegates to Flagship's parent system adapter.
+    """
+    # Use Flagship's adapter function
+    results, report = await execute_tdd_workflow_for_parent(input_data, tracer)
+    
+    # Convert report to parent system's WorkflowExecutionReport if needed
+    if not hasattr(report, 'workflow_id'):
+        # It's a simple dict, convert to proper report
+        from workflows.monitoring import WorkflowExecutionReport
+        report = WorkflowExecutionReport(
+            workflow_id=report.get("workflow_id", "tdd_workflow"),
+            workflow_type=report.get("workflow_type", "tdd"),
+            start_time=None,
+            end_time=None,
+            duration_seconds=report.get("duration_seconds", 0),
+            steps=[],
+            success=report.get("success", False),
+            error=report.get("error", None)
+        )
+    
+    return results, report

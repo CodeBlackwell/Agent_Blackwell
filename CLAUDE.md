@@ -337,3 +337,10 @@ When adding new tests:
 - Update `TEST_CATEGORIES` in `run.py` for new categories
 
 For complete testing documentation, see [Testing Guide](docs/developer-guide/testing-guide.md).
+
+## Workflow Execution Tracking
+
+### Execution Report Guidelines
+
+- **The `execution_report.json` and `execution_report.csv` should trace the original command issued, and log every interaction and event in the workflow (commands run, test results, communications between agents).**
+- **This SHOULD ALWAYS be generated with every workflow run, and saved to the same directory as the generated code for retroactively debugging each run.**

@@ -85,6 +85,7 @@ from shared.data_models import (
 # Import workflow implementations
 from workflows.tdd.tdd_workflow import execute_tdd_workflow
 from workflows.full.full_workflow import execute_full_workflow
+from workflows.full.enhanced_full_workflow import execute_enhanced_full_workflow
 from workflows.individual.individual_workflow import execute_individual_workflow
 from workflows.incremental.incremental_workflow import execute_incremental_workflow
 from workflows.mvp_incremental.mvp_incremental import execute_mvp_incremental_workflow
@@ -186,6 +187,10 @@ async def execute_workflow(input_data: CodingTeamInput,
             logger.debug(f"📋 Executing full workflow")
             results = await execute_full_workflow(input_data, tracer)
             logger.debug(f"✅ Full workflow completed successfully")
+        elif workflow_type == "enhanced_full" or workflow_type == "enhanced_full_workflow":
+            logger.debug(f"🚀 Executing enhanced full workflow")
+            results = await execute_enhanced_full_workflow(input_data, tracer=tracer)
+            logger.debug(f"✅ Enhanced full workflow completed successfully")
         elif workflow_type == "incremental" or workflow_type == "incremental_workflow":
             logger.debug(f"🔄 Executing incremental workflow")
             results = await execute_incremental_workflow(input_data, tracer)
@@ -207,7 +212,7 @@ async def execute_workflow(input_data: CodingTeamInput,
             results = await execute_individual_workflow(input_data, tracer)
             logger.debug(f"✅ Individual workflow completed successfully")
         else:
-            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, incremental, mvp_incremental, mvp_incremental_tdd, mvp_tdd, flagship, individual, planning, design, test_writing, implementation, review"
+            error_msg = f"Unknown workflow type: {workflow_type}. Valid types are: tdd, full, enhanced_full, incremental, mvp_incremental, mvp_incremental_tdd, mvp_tdd, flagship, individual, planning, design, test_writing, implementation, review"
             logger.error(f"❌ {error_msg}")
             tracer.complete_execution(error=error_msg)
             raise ValueError(error_msg)
@@ -474,7 +479,7 @@ async def run_workflow(workflow_type: str, requirements: str,
 # Utility functions for workflow management
 def get_available_workflows() -> List[str]:
     """Get list of available workflow types."""
-    return ["tdd", "full", "incremental", "mvp_incremental", "mvp_incremental_tdd", "mvp_tdd", "individual", "planning", "design", "test_writing", "implementation", "review", "execution"]
+    return ["tdd", "full", "enhanced_full", "incremental", "mvp_incremental", "mvp_incremental_tdd", "mvp_tdd", "individual", "planning", "design", "test_writing", "implementation", "review", "execution"]
 
 
 def get_workflow_description(workflow_type: str) -> str:
@@ -482,6 +487,7 @@ def get_workflow_description(workflow_type: str) -> str:
     descriptions = {
         "tdd": "Test-Driven Development workflow: Planning → Design → Test Writing → Implementation → Execution → Review",
         "full": "Full development workflow: Planning → Design → Implementation → Execution → Review",
+        "enhanced_full": "Enhanced Full workflow with advanced features: Planning → Design → Implementation → Review (includes retry logic, caching, rollback, and performance monitoring)",
         "incremental": "Incremental feature-based workflow: Planning → Design → Incremental Implementation → Review",
         "mvp_incremental": "MVP Incremental workflow: Planning → Design → Feature-by-Feature Implementation with Validation",
         "mvp_incremental_tdd": "MVP Incremental TDD workflow: Planning → Design → For each feature: (Write Tests → Run Tests → Implement → Validate)",

@@ -17,10 +17,21 @@ from .retry_strategies import RetryOrchestrator, RetryContext, RetryStrategy
 from .progress_monitor import ProgressMonitor
 
 
-def extract_content_from_message(message_result: Union[List, str, Any]) -> str:
+def extract_content_from_message(message_result: Union[List, str, Dict, Any]) -> str:
     """Safely extract content from various message formats."""
     if isinstance(message_result, str):
         return message_result
+    
+    # Handle dictionary format (e.g., {'content': '...', 'messages': [], 'success': True})
+    if isinstance(message_result, dict):
+        if 'content' in message_result:
+            return message_result['content']
+        elif 'output' in message_result:
+            return message_result['output']
+        elif 'text' in message_result:
+            return message_result['text']
+        # If no known fields, convert to string
+        return str(message_result)
     
     if isinstance(message_result, list) and len(message_result) > 0:
         first_item = message_result[0]
@@ -96,6 +107,7 @@ class FeatureOrchestrator:
             {
                 "id": f.id,
                 "title": f.title,
+                "short_name": f.short_name,
                 "complexity": f.complexity.value,
                 "dependencies": f.dependencies
             }
@@ -161,11 +173,17 @@ class FeatureOrchestrator:
         completed_ids = {c["feature"].id for c in completed_features}
         failed_features = [f for f in all_features if f.id not in completed_ids]
         
+        # Check if workflow was cancelled
+        workflow_cancelled = self.tracer.report.metadata.get("workflow_cancelled", False)
+        cancellation_reason = self.tracer.report.metadata.get("cancellation_reason", "")
+        
         return {
             "total_features": total_features,
             "completed_features": completed_count,
             "failed_features": len(failed_features),
             "success_rate": success_rate,
+            "workflow_cancelled": workflow_cancelled,
+            "cancellation_reason": cancellation_reason,
             "complexity_breakdown": complexity_stats,
             "files_created": total_files,
             "total_lines": total_lines,
@@ -258,6 +276,8 @@ def prepare_feature_context(
         f"Description: {feature.description}",
         f"Files to create/modify: {', '.join(feature.files)}",
         f"Success criteria: {feature.validation_criteria}",
+        "",
+        "IMPORTANT: If this feature requires any Python packages (like Flask, requests, etc.), you MUST also create a requirements.txt file listing all dependencies.",
         ""
     ]
     
@@ -423,17 +443,19 @@ async def execute_features_incrementally(
     print(progress_monitor.visualize_progress())
     
     for idx, feature in enumerate(features):
-        print(f"\n🔨 Implementing {feature.id}: {feature.title}")
+        print(f"\n🔨 Implementing {feature.id}: {feature.short_name}")
         
         # Start progress tracking for this feature
-        progress_monitor.start_feature(feature.id, feature.title)
+        progress_monitor.start_feature(feature.id, feature.short_name)
         
         # Start feature step
         step_id = tracer.start_step(
             f"feature_{feature.id}",
             "coder",
             {
-                "feature": feature.title,
+                "feature_id": feature.id,
+                "feature_name": feature.short_name,
+                "feature_title": feature.title,
                 "files": feature.files,
                 "complexity": feature.complexity.value
             }
@@ -645,6 +667,37 @@ async def execute_features_incrementally(
                 })
                 
                 print(f"⚠️  {feature.id} failed after {retry_count} attempts")
+                
+                # Cancel workflow if Project Foundation fails
+                if feature.id == "FEATURE[1]" or feature.title.lower() == "project foundation":
+                    print("\n" + "="*60)
+                    print("❌ WORKFLOW CANCELLED: Project Foundation validation failed")
+                    print("="*60)
+                    print("The Project Foundation is critical for all subsequent features.")
+                    print("Please fix the foundation issues before continuing.")
+                    print("\nCommon issues:")
+                    print("- Missing or incorrect requirements.txt")
+                    print("- Application not starting properly")
+                    print("- Import errors or syntax errors in main files")
+                    print("- Configuration issues")
+                    
+                    # Add cancellation metadata
+                    tracer.add_metadata("workflow_cancelled", True)
+                    tracer.add_metadata("cancellation_reason", "Project Foundation validation failed")
+                    tracer.add_metadata("failed_feature", {
+                        "id": feature.id,
+                        "title": feature.title,
+                        "validation_feedback": validation_result.feedback
+                    })
+                    
+                    # Mark all remaining features as skipped
+                    for remaining_feature in features[idx+1:]:
+                        progress_monitor.skip_feature(
+                            remaining_feature.id, 
+                            "Workflow cancelled due to foundation failure"
+                        )
+                    
+                    break
                 
                 # Decide whether to continue based on complexity
                 if hasattr(feature, 'complexity') and feature.complexity == ComplexityLevel.HIGH:

@@ -283,7 +283,7 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
         """
         
         analysis_response = await agent.run(prompt=analysis_prompt)
-        environment_spec = parse_environment_spec(analysis_response.result.text)
+        environment_spec = parse_environment_spec(analysis_response.result.text, input_text)
         
         # Log environment analysis completion
         env_complete_entry = create_proof_of_execution_entry(

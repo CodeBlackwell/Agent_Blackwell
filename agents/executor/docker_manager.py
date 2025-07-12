@@ -211,7 +211,7 @@ class DockerEnvironmentManager:
         if env_spec.language == "python":
             # Copy requirements first for better caching
             dockerfile.append("COPY requirements.txt* ./")
-            dockerfile.append("RUN pip install --no-cache-dir -r requirements.txt || echo 'No requirements.txt'")
+            dockerfile.append("RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt && echo 'Dependencies installed successfully'; else echo 'No requirements.txt found'; fi")
         elif env_spec.language == "nodejs":
             # Copy package files first for better caching
             dockerfile.append("COPY package*.json ./")

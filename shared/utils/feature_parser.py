@@ -26,6 +26,7 @@ class Feature(BaseModel):
     """Represents a single implementation feature following ACP data model patterns"""
     id: str
     title: str
+    short_name: str  # Concise name for UI display (e.g., "API Foundation", "User Auth")
     description: str
     files: List[str]
     validation_criteria: str
@@ -52,9 +53,9 @@ class FeatureParser:
     # Regex patterns for feature extraction
     FEATURE_PATTERN = r'FEATURE\[(\d+)\]:\s*([^\n]+)'
     FIELD_PATTERNS = {
-        'description': r'Description:\s*([^\n]+(?:\n(?!(?:Files|Validation|Dependencies|Complexity|FEATURE\[))[^\n]+)*)',
+        'description': r'Description:\s*([^\n]+(?:\n(?!(?:Files:|Validation:|Dependencies:|Complexity:|FEATURE\[))[^\n]+)*)',
         'files': r'Files:\s*([^\n]+)',
-        'validation': r'Validation:\s*([^\n]+(?:\n(?!(?:Dependencies|Complexity|FEATURE\[))[^\n]+)*)',
+        'validation': r'Validation:\s*([^\n]+(?:\n(?!(?:Dependencies:|Complexity:|FEATURE\[))[^\n]+)*)',
         'dependencies': r'Dependencies:\s*([^\n]+)',
         'complexity': r'(?:Estimated\s*)?Complexity:\s*(\w+)'
     }
@@ -78,16 +79,21 @@ class FeatureParser:
             logger.debug("Detected markdown format")
             return self._parse_markdown_format(designer_output)
         
-        # Check if implementation plan exists
-        if "IMPLEMENTATION PLAN" not in designer_output:
-            logger.debug("No IMPLEMENTATION PLAN found, using auto-generation")
+        # Check if implementation plan exists OR if FEATURE patterns exist
+        if "IMPLEMENTATION PLAN" not in designer_output and not re.search(r'FEATURE\[\d+\]:', designer_output):
+            logger.debug("No IMPLEMENTATION PLAN or FEATURE patterns found, using auto-generation")
             # Fallback to auto-generation
             return self._generate_default_features(designer_output)
         
-        # Extract implementation plan section
-        plan_start = designer_output.find("IMPLEMENTATION PLAN")
-        plan_section = designer_output[plan_start:]
-        logger.debug(f"Found IMPLEMENTATION PLAN at position {plan_start}")
+        # Extract implementation plan section or use full output if no header
+        if "IMPLEMENTATION PLAN" in designer_output:
+            plan_start = designer_output.find("IMPLEMENTATION PLAN")
+            plan_section = designer_output[plan_start:]
+            logger.debug(f"Found IMPLEMENTATION PLAN at position {plan_start}")
+        else:
+            # No header, but we know there are FEATURE patterns, so use full output
+            plan_section = designer_output
+            logger.debug("No IMPLEMENTATION PLAN header, using full designer output")
         
         # Find all features - first get titles
         feature_matches = list(re.finditer(self.FEATURE_PATTERN, plan_section))
@@ -114,6 +120,17 @@ class FeatureParser:
         
         logger.info(f"Successfully parsed {len(self.features)} features")
         
+        # Validation: Check if suspiciously few features were detected
+        if len(self.features) == 1 and len(designer_output) > 500:
+            # Check if the single feature contains multiple FEATURE patterns
+            feature_pattern_count = len(re.findall(r'FEATURE\[\d+\]:', designer_output))
+            if feature_pattern_count > 1:
+                logger.warning(f"WARNING: Found {feature_pattern_count} FEATURE patterns but only parsed 1 feature. "
+                             "This may indicate a parsing issue.")
+                # Log the first feature for debugging
+                if self.features:
+                    logger.warning(f"Single feature title: {self.features[0].title[:100]}...")
+        
         # Sort by dependencies
         return self._topological_sort()
     
@@ -135,9 +152,13 @@ class FeatureParser:
         dependencies = self._parse_dependencies(fields['dependencies'])
         complexity = self._parse_complexity(fields['complexity'])
         
+        # Generate short name from title
+        short_name = self._generate_short_name(title, feature_id)
+        
         return Feature(
             id=feature_id,
             title=title,
+            short_name=short_name,
             description=fields['description'],
             files=files,
             validation_criteria=fields['validation'],
@@ -164,6 +185,77 @@ class FeatureParser:
             return ComplexityLevel.LOW
         else:
             return ComplexityLevel.MEDIUM
+    
+    def _generate_short_name(self, title: str, feature_id: str) -> str:
+        """Generate a short, meaningful name from the feature title"""
+        # Common patterns to simplify
+        title_lower = title.lower()
+        
+        # Map common feature patterns to short names
+        name_mappings = {
+            'project foundation': 'Foundation',
+            'project setup': 'Setup',
+            'api foundation': 'API Base',
+            'hello world': 'Hello API',
+            'greeting': 'Greeting',
+            'data model': 'Data Models',
+            'database': 'Database',
+            'authentication': 'Auth',
+            'authorization': 'Auth',
+            'user management': 'User Mgmt',
+            'testing': 'Tests',
+            'test suite': 'Tests',
+            'documentation': 'Docs',
+            'api documentation': 'API Docs',
+            'docker': 'Docker',
+            'containerization': 'Container',
+            'configuration': 'Config',
+            'validation': 'Validation',
+            'error handling': 'Error Handler',
+            'middleware': 'Middleware',
+            'routing': 'Routes',
+            'endpoint': 'Endpoints',
+            'service': 'Service',
+            'business logic': 'Business',
+            'api layer': 'API Layer',
+            'rest api': 'REST API',
+            'graphql': 'GraphQL',
+            'websocket': 'WebSocket',
+            'security': 'Security',
+            'logging': 'Logging',
+            'monitoring': 'Monitoring',
+            'deployment': 'Deploy',
+            'ci/cd': 'CI/CD',
+            'integration': 'Integration'
+        }
+        
+        # Check for exact matches first
+        for pattern, short in name_mappings.items():
+            if pattern in title_lower:
+                return short
+        
+        # If no pattern matches, create from title
+        # Remove common words and take first 2-3 significant words
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'for', 'with', 'to', 'of', 'in', 'on', 'at'}
+        words = [w for w in title.split() if w.lower() not in stop_words]
+        
+        if len(words) == 0:
+            # Fallback to feature number
+            return f"Feature {feature_id.replace('FEATURE[', '').replace(']', '')}"
+        elif len(words) == 1:
+            # Single word - use as is but truncate if too long
+            return words[0][:15]
+        elif len(words) == 2:
+            # Two words - combine them
+            return f"{words[0]} {words[1]}"[:20]
+        else:
+            # Multiple words - use first two or create acronym
+            if len(words[0]) + len(words[1]) <= 15:
+                return f"{words[0]} {words[1]}"
+            else:
+                # Create acronym from first 3-4 words
+                acronym = ''.join(w[0].upper() for w in words[:4])
+                return acronym
     
     def _topological_sort(self) -> List[Feature]:
         """Sort features by dependencies using topological sort"""
@@ -197,6 +289,7 @@ class FeatureParser:
         features.append(Feature(
             id="FEATURE[1]",
             title="Project Foundation",
+            short_name="Foundation",
             description="Set up project structure and configuration",
             files=["app.py", "config.py", "requirements.txt", "__init__.py"],
             validation_criteria="Application imports work, configuration loads",
@@ -209,6 +302,7 @@ class FeatureParser:
             features.append(Feature(
                 id="FEATURE[2]",
                 title="Data Models",
+                short_name="Data Models",
                 description="Implement core data models and schemas",
                 files=["models/"],
                 validation_criteria="Models instantiate correctly, relationships work",
@@ -221,6 +315,7 @@ class FeatureParser:
             features.append(Feature(
                 id="FEATURE[3]",
                 title="Business Logic",
+                short_name="Business",
                 description="Implement core services and business logic",
                 files=["services/"],
                 validation_criteria="Service methods execute without errors",
@@ -233,6 +328,7 @@ class FeatureParser:
             features.append(Feature(
                 id="FEATURE[4]",
                 title="API Layer",
+                short_name="API Layer",
                 description="Implement API endpoints and routing",
                 files=["api/", "routes/"],
                 validation_criteria="Endpoints respond correctly, proper status codes",
@@ -294,6 +390,7 @@ class FeatureParser:
             feature = Feature(
                 id=feature_id,
                 title=feature_title,
+                short_name=self._generate_short_name(feature_title, feature_id),
                 description=description,
                 files=files,
                 validation_criteria=validation,

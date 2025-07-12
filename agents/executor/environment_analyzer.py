@@ -8,7 +8,44 @@ import re
 from typing import Dict, List
 from agents.executor.environment_spec import EnvironmentSpec
 
-def parse_environment_spec(llm_analysis: str) -> EnvironmentSpec:
+def extract_python_imports(code_content: str) -> List[str]:
+    """Extract Python package dependencies from import statements"""
+    import_patterns = [
+        r'from\s+(\w+)',
+        r'import\s+(\w+)'
+    ]
+    
+    # Common import to package mappings
+    import_to_package = {
+        'flask': 'flask',
+        'requests': 'requests',
+        'numpy': 'numpy',
+        'pandas': 'pandas',
+        'pytest': 'pytest',
+        'unittest': None,  # Built-in
+        'json': None,      # Built-in
+        'os': None,        # Built-in
+        'sys': None,       # Built-in
+        'datetime': None,  # Built-in
+        'sqlalchemy': 'sqlalchemy',
+        'django': 'django',
+        'fastapi': 'fastapi',
+        'pydantic': 'pydantic',
+    }
+    
+    dependencies = set()
+    
+    for pattern in import_patterns:
+        matches = re.findall(pattern, code_content, re.MULTILINE)
+        for match in matches:
+            package = import_to_package.get(match.lower())
+            if package:
+                dependencies.add(package)
+    
+    return list(dependencies)
+
+
+def parse_environment_spec(llm_analysis: str, code_content: str = None) -> EnvironmentSpec:
     """Parse LLM analysis into environment specification"""
     
     # Default values
@@ -33,12 +70,16 @@ def parse_environment_spec(llm_analysis: str) -> EnvironmentSpec:
         
         # Default Python execution commands
         execution_commands = []
+        # First, verify dependencies are installed
+        execution_commands.append("python -c 'import pkg_resources; print(\"Installed packages:\"); [print(f\"{d.project_name}=={d.version}\") for d in pkg_resources.working_set]'")
+        
         if "pytest" in analysis_lower or "test_" in analysis_lower:
             execution_commands.append("python -m pytest -v")
         if "unittest" in analysis_lower:
             execution_commands.append("python -m unittest discover -v")
         if "app.py" in analysis_lower or "main.py" in analysis_lower:
-            execution_commands.append("python app.py || python main.py")
+            # Try app.py first, then main.py, with better error reporting
+            execution_commands.append("sh -c \"if [ -f app.py ]; then python app.py; elif [ -f main.py ]; then python main.py; else echo 'No app.py or main.py found'; ls -la; fi\"")
             
     elif "node" in analysis_lower or "javascript" in analysis_lower:
         language = "nodejs"
@@ -83,6 +124,14 @@ def parse_environment_spec(llm_analysis: str) -> EnvironmentSpec:
                     dep = line.strip().lstrip('-').strip()
                     if dep and len(dep) < 50:  # Sanity check
                         dependencies.append(dep)
+    
+    # If code content provided, extract imports for Python
+    if code_content and language == "python":
+        detected_deps = extract_python_imports(code_content)
+        # Merge with existing dependencies, avoiding duplicates
+        for dep in detected_deps:
+            if dep not in dependencies:
+                dependencies.append(dep)
     
     # Extract system packages
     if "system packages:" in analysis_lower:

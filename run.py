@@ -9,6 +9,7 @@ Usage:
     python run.py                    # Interactive mode
     python run.py workflow tdd --task "Build a calculator API"
     python run.py workflow mvp_incremental --task "Create a task manager"
+    python run.py workflow enhanced_full --task "Build a REST API"
     python run.py --debug            # Enable debug logging
     python run.py --help            # Get help
 """
@@ -40,6 +41,17 @@ from workflows.monitoring import WorkflowExecutionTracer
 # Global variables
 ORCHESTRATOR_PROCESS = None
 DEBUG_MODE = False
+_current_tracer = None
+
+
+def signal_handler(signum, frame):
+    """Handle interrupt signals to save partial reports."""
+    global _current_tracer
+    if _current_tracer:
+        print("\n\n⚠️  Workflow interrupted! Saving partial report...")
+        _current_tracer._auto_save(force=True)
+        print("✅ Partial report saved to workflow_reports/")
+    sys.exit(1)
 
 
 def configure_logging(debug=False):
@@ -304,8 +316,13 @@ class DirectWorkflowRunner:
                 if hasattr(input_data, key):
                     setattr(input_data, key, value)
         
-        # Create tracer for monitoring
-        tracer = WorkflowExecutionTracer(workflow_type)
+        # Create tracer for monitoring with auto-save
+        global _current_tracer
+        report_dir = Path("workflow_reports")
+        report_dir.mkdir(exist_ok=True)
+        auto_save_path = report_dir / "execution_report.json"
+        tracer = WorkflowExecutionTracer(workflow_type, auto_save_path=str(auto_save_path))
+        _current_tracer = tracer
         
         try:
             # Execute workflow
@@ -382,6 +399,9 @@ class DirectWorkflowRunner:
             else:
                 print(f"\n📊 Report saved to: {timestamped_report_file}")
             
+            # Clear global tracer
+            _current_tracer = None
+            
         except Exception as e:
             duration = time.time() - start_time
             print(f"\n{'='*60}")
@@ -438,8 +458,11 @@ class DirectWorkflowRunner:
             if config.get('timeout'):
                 input_data.timeout = config['timeout']
             
-            # Create tracer for this step
-            tracer = WorkflowExecutionTracer(f"individual_{step}")
+            # Create tracer for this step with auto-save
+            report_dir = Path("workflow_reports")
+            report_dir.mkdir(exist_ok=True)
+            auto_save_path = report_dir / f"execution_report_{step}.json"
+            tracer = WorkflowExecutionTracer(f"individual_{step}", auto_save_path=str(auto_save_path))
             
             try:
                 step_start = time.time()
@@ -628,6 +651,7 @@ class DirectWorkflowRunner:
   - individual: Execute individual workflow steps with enhanced features
   - tdd: Test-Driven Development (Tests → Implementation → Review)
   - full: Full development workflow (Planning → Design → Implementation → Review)
+  - enhanced_full: Enhanced full workflow with retry, caching, monitoring & rollback
   - incremental: Feature-based incremental development
   - mvp_incremental: MVP incremental with validation
   - mvp_incremental_tdd: MVP incremental with TDD
@@ -646,6 +670,7 @@ class DirectWorkflowRunner:
   python run.py workflow individual --task "..." --timeout 600
   python run.py workflow tdd --task "Create a calculator API"
   python run.py workflow mvp_incremental --task "Build a task management system"
+  python run.py workflow enhanced_full --task "Build Hello World API"
   python run.py workflow tdd --task "..." --strict --coverage 90
 
 🚀 Workflow Options:
@@ -697,6 +722,7 @@ Examples:
   python run.py                                 # Interactive mode
   python run.py workflow tdd --task "..."       # Run TDD workflow
   python run.py workflow full --task "..."      # Run full workflow
+  python run.py workflow enhanced_full --task "..." # Run enhanced full workflow
   python run.py workflow --list                 # List workflows
   python run.py --debug workflow tdd --task "..." # Run with debug logging
   
@@ -714,6 +740,10 @@ TDD Examples:
 Incremental Examples:
   python run.py workflow incremental --task "Task manager"
   python run.py workflow mvp_incremental --task "..." --show-progress
+  
+Enhanced Full Workflow:
+  python run.py workflow enhanced_full --task "Hello World API"
+  # Features: retry logic, caching, performance monitoring, rollback
   
 Note: The orchestrator server will be started automatically on port 8080.
       Use --no-orchestrator if you're managing it manually.
@@ -768,6 +798,10 @@ Note: The orchestrator server will be started automatically on port 8080.
 async def main():
     """Main entry point."""
     global DEBUG_MODE
+    
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
     parser = create_parser()
     args = parser.parse_args()

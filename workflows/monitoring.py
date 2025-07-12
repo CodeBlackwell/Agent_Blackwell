@@ -595,7 +595,8 @@ class WorkflowExecutionTracer:
     reviews, retries, and test executions.
     """
     
-    def __init__(self, workflow_type: str, execution_id: Optional[str] = None):
+    def __init__(self, workflow_type: str, execution_id: Optional[str] = None,
+                 auto_save_path: Optional[str] = None, auto_save_interval: bool = True):
         """Initialize the tracer for a workflow execution."""
         self.execution_id = execution_id or str(uuid.uuid4())
         self.report = WorkflowExecutionReport(
@@ -604,6 +605,9 @@ class WorkflowExecutionTracer:
             start_time=datetime.now()
         )
         self._current_steps: Dict[str, WorkflowStepResult] = {}
+        self.auto_save_path = auto_save_path
+        self.auto_save_interval = auto_save_interval
+        self._last_save_time = datetime.now()
     
     def start_step(self, step_name: str, agent_name: str, input_data: Optional[Dict[str, Any]] = None) -> str:
         """Start tracking a workflow step."""
@@ -634,6 +638,9 @@ class WorkflowExecutionTracer:
                 step.metadata.update(metadata)
             
             del self._current_steps[step_id]
+            
+            # Auto-save after completing a step
+            self._auto_save()
     
     def record_review(self, reviewer_agent: str, reviewed_content: str, 
                      decision: ReviewDecision, feedback: Optional[str] = None,
@@ -673,6 +680,9 @@ class WorkflowExecutionTracer:
         )
         
         self.report.retries.append(retry_attempt)
+        
+        # Auto-save after recording a retry
+        self._auto_save()
     
     def record_test_execution(self, test_type: str, status: StepStatus,
                             score: Optional[float] = None, details: Optional[str] = None,
@@ -785,10 +795,43 @@ class WorkflowExecutionTracer:
                           error: Optional[str] = None):
         """Complete the workflow execution and finalize the report."""
         self.report.complete(final_output, error)
+        
+        # Force save on completion
+        self._auto_save(force=True)
     
     def get_report(self) -> WorkflowExecutionReport:
         """Get the current execution report."""
         return self.report
+    
+    def _auto_save(self, force: bool = False):
+        """Auto-save the report if conditions are met."""
+        if not self.auto_save_path or not self.auto_save_interval:
+            return
+            
+        # Save if forced or every 5 seconds
+        time_since_save = (datetime.now() - self._last_save_time).total_seconds()
+        if force or time_since_save >= 5:
+            try:
+                # Ensure directory exists
+                import os
+                os.makedirs(os.path.dirname(self.auto_save_path), exist_ok=True)
+                
+                # Save both JSON and CSV versions
+                json_path = self.auto_save_path.replace('.csv', '.json') if self.auto_save_path.endswith('.csv') else self.auto_save_path
+                csv_path = self.auto_save_path.replace('.json', '.csv') if self.auto_save_path.endswith('.json') else self.auto_save_path.replace('.json', '.csv')
+                
+                # Save JSON
+                with open(json_path, 'w') as f:
+                    f.write(self.report.to_json())
+                
+                # Save CSV
+                with open(csv_path, 'w') as f:
+                    f.write(self.report.to_csv())
+                    
+                self._last_save_time = datetime.now()
+            except Exception as e:
+                # Don't fail the workflow if auto-save fails
+                print(f"Warning: Auto-save failed: {e}")
     
     def to_json(self) -> str:
         """Convert the execution report to JSON."""

@@ -175,7 +175,7 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
                     # Execute tests and code if executor is in team members
                     if "executor" in team_members:
                         print("🐳 Executing code in Docker container...")
-                        session_id = generate_session_id(input_data.requirements)
+                        session_id = generate_session_id(requirements)
                         
                         step_id = tracer.start_step("execution", "executor_agent", {
                             "session_id": session_id,
@@ -230,7 +230,7 @@ Execute the following code:
                     # Execute tests and code in fallback path if executor is in team members
                     if "executor" in team_members:
                         print("🐳 Executing code in Docker container (fallback path)...")
-                        session_id = generate_session_id(input_data.requirements)
+                        session_id = generate_session_id(requirements)
                         
                         step_id = tracer.start_step("execution_fallback", "executor_agent", {
                             "session_id": session_id,

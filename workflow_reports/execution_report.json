@@ -1,37 +1,530 @@
 {
-  "execution_id": "e90dc5ca-9a70-45e0-b543-eeaf523677ad",
-  "workflow_type": "individual",
-  "start_time": "2025-07-12T05:49:12.157691",
-  "end_time": "2025-07-12T05:49:12.158131",
-  "total_duration_seconds": 0.00044,
+  "execution_id": "5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9",
+  "workflow_type": "enhanced_full",
+  "start_time": "2025-07-12T09:46:22.462226",
+  "end_time": "2025-07-12T09:48:05.800555",
+  "total_duration_seconds": 103.338329,
   "status": "completed",
-  "steps": [],
-  "step_count": 0,
-  "completed_steps": 0,
+  "steps": [
+    {
+      "step_id": "planning_0_094622",
+      "step_name": "planning",
+      "agent_name": "planner_agent",
+      "status": "completed",
+      "start_time": "2025-07-12T09:46:22.477765",
+      "end_time": "2025-07-12T09:46:31.143678",
+      "duration_seconds": 8.665913,
+      "input_data": {
+        "input": "Build a Hello World API...",
+        "attempt": 1,
+        "cached": false
+      },
+      "output_data": {
+        "output": "\n\n# Project Overview\nThe goal of this project is to build a simple \"Hello World\" API that responds with a greeting message. This API will serve as a foundational example for understanding RESTful API ...",
+        "execution_time": 8.665809186000843
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    },
+    {
+      "step_id": "design_1_094631",
+      "step_name": "design",
+      "agent_name": "designer_agent",
+      "status": "completed",
+      "start_time": "2025-07-12T09:46:31.145567",
+      "end_time": "2025-07-12T09:46:37.522965",
+      "duration_seconds": 6.377398,
+      "input_data": {
+        "input": "Plan Context:\n\n\n# Project Overview\nThe goal of this project is to build a simple \"Hello World\" API that responds with a greeting message. This API will serve as a foundational example for understandin...",
+        "attempt": 1,
+        "cached": false
+      },
+      "output_data": {
+        "output": "\n\n# System Architecture Overview\nThe architecture consists of a single RESTful API service that responds to HTTP GET requests with a \"Hello World\" message. The service will be built using Python and e...",
+        "execution_time": 6.377324306988157
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    },
+    {
+      "step_id": "implementation_2_094637",
+      "step_name": "implementation",
+      "agent_name": "incremental_coding",
+      "status": "completed",
+      "start_time": "2025-07-12T09:46:37.524043",
+      "end_time": "2025-07-12T09:47:58.272347",
+      "duration_seconds": 80.748304,
+      "input_data": {
+        "has_plan": true,
+        "has_design": true,
+        "requirements": "Build a Hello World API..."
+      },
+      "output_data": {
+        "output": "...",
+        "features_completed": 0,
+        "total_features": 5
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    },
+    {
+      "step_id": "feature_FEATURE[1]_3_094638",
+      "step_name": "feature_FEATURE[1]",
+      "agent_name": "coder",
+      "status": "completed",
+      "start_time": "2025-07-12T09:46:38.890204",
+      "end_time": "2025-07-12T09:47:58.271936",
+      "duration_seconds": 79.381732,
+      "input_data": {
+        "feature_id": "FEATURE[1]",
+        "feature_name": "Foundation",
+        "feature_title": "Project Foundation",
+        "files": [
+          "app.py",
+          "requirements.txt",
+          "Dockerfile"
+        ],
+        "complexity": "low"
+      },
+      "output_data": {
+        "status": "failed",
+        "error": "\u274c Project Foundation validation failed: [Message(role='agent/executor_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\u274c DOCKER EXECUTION ERROR\\n\\nSession ID: inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9\\nError: Failed to build Docker image: failed to resolve reference \"docker.io/library/python:3.9\": failed to authorize: failed to fetch oauth token: Post \"https://auth.docker.io/token\": proxyconnect tcp: dial tcp 192.168.65.1:3128: i/o timeout\\n\\nPlease check:\\n1. Docker is installed and running\\n2. The code format is correct\\n3. Dependencies are properly specified\\n\\nTechnical details:\\nFailed to build Docker image: failed to resolve reference \"docker.io/library/python:3.9\": failed to authorize: failed to fetch oauth token: Post \"https://auth.docker.io/token\": proxyconnect tcp: dial tcp 192.168.65.1:3128: i/o timeout\\n', content_encoding='plain', content_url=None, metadata=None)], created_at=datetime.datetime(2025, 7, 12, 16, 47, 58, 259125, tzinfo=TzInfo(UTC)), completed_at=datetime.datetime(2025, 7, 12, 16, 47, 58, 261540, tzinfo=TzInfo(UTC)))]; \u274c executor_error;    error_type: RuntimeError",
+        "attempts": 3
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    },
+    {
+      "step_id": "validate_FEATURE[1]_4_094642",
+      "step_name": "validate_FEATURE[1]",
+      "agent_name": "executor_agent",
+      "status": "completed",
+      "start_time": "2025-07-12T09:46:42.314703",
+      "end_time": "2025-07-12T09:47:08.199453",
+      "duration_seconds": 25.88475,
+      "input_data": {
+        "feature": "FEATURE[1]",
+        "complexity": "low"
+      },
+      "output_data": {
+        "success": false,
+        "details": {
+          "feature_id": "FEATURE[1]",
+          "files_created": [
+            "app.py",
+            "requirements.txt",
+            "Dockerfile",
+            "README.md"
+          ],
+          "validation_criteria": "Application starts without errors and responds to requests.",
+          "output_preview": "[Message(role='agent/executor_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\u2705 DOCKER EXECUTION RESULT\\n============================================================\\n\ud83d\udd17 Session ID: inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9\\n\ud83d\udc33 Container: executor_inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_f02c0850\\n\ud83d\udce6 Environment: python:3.9\\n\ud83d\udcc4 Proof of Execution: generated/inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_f02c0850/proof_of_execution.j"
+        }
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    },
+    {
+      "step_id": "validate_FEATURE[1]_5_094716",
+      "step_name": "validate_FEATURE[1]",
+      "agent_name": "executor_agent",
+      "status": "completed",
+      "start_time": "2025-07-12T09:47:16.833391",
+      "end_time": "2025-07-12T09:47:20.116289",
+      "duration_seconds": 3.282898,
+      "input_data": {
+        "feature": "FEATURE[1]",
+        "complexity": "low"
+      },
+      "output_data": {
+        "success": false,
+        "details": {
+          "feature_id": "FEATURE[1]",
+          "files_created": [
+            "app.py",
+            "requirements.txt",
+            "Dockerfile",
+            "README.md"
+          ],
+          "validation_criteria": "Application starts without errors and responds to requests.",
+          "output_preview": "[Message(role='agent/executor_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\u2705 DOCKER EXECUTION RESULT\\n============================================================\\n\ud83d\udd17 Session ID: inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9\\n\ud83d\udc33 Container: executor_inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_f02c0850\\n\ud83d\udce6 Environment: python:3.9\\n\ud83d\udcc4 Proof of Execution: generated/inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_f02c0850/proof_of_execution.j"
+        }
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    },
+    {
+      "step_id": "validate_FEATURE[1]_6_094726",
+      "step_name": "validate_FEATURE[1]",
+      "agent_name": "executor_agent",
+      "status": "completed",
+      "start_time": "2025-07-12T09:47:26.584068",
+      "end_time": "2025-07-12T09:47:58.269846",
+      "duration_seconds": 31.685778,
+      "input_data": {
+        "feature": "FEATURE[1]",
+        "complexity": "low"
+      },
+      "output_data": {
+        "success": false,
+        "details": {
+          "feature_id": "FEATURE[1]",
+          "files_created": [
+            "app.py",
+            "requirements.txt",
+            "Dockerfile",
+            "README.md"
+          ],
+          "validation_criteria": "Application starts without errors and responds to requests.",
+          "output_preview": "[Message(role='agent/executor_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\u274c DOCKER EXECUTION ERROR\\n\\nSession ID: inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9\\nError: Failed to build Docker image: failed to resolve reference \"docker.io/library/python:3.9\": failed to authorize: failed to fetch oauth token: Post \"https://auth.docker.io/token\": proxyconnect tcp: dial tcp 192.168.65.1:3128: i/o timeout\\n\\nPlease check:\\n1. Docker is installed and running\\n2. The c"
+        }
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    },
+    {
+      "step_id": "final_review_7_094802",
+      "step_name": "final_review",
+      "agent_name": "reviewer_agent",
+      "status": "completed",
+      "start_time": "2025-07-12T09:48:02.519783",
+      "end_time": "2025-07-12T09:48:05.797117",
+      "duration_seconds": 3.277334,
+      "input_data": {
+        "input": "Requirements: Build a Hello World API...",
+        "attempt": 1,
+        "cached": false
+      },
+      "output_data": {
+        "output": "The implementation of a Hello World API should be straightforward. Here are some key points to consider in your review:\n\n1. **Code Quality**: Ensure that the code is clean and follows standard naming ...",
+        "execution_time": 3.276946013007546
+      },
+      "error_message": null,
+      "metadata": {},
+      "agent_exchanges": [],
+      "command_executions": [],
+      "test_outputs": []
+    }
+  ],
+  "step_count": 8,
+  "completed_steps": 8,
   "failed_steps": 0,
   "reviews": [],
   "total_reviews": 0,
   "approved_reviews": 0,
   "revision_requests": 0,
   "auto_approvals": 0,
-  "retries": [],
-  "total_retries": 0,
+  "retries": [
+    {
+      "attempt_number": 1,
+      "reason": "\u274c Project Foundation validation failed: [Message(role='agent/executor_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\u2705 DOCKER EXECUTION RESULT\\n============================================================\\n\ud83d\udd17 Session ID: inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9\\n\ud83d\udc33 Container: executor_inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_f02c0850\\n\ud83d\udce6 Environment: python:3.9\\n\ud83d\udcc4 Proof of Execution: generated/inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9_f02c0850/proof_of_execution.json\\n\\n\ud83d\udcca EXECUTION DETAILS\\n----------------------------------------\\n\u2705 Command: python -c \\'import pkg_resources; print(\"Installed packages:\"); [print(f\"{d.project_name}=={d.version}\") for d in pkg_resources.working_set]\\'\\n   Exit Code: 0\\n   Output:\\n      Installed packages:\\n      wheel==0.45.1\\n      websockets==15.0.1\\n      watchfiles==1.1.0\\n      uvloop==0.21.0\\n      uvicorn==0.34.2\\n      ujson==5.10.0\\n      typing-inspection==0.4.1\\n      typing-extensions==4.14.0\\n      typer==0.16.0\\n\\n\ud83d\udd0d ANALYSIS\\n----------------------------------------\\nThe execution was successful. The command to check installed packages ran without errors, and all required packages are installed as specified in the requirements. The implementation meets the specified requirements for the Project Foundation feature. Further performance observations and recommendations for improvement can be provided upon request.', content_encoding='plain', content_url=None, metadata=None)], created_at=datetime.datetime(2025, 7, 12, 16, 47, 8, 189591, tzinfo=TzInfo(UTC)), completed_at=datetime.datetime(2025, 7, 12, 16, 47, 8, 191663, tzinfo=TzInfo(UTC)))]",
+      "timestamp": "2025-07-12T09:47:13.201849",
+      "previous_error": null,
+      "changes_made": null,
+      "metadata": {
+        "strategy": "adaptive"
+      }
+    },
+    {
+      "attempt_number": 2,
+      "reason": "\u274c Project Foundation validation failed",
+      "timestamp": "2025-07-12T09:47:22.118738",
+      "previous_error": null,
+      "changes_made": null,
+      "metadata": {
+        "strategy": "adaptive"
+      }
+    }
+  ],
+  "total_retries": 2,
   "test_executions": [],
   "total_tests": 0,
   "passed_tests": 0,
   "failed_tests": 0,
-  "agent_performance": {},
-  "final_output": {
-    "workflow_type": "individual",
-    "results_count": 0,
-    "team_members": []
+  "agent_performance": {
+    "planner_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 8.665913,
+      "average_duration": 8.665913,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "designer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 6.377398,
+      "average_duration": 6.377398,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "incremental_coding": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 80.748304,
+      "average_duration": 80.748304,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "coder": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 79.381732,
+      "average_duration": 79.381732,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "executor_agent": {
+      "total_calls": 3,
+      "successful_calls": 3,
+      "failed_calls": 0,
+      "total_duration": 60.853426,
+      "average_duration": 20.284475333333333,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "reviewer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 3.277334,
+      "average_duration": 3.277334,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    }
   },
-  "error_summary": null,
+  "final_output": {
+    "workflow_type": "enhanced_full",
+    "results_count": 4,
+    "team_members": [
+      "planner",
+      "designer",
+      "coder",
+      "reviewer"
+    ]
+  },
+  "error_summary": "Workflow cancelled: Project Foundation validation failed",
   "proof_of_execution_path": null,
   "proof_of_execution_data": null,
   "metadata": {
     "input_requirements": "Build a Hello World API",
-    "workflow_type": "individual"
+    "workflow_type": "enhanced_full",
+    "workflow_config": {
+      "max_review_retries": 3,
+      "enable_rollback": true,
+      "enable_parallel_execution": false,
+      "enable_feedback_loop": true,
+      "skip_phases": []
+    },
+    "feature_count": 5,
+    "feature_plan": [
+      {
+        "id": "FEATURE[1]",
+        "title": "Project Foundation",
+        "short_name": "Foundation",
+        "complexity": "low",
+        "dependencies": []
+      },
+      {
+        "id": "FEATURE[2]",
+        "title": "Hello World Endpoint",
+        "short_name": "Hello API",
+        "complexity": "medium",
+        "dependencies": [
+          "FEATURE[1]"
+        ]
+      },
+      {
+        "id": "FEATURE[3]",
+        "title": "Unit Testing",
+        "short_name": "Tests",
+        "complexity": "medium",
+        "dependencies": [
+          "FEATURE[1]",
+          "FEATURE[2]"
+        ]
+      },
+      {
+        "id": "FEATURE[4]",
+        "title": "API Documentation",
+        "short_name": "Docs",
+        "complexity": "low",
+        "dependencies": [
+          "FEATURE[1]",
+          "FEATURE[2]"
+        ]
+      },
+      {
+        "id": "FEATURE[5]",
+        "title": "Docker Configuration",
+        "short_name": "Docker",
+        "complexity": "medium",
+        "dependencies": [
+          "FEATURE[1]"
+        ]
+      }
+    ],
+    "workflow_cancelled": true,
+    "cancellation_reason": "Project Foundation validation failed",
+    "failed_feature": {
+      "id": "FEATURE[1]",
+      "title": "Project Foundation",
+      "validation_feedback": "\u274c Project Foundation validation failed: [Message(role='agent/executor_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\u274c DOCKER EXECUTION ERROR\\n\\nSession ID: inc_5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9\\nError: Failed to build Docker image: failed to resolve reference \"docker.io/library/python:3.9\": failed to authorize: failed to fetch oauth token: Post \"https://auth.docker.io/token\": proxyconnect tcp: dial tcp 192.168.65.1:3128: i/o timeout\\n\\nPlease check:\\n1. Docker is installed and running\\n2. The code format is correct\\n3. Dependencies are properly specified\\n\\nTechnical details:\\nFailed to build Docker image: failed to resolve reference \"docker.io/library/python:3.9\": failed to authorize: failed to fetch oauth token: Post \"https://auth.docker.io/token\": proxyconnect tcp: dial tcp 192.168.65.1:3128: i/o timeout\\n', content_encoding='plain', content_url=None, metadata=None)], created_at=datetime.datetime(2025, 7, 12, 16, 47, 58, 259125, tzinfo=TzInfo(UTC)), completed_at=datetime.datetime(2025, 7, 12, 16, 47, 58, 261540, tzinfo=TzInfo(UTC)))]; \u274c executor_error;    error_type: RuntimeError"
+    },
+    "progress_report": {
+      "workflow_id": "5fc8ef53-872f-4cc5-b62f-b9c7c0d08db9",
+      "overall_progress": 0.0,
+      "features": {
+        "total": 5,
+        "completed": 0,
+        "failed": 1,
+        "skipped": 4,
+        "in_progress": 0,
+        "not_started": 0
+      },
+      "metrics": {
+        "total_attempts": 2,
+        "total_errors": 2,
+        "total_lines_of_code": 0,
+        "average_attempts_per_feature": 2.0,
+        "velocity_per_hour": 0.0
+      },
+      "time": {
+        "elapsed": "0:01:19",
+        "estimated_completion": null,
+        "average_per_feature": "0:01:19"
+      }
+    },
+    "retry_strategies": {
+      "immediate": {
+        "usage_count": 0,
+        "success_rate": 0.0,
+        "effectiveness": 0
+      },
+      "exponential_backoff": {
+        "usage_count": 0,
+        "success_rate": 0.0,
+        "effectiveness": 0
+      },
+      "linear_backoff": {
+        "usage_count": 0,
+        "success_rate": 0.0,
+        "effectiveness": 0
+      },
+      "adaptive": {
+        "usage_count": 2,
+        "success_rate": 0.0,
+        "effectiveness": 0.0
+      },
+      "decomposition": {
+        "usage_count": 0,
+        "success_rate": 0.0,
+        "effectiveness": 0
+      },
+      "alternative_approach": {
+        "usage_count": 0,
+        "success_rate": 0.0,
+        "effectiveness": 0
+      },
+      "skip_and_continue": {
+        "usage_count": 0,
+        "success_rate": 0.0,
+        "effectiveness": 0
+      }
+    },
+    "incremental_execution_metrics": {
+      "total_features": 5,
+      "completed_features": 0,
+      "failed_features": 5,
+      "success_rate": 0.0,
+      "workflow_cancelled": true,
+      "cancellation_reason": "Project Foundation validation failed",
+      "complexity_breakdown": {
+        "low": {
+          "total": 2,
+          "completed": 0
+        },
+        "medium": {
+          "total": 3,
+          "completed": 0
+        },
+        "high": {
+          "total": 0,
+          "completed": 0
+        }
+      },
+      "files_created": 4,
+      "total_lines": 33,
+      "failed_feature_details": [
+        {
+          "id": "FEATURE[1]",
+          "title": "Project Foundation",
+          "complexity": "low",
+          "reason": "Validation failed"
+        },
+        {
+          "id": "FEATURE[2]",
+          "title": "Hello World Endpoint",
+          "complexity": "medium",
+          "reason": "Not attempted"
+        },
+        {
+          "id": "FEATURE[3]",
+          "title": "Unit Testing",
+          "complexity": "medium",
+          "reason": "Not attempted"
+        },
+        {
+          "id": "FEATURE[4]",
+          "title": "API Documentation",
+          "complexity": "low",
+          "reason": "Not attempted"
+        },
+        {
+          "id": "FEATURE[5]",
+          "title": "Docker Configuration",
+          "complexity": "medium",
+          "reason": "Not attempted"
+        }
+      ],
+      "codebase_structure": "Project Structure:\n\u251c\u2500\u2500 Dockerfile\n\u251c\u2500\u2500 README.md\n\u251c\u2500\u2500 app.py\n\u251c\u2500\u2500 requirements.txt"
+    }
   },
   "all_agent_exchanges": [],
   "all_command_executions": [],

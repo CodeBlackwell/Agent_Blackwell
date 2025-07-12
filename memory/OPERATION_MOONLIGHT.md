@@ -70,33 +70,7 @@ This plan outlines a comprehensive transformation of the multi-agent orchestrato
    - Add configuration options
    - Create help documentation
 
-## Phase 2: TDD Workflow Maturation (2 weeks)
-
-### Goals
-- Fix TDD workflow bugs
-- Enhance red-green-refactor cycle
-- Add test coverage reporting
-
-### Tasks
-1. **Debug TDD Workflow**
-   - Fix test execution issues
-   - Improve test parsing
-   - Add test result visualization
-   - Fix retry mechanisms
-
-2. **Enhance TDD Features**
-   - Add coverage threshold enforcement
-   - Implement mutation testing
-   - Add test quality metrics
-   - Create test report generation
-
-3. **Integration & Testing**
-   - Comprehensive test suite
-   - Performance optimization
-   - Documentation updates
-   - CLI integration
-
-## Phase 3: Full Workflow Maturation (1.5 weeks)
+## Phase 2: Full Workflow Maturation (1.5 weeks)
 
 ### Goals
 - Debug traditional full workflow
@@ -121,6 +95,32 @@ This plan outlines a comprehensive transformation of the multi-agent orchestrato
    - Agent selection options
    - Custom validation rules
    - Output format options
+
+## Phase 3: TDD Workflow Maturation (2 weeks)
+
+### Goals
+- Fix TDD workflow bugs
+- Enhance red-green-refactor cycle
+- Add test coverage reporting
+
+### Tasks
+1. **Debug TDD Workflow**
+   - Fix test execution issues
+   - Improve test parsing
+   - Add test result visualization
+   - Fix retry mechanisms
+
+2. **Enhance TDD Features**
+   - Add coverage threshold enforcement
+   - Implement mutation testing
+   - Add test quality metrics
+   - Create test report generation
+
+3. **Integration & Testing**
+   - Comprehensive test suite
+   - Performance optimization
+   - Documentation updates
+   - CLI integration
 
 ## Phase 4: Incremental Workflow Maturation (2 weeks)
 

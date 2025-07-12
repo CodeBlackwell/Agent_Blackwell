@@ -1,0 +1,232 @@
+{
+  "execution_id": "81756736-765b-47a4-88a0-87d506e90c8d",
+  "workflow_type": "tdd",
+  "start_time": "2025-07-11T14:03:12.363454",
+  "end_time": "2025-07-11T14:05:17.071433",
+  "total_duration_seconds": 124.707979,
+  "status": "completed",
+  "steps": [
+    {
+      "step_id": "planning_0_140313",
+      "step_name": "planning",
+      "agent_name": "planner_agent",
+      "status": "completed",
+      "start_time": "2025-07-11T14:03:13.343368",
+      "end_time": "2025-07-11T14:03:28.368521",
+      "duration_seconds": 15.025153,
+      "input_data": {
+        "requirements": "Build a calculator API using Flask"
+      },
+      "output_data": {
+        "output": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal is to build a RESTful Calculator API using Flask that ca..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "design_1_140329",
+      "step_name": "design",
+      "agent_name": "designer_agent",
+      "status": "completed",
+      "start_time": "2025-07-11T14:03:29.626651",
+      "end_time": "2025-07-11T14:03:42.806143",
+      "duration_seconds": 13.179492,
+      "input_data": {
+        "plan_input": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal is to build a RESTful Calculator API using Flask that ca...",
+        "requirements": "Build a calculator API using Flask"
+      },
+      "output_data": {
+        "output": "[Message(role='agent/designer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# System Architecture Overview\\nThe RESTful Calculator API will be built using Flask..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "test_writing_2_140344",
+      "step_name": "test_writing",
+      "agent_name": "test_writer_agent",
+      "status": "completed",
+      "start_time": "2025-07-11T14:03:44.318557",
+      "end_time": "2025-07-11T14:03:57.717250",
+      "duration_seconds": 13.398693,
+      "input_data": {
+        "plan_input": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal is to build a RESTful Calculator API using Flask that ca...",
+        "design_input": "[Message(role='agent/designer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# System Architecture Overview\\nThe RESTful Calculator API will be built using Flask..."
+      },
+      "output_data": {
+        "output": "[Message(role='agent/test_writer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content=\"\\n\\nFILENAME: test_app.py\\n```python\\nimport json\\nimport pytest\\nfrom app import app..."
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "tdd_cycle_3_140358",
+      "step_name": "tdd_cycle",
+      "agent_name": "tdd_cycle_manager",
+      "status": "completed",
+      "start_time": "2025-07-11T14:03:58.854512",
+      "end_time": "2025-07-11T14:05:13.092840",
+      "duration_seconds": 74.238328,
+      "input_data": {
+        "test_output": "[Message(role='agent/test_writer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content=\"\\n\\nFILENAME: test_app.py\\n```python\\nimport json\\nimport pytest\\nfrom app import app...",
+        "requirements": "Build a calculator API using Flask"
+      },
+      "output_data": {
+        "success": false,
+        "iterations": 5,
+        "initial_failures": 0,
+        "final_passes": 0,
+        "all_tests_passing": false
+      },
+      "error_message": null,
+      "metadata": {}
+    },
+    {
+      "step_id": "final_review_4_140513",
+      "step_name": "final_review",
+      "agent_name": "reviewer_agent",
+      "status": "completed",
+      "start_time": "2025-07-11T14:05:13.093530",
+      "end_time": "2025-07-11T14:05:17.070568",
+      "duration_seconds": 3.977038,
+      "input_data": {
+        "code_input": "[Message(role='agent/coder_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content=\"\\n\u2705 PROJECT CREATED: app_generated_20250711_140512\\n\ud83d\udcc1 Location: /Users/lechristopherblackwe...",
+        "context": "TDD workflow final review"
+      },
+      "output_data": {
+        "output": "[Message(role='agent/reviewer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content=\"\\n\\n### Code Quality\\n- The code is well-structured and follows a clear pattern for defi..."
+      },
+      "error_message": null,
+      "metadata": {}
+    }
+  ],
+  "step_count": 5,
+  "completed_steps": 5,
+  "failed_steps": 0,
+  "reviews": [
+    {
+      "review_id": "review_0_140329",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[Message(role='agent/planner_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# Project Overview\\nThe goal is to build a RESTful Calculator API using Flask that ca...",
+      "decision": "approved",
+      "feedback": "Approved by reviewer",
+      "timestamp": "2025-07-11T14:03:29.626604",
+      "retry_count": 0,
+      "auto_approved": false,
+      "metadata": {
+        "target_agent": "planner_agent"
+      }
+    },
+    {
+      "review_id": "review_1_140344",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[Message(role='agent/designer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content='\\n\\n# System Architecture Overview\\nThe RESTful Calculator API will be built using Flask...",
+      "decision": "approved",
+      "feedback": "Approved by reviewer",
+      "timestamp": "2025-07-11T14:03:44.318517",
+      "retry_count": 0,
+      "auto_approved": false,
+      "metadata": {
+        "target_agent": "designer_agent"
+      }
+    },
+    {
+      "review_id": "review_2_140358",
+      "reviewer_agent": "reviewer_agent",
+      "reviewed_content": "[Message(role='agent/test_writer_agent_wrapper', parts=[MessagePart(name=None, content_type='text/plain', content=\"\\n\\nFILENAME: test_app.py\\n```python\\nimport json\\nimport pytest\\nfrom app import app...",
+      "decision": "approved",
+      "feedback": "Approved by reviewer",
+      "timestamp": "2025-07-11T14:03:58.854280",
+      "retry_count": 0,
+      "auto_approved": false,
+      "metadata": {
+        "target_agent": "test_writer_agent"
+      }
+    }
+  ],
+  "total_reviews": 3,
+  "approved_reviews": 3,
+  "revision_requests": 0,
+  "auto_approvals": 0,
+  "retries": [],
+  "total_retries": 0,
+  "test_executions": [],
+  "total_tests": 0,
+  "passed_tests": 0,
+  "failed_tests": 0,
+  "agent_performance": {
+    "planner_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 15.025153,
+      "average_duration": 15.025153,
+      "reviews_received": 1,
+      "approvals": 1,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "designer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 13.179492,
+      "average_duration": 13.179492,
+      "reviews_received": 1,
+      "approvals": 1,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "test_writer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 13.398693,
+      "average_duration": 13.398693,
+      "reviews_received": 1,
+      "approvals": 1,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "tdd_cycle_manager": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 74.238328,
+      "average_duration": 74.238328,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    },
+    "reviewer_agent": {
+      "total_calls": 1,
+      "successful_calls": 1,
+      "failed_calls": 0,
+      "total_duration": 3.977038,
+      "average_duration": 3.977038,
+      "reviews_received": 0,
+      "approvals": 0,
+      "revisions": 0,
+      "success_rate": 1.0
+    }
+  },
+  "final_output": {
+    "workflow_type": "tdd",
+    "results_count": 5,
+    "team_members": [
+      "planner",
+      "designer",
+      "test_writer",
+      "coder",
+      "reviewer"
+    ]
+  },
+  "error_summary": null,
+  "proof_of_execution_path": null,
+  "proof_of_execution_data": null,
+  "metadata": {
+    "input_requirements": "Build a calculator API using Flask",
+    "workflow_type": "tdd"
+  }
+}

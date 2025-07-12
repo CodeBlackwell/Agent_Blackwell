@@ -1,0 +1,31 @@
+
+# EXECUTION SUMMARY
+execution_id,workflow_type,start_time,end_time,duration_seconds,status,total_steps,completed_steps,failed_steps,total_reviews,approved_reviews,revision_requests,auto_approvals,total_retries,total_tests,passed_tests,failed_tests
+b1c18599-9038-4cee-b408-92b7dce6af6a,tdd,2025-07-11T14:11:25.227576,2025-07-11T14:13:04.692658,99.465082,completed,5,5,0,3,3,0,0,0,0,0,0
+
+# WORKFLOW STEPS
+step_id,step_name,agent_name,status,start_time,end_time,duration_seconds,error_message
+planning_0_141126,planning,planner_agent,completed,2025-07-11T14:11:26.163386,2025-07-11T14:11:38.745027,12.581641,
+design_1_141139,design,designer_agent,completed,2025-07-11T14:11:39.873767,2025-07-11T14:11:52.868425,12.994658,
+test_writing_2_141154,test_writing,test_writer_agent,completed,2025-07-11T14:11:54.261934,2025-07-11T14:12:05.609358,11.347424,
+tdd_cycle_3_141206,tdd_cycle,tdd_cycle_manager,completed,2025-07-11T14:12:06.323446,2025-07-11T14:13:00.555574,54.232128,
+final_review_4_141300,final_review,reviewer_agent,completed,2025-07-11T14:13:00.556210,2025-07-11T14:13:04.691914,4.135704,
+
+# REVIEWS
+review_id,reviewer_agent,decision,feedback,retry_count,auto_approved,timestamp,target_agent
+review_0_141139,reviewer_agent,approved,Approved by reviewer,0,False,2025-07-11T14:11:39.873735,planner_agent
+review_1_141154,reviewer_agent,approved,Approved by reviewer,0,False,2025-07-11T14:11:54.261896,designer_agent
+review_2_141206,reviewer_agent,approved,Approved by reviewer,0,False,2025-07-11T14:12:06.322475,test_writer_agent
+
+# AGENT PERFORMANCE
+agent_name,total_calls,successful_calls,failed_calls,total_duration,average_duration,success_rate,reviews_received,approvals,revisions
+planner_agent,1,1,0,12.58,12.58,1.0,1,1,0
+designer_agent,1,1,0,12.99,12.99,1.0,1,1,0
+test_writer_agent,1,1,0,11.35,11.35,1.0,1,1,0
+tdd_cycle_manager,1,1,0,54.23,54.23,1.0,0,0,0
+reviewer_agent,1,1,0,4.14,4.14,1.0,0,0,0
+
+# METADATA
+key,value
+input_requirements,Build a calculator API
+workflow_type,tdd

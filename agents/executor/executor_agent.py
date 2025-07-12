@@ -87,7 +87,7 @@ Be constructive and specific in feedback.
 """
 
 # Import session utilities
-from agents.executor.session_utils import extract_session_id, generate_session_id
+from agents.executor.session_utils import extract_session_id, generate_session_id, extract_generated_code_path
 
 def create_proof_of_execution_entry(session_id: str, stage: str, details: Dict, status: str = "started") -> Dict:
     """Create a proof of execution entry"""
@@ -224,6 +224,12 @@ async def executor_agent(input: list[Message]) -> AsyncGenerator:
         session_id = generate_session_id(requirements)
     
     print(f"📋 Session ID: {session_id}")
+    
+    # Extract generated code path if available
+    existing_code_path = extract_generated_code_path(input_text)
+    if existing_code_path:
+        print(f"📁 Using existing generated code path: {existing_code_path}")
+        # We'll pass this to the Docker manager
     
     # Write initial proof of execution entry
     initial_entry = create_proof_of_execution_entry(

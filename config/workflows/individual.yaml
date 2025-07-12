@@ -1,16 +1,66 @@
 # Individual workflow configuration
 enabled: true
 description: "Single phase execution workflow"
-timeout: 300
+timeout: 600  # 10 minutes total workflow timeout
 max_retries: 3
 
-phases:
-  - name: "individual_task"
+# Step-specific configuration
+steps:
+  planning:
+    timeout: 300  # 5 minutes
+    retries: 2
+    description: "Generate project plan and structure"
+  design:
     timeout: 300
-    required: true
+    retries: 2
+    description: "Create detailed design and architecture"
+  test_writing:
+    timeout: 240  # 4 minutes
+    retries: 2
+    description: "Write comprehensive test suite"
+  implementation:
+    timeout: 360  # 6 minutes
+    retries: 3
+    description: "Implement the solution"
+  review:
+    timeout: 180  # 3 minutes
+    retries: 1
+    description: "Review and validate implementation"
+  execution:
+    timeout: 300
+    retries: 1
+    description: "Execute and validate the code"
 
+# Agent configuration for each step
 agents:
-  individual:
+  planner_agent:
+    model: gpt-4
+    temperature: 0.7
+    max_tokens: 3000
+  designer_agent:
+    model: gpt-4
+    temperature: 0.6
+    max_tokens: 3500
+  test_writer_agent:
+    model: gpt-4
+    temperature: 0.3
+    max_tokens: 3000
+  coder_agent:
     model: gpt-4
     temperature: 0.7
     max_tokens: 4000
+  reviewer_agent:
+    model: gpt-4
+    temperature: 0.4
+    max_tokens: 2500
+  executor_agent:
+    model: gpt-4
+    temperature: 0.2
+    max_tokens: 2000
+
+# Progress reporting settings
+progress:
+  show_step_progress: true
+  show_time_elapsed: true
+  show_eta: true
+  update_interval_seconds: 1

@@ -16,6 +16,14 @@ def extract_session_id(input_text: str) -> Optional[str]:
             return line.split('SESSION_ID:')[1].strip()
     return None
 
+def extract_generated_code_path(input_text: str) -> Optional[str]:
+    """Extract generated code path from input text if present"""
+    lines = input_text.split('\n')
+    for line in lines:
+        if 'GENERATED_CODE_PATH:' in line:
+            return line.split('GENERATED_CODE_PATH:')[1].strip()
+    return None
+
 def generate_dynamic_name(requirements: str, max_length: int = 30) -> str:
     """Generate a dynamic name based on requirements text
     

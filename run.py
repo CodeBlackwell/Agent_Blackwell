@@ -9,6 +9,7 @@ Usage:
     python run.py                    # Interactive mode
     python run.py workflow tdd --task "Build a calculator API"
     python run.py workflow mvp_incremental --task "Create a task manager"
+    python run.py --debug            # Enable debug logging
     python run.py --help            # Get help
 """
 
@@ -25,6 +26,7 @@ import subprocess
 import platform
 import atexit
 import signal
+import logging
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -35,11 +37,48 @@ from shared.data_models import CodingTeamInput
 from workflows.monitoring import WorkflowExecutionTracer
 
 
-# Global variable to track orchestrator process
+# Global variables
 ORCHESTRATOR_PROCESS = None
+DEBUG_MODE = False
 
 
-def kill_process_on_port(port: int):
+def configure_logging(debug=False):
+    """Configure logging based on debug mode."""
+    import logging
+    
+    if debug:
+        # Debug mode: show all logs with timestamps
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            force=True
+        )
+    else:
+        # Normal mode: minimal output
+        logging.basicConfig(
+            level=logging.WARNING,
+            format='%(message)s',
+            force=True
+        )
+        
+        # Suppress verbose loggers
+        logging.getLogger('workflow_manager').setLevel(logging.WARNING)
+        logging.getLogger('orchestrator').setLevel(logging.WARNING)
+        logging.getLogger('core').setLevel(logging.WARNING)
+        logging.getLogger('core.initialize').setLevel(logging.ERROR)  # Suppress init messages
+        logging.getLogger('workflows').setLevel(logging.WARNING)
+        logging.getLogger('httpcore').setLevel(logging.ERROR)
+        logging.getLogger('httpx').setLevel(logging.ERROR)
+        logging.getLogger('docker').setLevel(logging.ERROR)
+        logging.getLogger('urllib3').setLevel(logging.ERROR)
+        logging.getLogger('aiohttp').setLevel(logging.ERROR)
+
+
+        logging.getLogger('shared').setLevel(logging.WARNING)
+        logging.getLogger('mcp').setLevel(logging.WARNING)
+
+
+def kill_process_on_port(port: int, debug: bool = False):
     """Kill any process listening on the specified port."""
     try:
         if platform.system() == "Darwin" or platform.system() == "Linux":
@@ -54,9 +93,11 @@ def kill_process_on_port(port: int):
                 for pid in pids:
                     try:
                         subprocess.run(["kill", "-9", pid])
-                        print(f"✅ Killed existing process {pid} on port {port}")
+                        if debug:
+                            print(f"✅ Killed existing process {pid} on port {port}")
                     except Exception as e:
-                        print(f"⚠️  Failed to kill process {pid}: {e}")
+                        if debug:
+                            print(f"⚠️  Failed to kill process {pid}: {e}")
         elif platform.system() == "Windows":
             # Windows command to find and kill process
             result = subprocess.run(
@@ -73,35 +114,46 @@ def kill_process_on_port(port: int):
                         pid = parts[-1]
                         try:
                             subprocess.run(["taskkill", "/F", "/PID", pid], shell=True)
-                            print(f"✅ Killed existing process {pid} on port {port}")
+                            if debug:
+                                print(f"✅ Killed existing process {pid} on port {port}")
                         except Exception as e:
-                            print(f"⚠️  Failed to kill process {pid}: {e}")
+                            if debug:
+                                print(f"⚠️  Failed to kill process {pid}: {e}")
     except Exception as e:
-        print(f"⚠️  Error checking port {port}: {e}")
+        if debug:
+            print(f"⚠️  Error checking port {port}: {e}")
 
 
-def start_orchestrator_server():
+def start_orchestrator_server(debug: bool = False):
     """Start the orchestrator server in the background."""
     global ORCHESTRATOR_PROCESS
     
     # Kill any existing process on port 8080
-    print("🔍 Checking for existing orchestrator on port 8080...")
-    kill_process_on_port(8080)
+    if debug:
+        print("🔍 Checking for existing orchestrator on port 8080...")
+    kill_process_on_port(8080, debug=debug)
     
     # Give it a moment to clean up
     time.sleep(1)
     
     # Start the orchestrator
-    print("🚀 Starting orchestrator server...")
+    if debug:
+        print("🚀 Starting orchestrator server...")
     orchestrator_path = Path(__file__).parent / "orchestrator" / "orchestrator_agent.py"
     
     try:
+        # Set debug environment variable if needed
+        env = os.environ.copy()
+        if debug:
+            env['ORCHESTRATOR_DEBUG'] = '1'
+        
         # Start orchestrator in background
         ORCHESTRATOR_PROCESS = subprocess.Popen(
             [sys.executable, str(orchestrator_path)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            stdout=subprocess.PIPE if not debug else None,
+            stderr=subprocess.PIPE if not debug else None,
+            text=True,
+            env=env
         )
         
         # Wait a bit for it to start
@@ -109,13 +161,15 @@ def start_orchestrator_server():
         
         # Check if it's running
         if ORCHESTRATOR_PROCESS.poll() is None:
-            print("✅ Orchestrator server started successfully on port 8080")
+            if debug:
+                print("✅ Orchestrator server started successfully on port 8080")
             return True
         else:
             print("❌ Orchestrator server failed to start")
-            stdout, stderr = ORCHESTRATOR_PROCESS.communicate(timeout=1)
-            if stderr:
-                print(f"Error: {stderr}")
+            if debug:
+                stdout, stderr = ORCHESTRATOR_PROCESS.communicate(timeout=1)
+                if stderr:
+                    print(f"Error: {stderr}")
             return False
             
     except Exception as e:
@@ -125,15 +179,17 @@ def start_orchestrator_server():
 
 def cleanup_orchestrator():
     """Clean up orchestrator process on exit."""
-    global ORCHESTRATOR_PROCESS
+    global ORCHESTRATOR_PROCESS, DEBUG_MODE
     if ORCHESTRATOR_PROCESS and ORCHESTRATOR_PROCESS.poll() is None:
-        print("\n🛑 Stopping orchestrator server...")
+        if DEBUG_MODE:
+            print("\n🛑 Stopping orchestrator server...")
         ORCHESTRATOR_PROCESS.terminate()
         try:
             ORCHESTRATOR_PROCESS.wait(timeout=5)
         except subprocess.TimeoutExpired:
             ORCHESTRATOR_PROCESS.kill()
-        print("✅ Orchestrator server stopped")
+        if DEBUG_MODE:
+            print("✅ Orchestrator server stopped")
 
 
 # Register cleanup function
@@ -157,11 +213,12 @@ class DirectWorkflowRunner:
     def __init__(self):
         self.available_workflows = get_available_workflows()
         self.orchestrator_started = False
+        self.debug_mode = DEBUG_MODE
         
     def ensure_orchestrator_running(self):
         """Ensure the orchestrator server is running."""
         if not self.orchestrator_started:
-            if start_orchestrator_server():
+            if start_orchestrator_server(debug=self.debug_mode):
                 self.orchestrator_started = True
             else:
                 raise RuntimeError("Failed to start orchestrator server")
@@ -222,6 +279,11 @@ class DirectWorkflowRunner:
         """Execute a workflow directly."""
         # Ensure orchestrator is running
         self.ensure_orchestrator_running()
+        
+        # Handle individual workflow all-steps mode
+        if workflow_type == "individual" and config and config.get('run_all_steps'):
+            await self._execute_individual_all_steps(requirements, config)
+            return
         
         start_time = time.time()
         
@@ -331,6 +393,133 @@ class DirectWorkflowRunner:
                 import traceback
                 print("\nTraceback:")
                 traceback.print_exc()
+    
+    async def _execute_individual_all_steps(self, requirements: str, config: Dict[str, Any]):
+        """Execute all individual workflow steps sequentially."""
+        steps = ["planning", "design", "test_writing", "implementation", "review", "execution"]
+        overall_start = time.time()
+        results_by_step = {}
+        
+        # Import session utilities
+        from agents.executor.session_utils import generate_session_id
+        
+        # Generate a single session ID for all steps
+        session_id = generate_session_id(requirements)
+        generated_code_path = None
+        
+        print(f"\n{'='*60}")
+        print(f"🚀 Starting Individual Workflow - All Steps Mode")
+        print(f"📋 Requirements: {requirements[:100]}..." if len(requirements) > 100 else f"📋 Requirements: {requirements}")
+        print(f"📝 Steps to execute: {', '.join(steps)}")
+        print(f"🔑 Session ID: {session_id}")
+        print(f"{'='*60}\n")
+        
+        for i, step in enumerate(steps, 1):
+            print(f"\n{'='*50}")
+            print(f"📍 Step {i}/{len(steps)}: {step.upper()}")
+            print(f"{'='*50}")
+            
+            # Prepare requirements with session ID and generated code path
+            step_requirements = f"SESSION_ID: {session_id}\n"
+            if generated_code_path and step in ["execution", "review"]:
+                step_requirements += f"GENERATED_CODE_PATH: {generated_code_path}\n"
+            step_requirements += f"\n{requirements}"
+            
+            # Create input data for this step
+            input_data = CodingTeamInput(
+                requirements=step_requirements,
+                workflow_type="individual",
+                step_type=step,
+                # Skip Docker cleanup for all steps except the last one
+                skip_docker_cleanup=(i < len(steps))
+            )
+            
+            # Apply timeout if specified
+            if config.get('timeout'):
+                input_data.timeout = config['timeout']
+            
+            # Create tracer for this step
+            tracer = WorkflowExecutionTracer(f"individual_{step}")
+            
+            try:
+                step_start = time.time()
+                
+                # Execute the step
+                results, report = await execute_workflow(input_data, tracer)
+                
+                step_duration = time.time() - step_start
+                results_by_step[step] = {
+                    "results": results,
+                    "report": report,
+                    "duration": step_duration
+                }
+                
+                print(f"✅ {step} completed in {step_duration:.2f} seconds")
+                
+                # Show brief output preview
+                if results and len(results) > 0:
+                    output_preview = results[0].output[:200] + "..." if len(results[0].output) > 200 else results[0].output
+                    print(f"📄 Output preview: {output_preview}")
+                    
+                    # Extract generated code path from implementation step
+                    if step == "implementation" and not generated_code_path:
+                        import re
+                        # Look for generated path in the output
+                        path_match = re.search(r'generated/[^\s]+', results[0].output)
+                        if path_match:
+                            generated_code_path = path_match.group(0)
+                            print(f"📁 Captured generated code path: {generated_code_path}")
+                
+            except Exception as e:
+                print(f"❌ {step} failed: {str(e)}")
+                if not config.get('continue_on_error', False):
+                    print(f"\n⛔ Stopping execution due to error in {step} step")
+                    break
+                results_by_step[step] = {
+                    "error": str(e),
+                    "duration": time.time() - step_start
+                }
+        
+        # Summary
+        overall_duration = time.time() - overall_start
+        successful_steps = [s for s, r in results_by_step.items() if "error" not in r]
+        failed_steps = [s for s, r in results_by_step.items() if "error" in r]
+        
+        print(f"\n{'='*60}")
+        print(f"📊 Individual Workflow Summary")
+        print(f"{'='*60}")
+        print(f"Total Duration: {overall_duration:.2f} seconds")
+        print(f"Steps Completed: {len(successful_steps)}/{len(steps)}")
+        
+        if successful_steps:
+            print(f"✅ Successful: {', '.join(successful_steps)}")
+        if failed_steps:
+            print(f"❌ Failed: {', '.join(failed_steps)}")
+        
+        # Save consolidated report
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_dir = Path("workflow_reports")
+        report_dir.mkdir(exist_ok=True)
+        
+        consolidated_report = {
+            "workflow_type": "individual_all_steps",
+            "timestamp": timestamp,
+            "requirements": requirements,
+            "session_id": session_id,
+            "generated_code_path": generated_code_path,
+            "total_duration": overall_duration,
+            "steps": results_by_step
+        }
+        
+        report_file = report_dir / f"individual_all_steps_{timestamp}.json"
+        with open(report_file, 'w') as f:
+            json.dump(consolidated_report, f, indent=2, default=str)
+        
+        print(f"\n📊 Consolidated report saved to: {report_file}")
+        
+        # Final Docker cleanup message
+        if successful_steps and "execution" in successful_steps:
+            print(f"\n🧹 Docker containers for session {session_id} were cleaned up after final step")
                 
     async def run_cli(self, args):
         """Run in CLI mode based on parsed arguments."""
@@ -365,6 +554,26 @@ class DirectWorkflowRunner:
             
         # Build configuration
         config = {}
+        
+        # Handle Individual workflow options
+        if args.type == "individual":
+            if args.step:
+                config['step_type'] = args.step
+                print(f"📌 Running individual workflow - {args.step} step only")
+            elif args.all_steps:
+                # We'll run all steps sequentially
+                print("📌 Running individual workflow - all steps")
+                config['run_all_steps'] = True
+            
+            if args.timeout:
+                config['timeout'] = args.timeout
+                
+            if args.config:
+                # Load configuration from file
+                import yaml
+                with open(args.config, 'r') as f:
+                    custom_config = yaml.safe_load(f)
+                    config.update(custom_config)
         
         # Handle TDD-specific options
         if args.type in ["tdd", "mvp_incremental_tdd"] or args.tdd:
@@ -412,20 +621,29 @@ class DirectWorkflowRunner:
   python run.py workflow <type> --task "..."   # Run a specific workflow
   python run.py workflow --list                 # List available workflows
   python run.py --help                          # Show CLI help
+  python run.py --debug ...                     # Enable verbose debug logging
   python run.py --no-orchestrator ...           # Skip auto-start
 
 🔧 Available Workflows:
+  - individual: Execute individual workflow steps with enhanced features
   - tdd: Test-Driven Development (Tests → Implementation → Review)
   - full: Full development workflow (Planning → Design → Implementation → Review)
   - incremental: Feature-based incremental development
   - mvp_incremental: MVP incremental with validation
   - mvp_incremental_tdd: MVP incremental with TDD
-  - planning: Planning phase only
-  - design: Design phase only
-  - implementation: Implementation phase only
-  - review: Review phase only
+  
+📍 Individual Workflow Steps:
+  - planning: Generate project plan and structure
+  - design: Create detailed design and architecture
+  - test_writing: Write comprehensive test suite
+  - implementation: Implement the solution
+  - review: Review and validate implementation
+  - execution: Execute and validate the code
 
 💡 Examples:
+  python run.py workflow individual --task "Create REST API" --step planning
+  python run.py workflow individual --task "Build calculator" --all-steps
+  python run.py workflow individual --task "..." --timeout 600
   python run.py workflow tdd --task "Create a calculator API"
   python run.py workflow mvp_incremental --task "Build a task management system"
   python run.py workflow tdd --task "..." --strict --coverage 90
@@ -456,6 +674,15 @@ class DirectWorkflowRunner:
   - Progress tracking shows completion status
   
   Perfect for complex projects!
+
+🐛 Debug Mode:
+  Use --debug flag to enable verbose logging:
+  - Shows detailed workflow execution steps
+  - Displays HTTP requests and agent communications
+  - Includes full error tracebacks
+  - Helps troubleshoot issues
+  
+  Example: python run.py workflow tdd --task "..." --debug
 """
         print(help_text)
 
@@ -471,10 +698,18 @@ Examples:
   python run.py workflow tdd --task "..."       # Run TDD workflow
   python run.py workflow full --task "..."      # Run full workflow
   python run.py workflow --list                 # List workflows
+  python run.py --debug workflow tdd --task "..." # Run with debug logging
+  
+Individual Workflow Examples:
+  python run.py workflow individual --task "Create API" --step planning
+  python run.py workflow individual --task "Build app" --all-steps
+  python run.py workflow individual --task "..." --step design --timeout 600
+  python run.py workflow individual --task "..." --config custom.yaml
   
 TDD Examples:
   python run.py workflow tdd --task "Calculator API" --strict
   python run.py workflow tdd --task "..." --coverage 90
+  python run.py --debug workflow tdd --task "..." # Debug TDD workflow
   
 Incremental Examples:
   python run.py workflow incremental --task "Task manager"
@@ -482,10 +717,13 @@ Incremental Examples:
   
 Note: The orchestrator server will be started automatically on port 8080.
       Use --no-orchestrator if you're managing it manually.
+      Use --debug to enable verbose logging for troubleshooting.
 """
     )
     
     # Global options
+    parser.add_argument("--debug", action="store_true",
+                       help="Enable verbose debug logging")
     parser.add_argument("--no-orchestrator", action="store_true",
                        help="Don't start the orchestrator server (assumes it's already running)")
     
@@ -494,9 +732,18 @@ Note: The orchestrator server will be started automatically on port 8080.
     
     # Workflow command
     workflow_parser = subparsers.add_parser("workflow", help="Run a workflow")
-    workflow_parser.add_argument("type", nargs="?", help="Workflow type (e.g., tdd, full, incremental)")
+    workflow_parser.add_argument("type", nargs="?", help="Workflow type (e.g., tdd, full, incremental, individual)")
     workflow_parser.add_argument("--task", help="Task description")
     workflow_parser.add_argument("--list", action="store_true", help="List available workflows")
+    
+    # Individual workflow options
+    workflow_parser.add_argument("--step", choices=["planning", "design", "test_writing", "implementation", "review", "execution"],
+                                help="Run specific step for individual workflow")
+    workflow_parser.add_argument("--all-steps", action="store_true",
+                                help="Run all steps sequentially (individual workflow)")
+    workflow_parser.add_argument("--timeout", type=int,
+                                help="Override timeout in seconds")
+    workflow_parser.add_argument("--config", help="Path to configuration file")
     
     # TDD options
     workflow_parser.add_argument("--tdd", action="store_true", 
@@ -520,16 +767,40 @@ Note: The orchestrator server will be started automatically on port 8080.
 
 async def main():
     """Main entry point."""
+    global DEBUG_MODE
+    
     parser = create_parser()
     args = parser.parse_args()
+    
+    # Configure logging based on debug flag
+    DEBUG_MODE = hasattr(args, 'debug') and args.debug
+    configure_logging(debug=DEBUG_MODE)
+    
+    # Set environment variable to control debug in subprocesses
+    import os
+    os.environ['ORCHESTRATOR_DEBUG'] = 'true' if DEBUG_MODE else 'false'
+    
+    # Initialize core after logging is configured
+    from core.initialize import initialize_core
+    try:
+        # Override debug setting in config
+        os.environ['DEBUG'] = 'false'  # Always set to false to avoid config override
+        initialize_core()
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"Warning: Failed to initialize core infrastructure: {e}")
     
     # Create runner
     runner = DirectWorkflowRunner()
     
+    # Store debug mode in runner for later use
+    runner.debug_mode = DEBUG_MODE
+    
     # Handle --no-orchestrator flag
     if hasattr(args, 'no_orchestrator') and args.no_orchestrator:
         runner.orchestrator_started = True  # Skip auto-start
-        print("ℹ️  Skipping orchestrator startup (--no-orchestrator flag)")
+        if DEBUG_MODE:
+            print("ℹ️  Skipping orchestrator startup (--no-orchestrator flag)")
     
     # Show help if no arguments
     if len(sys.argv) == 1:
@@ -543,6 +814,9 @@ async def main():
             sys.exit(0)
         except Exception as e:
             print(f"\n❌ Error: {e}")
+            if DEBUG_MODE:
+                import traceback
+                traceback.print_exc()
             sys.exit(1)
 
 

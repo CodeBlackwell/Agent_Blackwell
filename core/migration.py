@@ -19,47 +19,73 @@ def get_output_handler() -> IOutputHandler:
     return orchestrator.get_output_handler()
 
 
-def run_team_member_with_tracking(
-    member_config: Dict[str, Any],
-    messages: List[Dict[str, Any]],
+async def run_team_member_with_tracking(
+    member_config: Any,  # Can be dict or string
+    messages: Any = None,  # Can be list or string
     verbose: bool = True
 ) -> Dict[str, Any]:
     """Compatibility wrapper for run_team_member_with_tracking."""
-    agent_runner = get_agent_runner()
+    # Handle the case where this is called with agent_name, requirements, context
+    # (the old signature used in individual workflow)
+    if isinstance(member_config, str) and isinstance(messages, str):
+        # This is the old signature: agent_name, requirements, context
+        agent_name = member_config
+        requirements = messages
+        context = verbose if isinstance(verbose, str) else "workflow"
+        
+        # Use the orchestrator client
+        from .orchestrator_client import call_agent_via_orchestrator
+        
+        try:
+            # Since this function is now async, we can await directly
+            result = await call_agent_via_orchestrator(agent_name, requirements, context)
+            return result
+                
+        except Exception as e:
+            raise RuntimeError(f"Error calling orchestrator: {str(e)}")
     
-    # Convert dict messages to AgentMessage objects
-    from .interfaces import AgentMessage
-    agent_messages = [
-        AgentMessage(
-            role=msg.get("role"),
-            content=msg.get("content"),
-            name=msg.get("name")
+    # Otherwise try to use the DI system (original implementation)
+    try:
+        agent_runner = get_agent_runner()
+        
+        # Convert dict messages to AgentMessage objects
+        from .interfaces import AgentMessage
+        agent_messages = [
+            AgentMessage(
+                role=msg.get("role"),
+                content=msg.get("content"),
+                name=msg.get("name")
+            )
+            for msg in messages
+        ]
+        
+        # Run the agent
+        response = agent_runner.run_team_member_with_tracking(
+            member_config,
+            agent_messages,
+            verbose
         )
-        for msg in messages
-    ]
-    
-    # Run the agent
-    response = agent_runner.run_team_member_with_tracking(
-        member_config,
-        agent_messages,
-        verbose
-    )
-    
-    # Convert response back to dict format
-    return {
-        "content": response.content,
-        "messages": [
-            {
-                "role": msg.role,
-                "content": msg.content,
-                "name": msg.name
-            }
-            for msg in response.messages
-        ],
-        "metadata": response.metadata,
-        "success": response.success,
-        "error": response.error
-    }
+        
+        # Convert response back to dict format
+        return {
+            "content": response.content,
+            "messages": [
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                    "name": msg.name
+                }
+                for msg in response.messages
+            ],
+            "metadata": response.metadata,
+            "success": response.success,
+            "error": response.error
+        }
+    except RuntimeError as e:
+        if "not initialized" in str(e):
+            # Fallback to direct HTTP call
+            raise RuntimeError("Agent runner not initialized and fallback not available for dict-based call")
+        raise
 
 
 def execute_workflow(workflow_type: str, request_data: Dict[str, Any]) -> Dict[str, Any]:

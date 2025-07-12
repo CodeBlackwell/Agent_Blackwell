@@ -14,6 +14,7 @@ api.log
 # Test outputs
 tests/outputs/
 
+workflow_reports
 # Local configuration overrides
 config/local.yaml
 config/local.json

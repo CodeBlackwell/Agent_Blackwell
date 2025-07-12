@@ -66,15 +66,29 @@ load_dotenv()
 
 # Configure logging
 import logging
+
+# Check if debug mode is enabled
+debug_mode = os.environ.get('ORCHESTRATOR_DEBUG', '').lower() in ['1', 'true', 'yes']
+log_level = logging.DEBUG if debug_mode else logging.WARNING
+
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=log_level,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s' if debug_mode else '%(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
 # Create orchestrator logger
 logger = logging.getLogger("orchestrator")
-logger.setLevel(logging.INFO)
+logger.setLevel(log_level)
+
+# Suppress noisy loggers unless in debug mode
+if not debug_mode:
+    # Suppress HTTP client logs
+    logging.getLogger('urllib3').setLevel(logging.ERROR)
+    logging.getLogger('httpx').setLevel(logging.ERROR)
+    logging.getLogger('aiohttp').setLevel(logging.ERROR)
+    logging.getLogger('acp_sdk').setLevel(logging.ERROR)
+    logging.getLogger('beeai_framework').setLevel(logging.ERROR)
 
 server = Server()
 

@@ -3,6 +3,7 @@ Individual workflow step implementation with comprehensive monitoring.
 """
 from typing import List, Optional, Tuple
 import asyncio
+import os
 from workflows.monitoring import WorkflowExecutionTracer, WorkflowExecutionReport
 from shared.data_models import (
     TeamMember, WorkflowStep, CodingTeamInput, CodingTeamResult, TeamMemberResult
@@ -10,7 +11,29 @@ from shared.data_models import (
 # Import executor components
 from agents.executor.session_utils import generate_session_id
 
+# Check if we should use enhanced version
+# For now, disable enhanced version until DI is properly set up
+USE_ENHANCED = os.getenv('USE_ENHANCED_INDIVIDUAL', 'false').lower() == 'true'
+
 async def execute_individual_workflow(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
+    """
+    Execute an individual workflow step with comprehensive monitoring.
+    
+    This function now delegates to the enhanced version if enabled.
+    """
+    if USE_ENHANCED:
+        try:
+            from .individual_workflow_enhanced import execute_individual_workflow as enhanced_execute
+            return await enhanced_execute(input_data, tracer)
+        except ImportError:
+            # Fall back to original implementation
+            pass
+    
+    # Original implementation continues below
+    return await _execute_individual_workflow_original(input_data, tracer)
+
+
+async def _execute_individual_workflow_original(input_data: CodingTeamInput, tracer: Optional[WorkflowExecutionTracer] = None) -> Tuple[List[TeamMemberResult], WorkflowExecutionReport]:
     """
     Execute an individual workflow step with comprehensive monitoring.
     
@@ -83,7 +106,10 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
     if workflow_step in agent_map:
         agent_name, team_member, result_name = agent_map[workflow_step]
         
-        print(f" Running {workflow_step} phase...")
+        # Only print in non-debug mode (debug mode has logger output)
+        import logging
+        if logging.getLogger().level > logging.DEBUG:
+            print(f" Running {workflow_step} phase...")
         
         # Start monitoring step
         step_id = tracer.start_step(
@@ -112,12 +138,14 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
                 output=output,
                 name=result_name
             ))
-            print(f" {workflow_step} phase completed successfully")
+            if logging.getLogger().level > logging.DEBUG:
+                print(f" {workflow_step} phase completed successfully")
             
         except Exception as e:
             error_msg = f"{workflow_step} step failed: {str(e)}"
             tracer.complete_step(step_id, error=error_msg)
-            print(f" {workflow_step} failed: {error_msg}")
+            if logging.getLogger().level > logging.DEBUG:
+                print(f" {workflow_step} failed: {error_msg}")
             raise
     
     return results

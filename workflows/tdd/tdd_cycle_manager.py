@@ -236,8 +236,8 @@ class TDDCycleManager:
         iteration: int
     ) -> str:
         """Generate implementation to make failing tests pass"""
-        # Import here to avoid circular dependency
-        from orchestrator.orchestrator_agent import run_team_member_with_tracking
+        # Import here using dependency injection to avoid circular dependency
+        from core.migration import run_team_member_with_tracking
         
         context = self._create_implementation_context(
             requirements,

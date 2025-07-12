@@ -30,7 +30,7 @@ from workflows.workflow_config import MAX_REVIEW_RETRIES
 from workflows.tdd.tdd_config import WORKFLOW_CONFIG, TEST_CONFIG
 
 # Import output handler
-from workflows.agent_output_handler import get_output_handler
+from core.migration import get_output_handler
 
 # Import executor components
 from agents.executor.session_utils import generate_session_id
@@ -62,8 +62,8 @@ async def execute_tdd_workflow(input_data: CodingTeamInput, tracer: Optional[Wor
     import workflows.workflow_utils as utils_module
     # Correctly reference the async review_output function
     review_output = utils_module.review_output
-    # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    # Use dependency injection instead of circular imports
+    from core.migration import run_team_member_with_tracking
     
     # Create tracer if not provided
     if tracer is None:

@@ -1,0 +1,19 @@
+# Development environment configuration
+debug: true
+log_level: DEBUG
+
+# API settings
+api_debug: true
+api_host: localhost
+
+# Agent settings
+agent_timeout: 600  # 10 minutes for development
+max_retries: 5
+
+# LLM settings
+llm_temperature: 0.7
+llm_max_tokens: 4000
+
+# Performance settings
+enable_caching: false  # Disable caching in development
+max_concurrent_agents: 3

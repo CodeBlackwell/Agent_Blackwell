@@ -21,4 +21,6 @@ The system follows a **modular, single-server architecture** with these key comp
 - The execution report should track every single exchange between all of the agents, every single command that was run, all test reports, all things that could be useful for debugging each individual run.
 - Additionally, those reports should be saved in both JSON and CSV format, and they should be hard saved to the generated code file for retroactive debugging.
 
-[Rest of the file remains unchanged...]
+## Workflows
+
+- Memorize All Available Workflows: Ensure comprehensive documentation and tracking of all potential workflow configurations and execution paths within the multi-agent system.

@@ -36,8 +36,9 @@ async def feature_reviewer_agent(input: list[Message]) -> AsyncGenerator:
     - Providing actionable feedback for retry attempts
     - Coordinating with error analysis for better reviews
     """
-    # Import config here to avoid circular imports
-    from agents.agent_configs import feature_reviewer_config
+    # Use agent registry instead of circular imports
+    from core.agent_registry import get_agent_config
+    feature_reviewer_config = get_agent_config("feature_reviewer")
     
     llm = ChatModel.from_name(feature_reviewer_config["model"])
     

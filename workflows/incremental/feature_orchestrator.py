@@ -2,7 +2,7 @@
 Feature orchestrator for managing incremental feature-based development.
 Follows ACP workflow patterns.
 """
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 import asyncio
 import re
 from dataclasses import dataclass
@@ -15,6 +15,31 @@ from shared.data_models import TeamMemberResult, TeamMember
 from .stagnation_detector import StagnationDetector
 from .retry_strategies import RetryOrchestrator, RetryContext, RetryStrategy
 from .progress_monitor import ProgressMonitor
+
+
+def extract_content_from_message(message_result: Union[List, str, Any]) -> str:
+    """Safely extract content from various message formats."""
+    if isinstance(message_result, str):
+        return message_result
+    
+    if isinstance(message_result, list) and len(message_result) > 0:
+        first_item = message_result[0]
+        # Handle Message object with parts
+        if hasattr(first_item, 'parts') and len(first_item.parts) > 0:
+            if hasattr(first_item.parts[0], 'content'):
+                return first_item.parts[0].content
+            return str(first_item.parts[0])
+        # Handle Message object with direct content
+        elif hasattr(first_item, 'content'):
+            return first_item.content
+        # Handle other message formats
+        elif hasattr(first_item, 'text'):
+            return first_item.text
+        else:
+            return str(first_item)
+    
+    # Fallback to string conversion
+    return str(message_result)
 
 
 @dataclass
@@ -359,9 +384,17 @@ async def execute_features_incrementally(
     Execute features incrementally with retry logic and stagnation detection.
     Follows ACP patterns for orchestrated execution.
     """
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    try:
+        from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    except ImportError as e:
+        # Fallback for testing or alternate configurations
+        raise ImportError(f"Failed to import run_team_member_with_tracking: {e}")
+    
     # Dynamic import to avoid circular dependency
-    from orchestrator.utils.incremental_executor import IncrementalExecutor
+    try:
+        from orchestrator.utils.incremental_executor import IncrementalExecutor
+    except ImportError as e:
+        raise ImportError(f"Failed to import IncrementalExecutor: {e}")
     
     executor = IncrementalExecutor(
         session_id=f"inc_{tracer.execution_id}",
@@ -426,7 +459,7 @@ async def execute_features_incrementally(
             # Check for stagnation before retry
             if retry_count > 0:
                 stagnation_info = stagnation_detector.detect_stagnation(feature.id)
-                if stagnation_info:
+                if stagnation_info and 'recommendation' in stagnation_info:
                     print(f"\n⚠️  Stagnation detected: {stagnation_info['recommendation']}")
                     
                     # Get alternative approach suggestion
@@ -458,7 +491,9 @@ async def execute_features_incrementally(
             
             # Get code from coder agent
             code_result = await run_team_member_with_tracking("coder_agent", coder_input, "incremental_coding")
-            code_output = str(code_result)
+            
+            # Extract content using helper function
+            code_output = extract_content_from_message(code_result)
             
             # Parse files from output
             new_files = parse_code_files(code_output)
@@ -526,10 +561,10 @@ async def execute_features_incrementally(
                     # Create retry context for decision
                     # Get error history from stagnation detector
                     error_history = []
-                    if feature.id in stagnation_detector.feature_metrics:
+                    if hasattr(stagnation_detector, 'feature_metrics') and feature.id in stagnation_detector.feature_metrics:
                         metrics = stagnation_detector.feature_metrics[feature.id]
-                        if hasattr(metrics, 'failed_validations'):
-                            error_history = [v.get('error', 'Unknown error') for v in metrics.failed_validations]
+                        if hasattr(metrics, 'failed_validations') and metrics.failed_validations:
+                            error_history = [v.get('error', 'Unknown error') for v in metrics.failed_validations if isinstance(v, dict)]
                     error_categories = []
                     for err in error_history:
                         if "syntax" in err.lower():
@@ -612,7 +647,7 @@ async def execute_features_incrementally(
                 print(f"⚠️  {feature.id} failed after {retry_count} attempts")
                 
                 # Decide whether to continue based on complexity
-                if feature.complexity == ComplexityLevel.HIGH:
+                if hasattr(feature, 'complexity') and feature.complexity == ComplexityLevel.HIGH:
                     print("❌ Stopping due to high-complexity feature failure")
                     break
     

@@ -2,6 +2,10 @@
 Incremental feature-based development workflow.
 Follows the pattern: Planning → Design → Incremental Implementation → Review
 """
+import sys
+import os
+# Add the parent directory to the path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from typing import List, Optional
 
 from shared.data_models import (
@@ -11,7 +15,7 @@ from shared.data_models import (
 )
 # Dynamic imports to avoid circular dependency - moved inside function
 from workflows.monitoring import WorkflowExecutionTracer
-from .feature_orchestrator import FeatureOrchestrator
+from .feature_orchestrator import FeatureOrchestrator, extract_content_from_message
 
 
 async def execute_incremental_workflow(
@@ -31,8 +35,8 @@ async def execute_incremental_workflow(
     Returns:
         List of team member results
     """
-    # Dynamic imports to avoid circular dependency
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking, get_output_handler
+    # Dynamic imports using dependency injection to avoid circular dependency
+    from core.migration import run_team_member_with_tracking, get_output_handler
     
     if not tracer:
         tracer = WorkflowExecutionTracer("incremental")
@@ -53,10 +57,7 @@ async def execute_incremental_workflow(
         "incremental_planning"
     )
     # Extract the actual content from the Message object
-    if isinstance(planning_result, list) and len(planning_result) > 0:
-        planning_output = planning_result[0].parts[0].content
-    else:
-        planning_output = str(planning_result)
+    planning_output = extract_content_from_message(planning_result)
     planner_result = TeamMemberResult(
         team_member=TeamMember.planner,
         output=planning_output,
@@ -80,10 +81,7 @@ async def execute_incremental_workflow(
         "incremental_design"
     )
     # Extract the actual content from the Message object
-    if isinstance(design_result, list) and len(design_result) > 0:
-        design_output = design_result[0].parts[0].content
-    else:
-        design_output = str(design_result)
+    design_output = extract_content_from_message(design_result)
     designer_result = TeamMemberResult(
         team_member=TeamMember.designer,
         output=design_output,
@@ -118,9 +116,22 @@ async def execute_incremental_workflow(
             results.extend(team_results)
         
         # Create a consolidated result for the incremental implementation
+        # Aggregate all generated files into a comprehensive output
+        aggregated_output = "# Generated Code Files\n\n"
+        for filename, content in sorted(final_codebase.items()):
+            aggregated_output += f"## {filename}\n\n```python\n{content}\n```\n\n"
+        
+        # Add execution summary
+        if execution_summary:
+            aggregated_output += "\n## Execution Summary\n\n"
+            aggregated_output += f"- Total Features: {execution_summary.get('total_features', 0)}\n"
+            aggregated_output += f"- Completed Features: {execution_summary.get('completed_features', 0)}\n"
+            aggregated_output += f"- Success Rate: {execution_summary.get('success_rate', 0):.1f}%\n"
+            aggregated_output += f"- Files Created: {execution_summary.get('files_created', 0)}\n"
+        
         coder_result = TeamMemberResult(
             team_member=TeamMember.coder,
-            output=final_codebase.get("main.py", "# No main implementation generated"),
+            output=aggregated_output if final_codebase else "# No implementation generated",
             name="incremental_coder"
         )
         results.append(coder_result)
@@ -150,10 +161,7 @@ async def execute_incremental_workflow(
         "incremental_review"
     )
     # Extract the actual content from the Message object
-    if isinstance(review_result, list) and len(review_result) > 0:
-        review_output = review_result[0].parts[0].content
-    else:
-        review_output = str(review_result)
+    review_output = extract_content_from_message(review_result)
     reviewer_result = TeamMemberResult(
         team_member=TeamMember.reviewer,
         output=review_output,

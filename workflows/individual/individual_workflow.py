@@ -66,8 +66,8 @@ async def run_individual_workflow(requirements: str, workflow_step: str, tracer:
     Returns:
         List of team member results (containing single result)
     """
-    # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    # Use dependency injection instead of circular imports
+    from core.migration import run_team_member_with_tracking
     
     results = []
     

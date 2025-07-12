@@ -35,17 +35,26 @@ For developers who want to understand the architecture, contribute, or extend th
 
 Detailed documentation for each workflow type and their usage.
 
-- **[Workflows Overview](workflows/README.md)** - Understanding workflow types
-- **[TDD Workflow](workflows/tdd-workflow.md)** - Test-driven development with RED-YELLOW-GREEN phases 🆕
-  - [TDD Quick Reference](workflows/tdd-quick-reference.md) 🆕
-- **[MVP Incremental Workflow](workflows/mvp-incremental/README.md)** - Feature-by-feature development
+### Core Documentation 🆕
+- **[Workflow Documentation Index](workflows/index.md)** - Complete workflow documentation hub
+- **[Workflow Overview](workflows/WORKFLOW_OVERVIEW.md)** - Comprehensive guide to all 7 workflows
+- **[Quick Reference](workflows/WORKFLOW_QUICK_REFERENCE.md)** - Decision tree and quick commands
+- **[Visual Guide](workflows/WORKFLOW_VISUAL_GUIDE.md)** - Diagrams and visual comparisons
+
+### Workflow Types
+- **[TDD Workflow](workflows/tdd-workflow.md)** - Test-driven development with RED-YELLOW-GREEN phases
+  - [TDD Quick Reference](workflows/tdd-quick-reference.md)
+- **[Full Workflow](workflows/full-workflow.md)** - Traditional complete development cycle
+- **[Incremental Workflow](workflows/INCREMENTAL_WORKFLOW_GUIDE.md)** - Feature-by-feature development 🆕
+  - [Feature Orchestrator](workflows/FEATURE_ORCHESTRATOR_README.md) 🆕
+  - [Known Issues](workflows/INCREMENTAL_WORKFLOW_BUGS.md) 🆕
+- **[MVP Incremental Workflow](workflows/mvp-incremental/README.md)** - Rapid MVP development
   - [User Guide](workflows/mvp-incremental/user-guide.md)
   - [Quick Reference](workflows/mvp-incremental/quick-reference.md)
-  - [Phases Documentation](workflows/mvp-incremental/phases.md) (Updated with phases 9-10)
+  - [Phases Documentation](workflows/mvp-incremental/phases.md)
   - [TDD Enhancement](workflows/mvp-incremental/tdd-enhancement.md)
-  - [Test Results](workflows/mvp-incremental/test-results.md) (Updated)
+- **[Individual Steps](workflows/individual-steps.md)** - Single phase execution
 - **[Data Flow](workflows/data-flow.md)** - How data flows through workflows
-- **[Workflow Visualizations](workflow_visualizations/)** - Visual representations
 
 ## 📖 Reference
 

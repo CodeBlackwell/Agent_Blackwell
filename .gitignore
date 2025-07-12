@@ -13,3 +13,9 @@ orchestrator.log
 api.log
 # Test outputs
 tests/outputs/
+
+# Local configuration overrides
+config/local.yaml
+config/local.json
+*.local.yaml
+*.local.json

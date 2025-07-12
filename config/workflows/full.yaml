@@ -1,0 +1,49 @@
+# Full workflow configuration
+enabled: true
+description: "Traditional complete development cycle"
+timeout: 1200
+max_retries: 3
+
+phases:
+  - name: "planning"
+    timeout: 180
+    required: true
+  - name: "design"
+    timeout: 240
+    required: true
+  - name: "implementation"
+    timeout: 480
+    required: true
+  - name: "testing"
+    timeout: 300
+    required: true
+  - name: "review"
+    timeout: 180
+    required: true
+
+agents:
+  planner:
+    model: gpt-4
+    temperature: 0.7
+    max_tokens: 3000
+  designer:
+    model: gpt-4
+    temperature: 0.6
+    max_tokens: 3500
+  coder:
+    model: gpt-4
+    temperature: 0.7
+    max_tokens: 4000
+  test_writer:
+    model: gpt-4
+    temperature: 0.3
+    max_tokens: 3000
+  reviewer:
+    model: gpt-4
+    temperature: 0.4
+    max_tokens: 2500
+
+settings:
+  parallel_phases: false
+  rollback_on_failure: true
+  save_checkpoints: true

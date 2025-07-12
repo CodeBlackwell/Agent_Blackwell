@@ -1,0 +1,21 @@
+# Testing environment configuration
+debug: true
+log_level: WARNING
+
+# API settings
+api_debug: false
+api_host: localhost
+api_port: 8001  # Different port for testing
+
+# Agent settings
+agent_timeout: 60  # 1 minute for tests
+max_retries: 1
+
+# LLM settings
+llm_model: gpt-3.5-turbo  # Faster model for tests
+llm_temperature: 0.0  # Deterministic for tests
+llm_max_tokens: 2000
+
+# Performance settings
+enable_caching: false
+max_concurrent_agents: 2

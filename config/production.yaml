@@ -1,0 +1,24 @@
+# Production environment configuration
+debug: false
+log_level: INFO
+
+# API settings
+api_debug: false
+api_host: 0.0.0.0
+
+# Agent settings
+agent_timeout: 300  # 5 minutes
+max_retries: 3
+
+# LLM settings
+llm_temperature: 0.5  # More deterministic in production
+llm_max_tokens: 4000
+
+# Performance settings
+enable_caching: true
+cache_ttl: 7200  # 2 hours
+max_concurrent_agents: 10
+
+# Logging
+log_rotation: 100MB
+log_retention: 90  # 90 days

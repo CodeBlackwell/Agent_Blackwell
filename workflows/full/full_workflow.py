@@ -67,8 +67,8 @@ async def run_full_workflow(requirements: str, team_members: List[str], tracer: 
     Returns:
         List of team member results
     """
-    # Import run_team_member dynamically to avoid circular imports
-    from orchestrator.orchestrator_agent import run_team_member_with_tracking
+    # Import run_team_member dynamically using dependency injection to avoid circular imports
+    from core.migration import run_team_member_with_tracking
 
     # Import review_output from the renamed workflow_utils.py file
     from workflows import workflow_utils

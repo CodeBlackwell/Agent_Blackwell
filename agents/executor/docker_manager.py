@@ -33,14 +33,66 @@ class DockerEnvironmentManager:
         self.async_docker = None
         
     async def initialize(self):
-        """Initialize Docker clients"""
-        try:
-            self.docker_client = docker.from_env()
-            # Test connection
-            self.docker_client.ping()
-            print("✅ Docker connection established")
-        except Exception as e:
-            raise RuntimeError(f"Failed to connect to Docker: {e}")
+        """Initialize Docker clients with enhanced error handling and retry logic"""
+        import os
+        from urllib3.util.retry import Retry
+        from requests.adapters import HTTPAdapter
+        
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                # Check for proxy settings and provide guidance
+                proxy_env_vars = {k: v for k, v in os.environ.items() 
+                                if 'proxy' in k.lower() or k in ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY']}
+                
+                if proxy_env_vars:
+                    print(f"🔍 Detected proxy configuration: {', '.join(proxy_env_vars.keys())}")
+                
+                # Initialize Docker client with timeout and retry configuration
+                self.docker_client = docker.from_env(timeout=30)
+                
+                # Configure the underlying requests session for better reliability
+                if hasattr(self.docker_client.api, '_session'):
+                    session = self.docker_client.api._session
+                    retry_strategy = Retry(
+                        total=3,
+                        backoff_factor=1,
+                        status_forcelist=[429, 500, 502, 503, 504],
+                        allowed_methods=["HEAD", "GET", "PUT", "POST", "DELETE", "OPTIONS", "TRACE"]
+                    )
+                    adapter = HTTPAdapter(max_retries=retry_strategy)
+                    session.mount("http://", adapter)
+                    session.mount("https://", adapter)
+                
+                # Test connection with timeout
+                self.docker_client.ping()
+                print("✅ Docker connection established")
+                return
+                
+            except docker.errors.DockerException as e:
+                error_msg = str(e)
+                if "timeout" in error_msg.lower():
+                    print(f"⏱️  Docker connection timeout (attempt {attempt + 1}/{max_retries})")
+                    if proxy_env_vars:
+                        print("   💡 This might be due to proxy configuration.")
+                        print("   Try setting NO_PROXY=localhost,127.0.0.1,docker.local")
+                elif "permission denied" in error_msg.lower():
+                    print("❌ Docker permission denied. Ensure Docker is running and you have access.")
+                    raise RuntimeError(f"Docker permission denied: {e}")
+                else:
+                    print(f"❌ Docker error (attempt {attempt + 1}/{max_retries}): {error_msg}")
+                
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise RuntimeError(f"Failed to connect to Docker after {max_retries} attempts: {e}")
+                    
+            except Exception as e:
+                print(f"❌ Unexpected error connecting to Docker: {e}")
+                raise RuntimeError(f"Failed to connect to Docker: {e}")
     
     async def get_or_create_environment(self, 
                                       env_spec: EnvironmentSpec, 
@@ -137,12 +189,26 @@ class DockerEnvironmentManager:
             print(f"🏗️  Building Docker image: {image_tag}")
             
             try:
+                # Add build args for proxy if detected
+                build_args = {}
+                proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 
+                             'http_proxy', 'https_proxy', 'no_proxy']
+                for var in proxy_vars:
+                    if var in os.environ:
+                        build_args[var] = os.environ[var]
+                
+                if build_args:
+                    print(f"   🔧 Using proxy configuration for build: {', '.join(build_args.keys())}")
+                
+                # Build with timeout and proxy configuration
                 image, build_logs = self.docker_client.images.build(
                     path=str(build_path),
                     tag=image_tag,
                     rm=True,
                     forcerm=True,
-                    pull=True  # Always pull base image for security
+                    pull=True,  # Always pull base image for security
+                    buildargs=build_args,
+                    timeout=300  # 5 minute timeout for build
                 )
                 
                 # Print build logs for debugging
@@ -151,7 +217,17 @@ class DockerEnvironmentManager:
                         print(f"   {log['stream'].strip()}")
                 
             except docker.errors.BuildError as e:
-                raise RuntimeError(f"Failed to build Docker image: {e}")
+                error_msg = str(e)
+                if "timeout" in error_msg.lower() or "proxyconnect" in error_msg.lower():
+                    raise RuntimeError(
+                        f"Failed to build Docker image due to network/proxy issue: {e}\n"
+                        f"💡 Try:\n"
+                        f"  1. Check your internet connection\n"
+                        f"  2. Verify Docker Desktop proxy settings\n"
+                        f"  3. Set NO_PROXY=localhost,127.0.0.1 in your environment"
+                    )
+                else:
+                    raise RuntimeError(f"Failed to build Docker image: {e}")
             
             # Create and start container
             container_name = f"executor_{container_key}"

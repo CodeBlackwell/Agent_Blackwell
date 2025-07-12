@@ -13,6 +13,7 @@ from shared.data_models import TeamMemberResult, ExecutionResult
 from workflows.workflow_config import EXECUTION_CONFIG
 from workflows.incremental.error_analyzer import ErrorAnalyzer, ErrorContext
 from workflows.incremental.validation_system import GranularValidator
+from agents.executor.validation_debugger import ValidationDebugger
 
 
 @dataclass
@@ -39,6 +40,8 @@ class IncrementalExecutor:
         self.validated_features: List[str] = []
         self.error_analyzer = ErrorAnalyzer()
         self.granular_validator = GranularValidator()
+        # Enable debugging for validation decisions
+        self.validation_debugger = ValidationDebugger(session_id, debug_enabled=True)
     
     async def validate_feature(
         self,
@@ -72,9 +75,18 @@ class IncrementalExecutor:
             )
         
         try:
+            # Log validation attempt
+            self.validation_debugger.log_validation_attempt(
+                feature.id, 
+                {"files": list(new_files.keys()), "validation_criteria": feature.validation_criteria}
+            )
+            
             # Run executor agent following ACP patterns
             result = await run_team_member("executor_agent", executor_input)
             execution_output = str(result)
+            
+            # Log executor output
+            self.validation_debugger.log_executor_output(feature.id, execution_output)
             
             # Extract proof of execution details
             from agents.executor.proof_reader import extract_proof_from_executor_output
@@ -89,6 +101,13 @@ class IncrementalExecutor:
                 execution_output,
                 feature,
                 new_files
+            )
+            
+            # Log final result
+            self.validation_debugger.log_final_result(
+                feature.id,
+                validation_result.success,
+                validation_result.feedback
             )
             
             # Update tracer
@@ -188,42 +207,115 @@ class IncrementalExecutor:
         success = False
         feedback_lines = []
         test_results = {"passed": 0, "failed": 0}
+        exit_code = None
         
-        # Check for success indicators
-        success_indicators = ["✅", "passed", "success", "validated"]
-        failure_indicators = ["❌", "failed", "error", "failure"]
-        
-        output_lower = output.lower()
-        
-        # Determine success
-        if any(indicator in output_lower for indicator in success_indicators):
-            if not any(indicator in output_lower for indicator in failure_indicators):
+        # First, check for explicit Docker execution markers
+        if "✅ DOCKER EXECUTION RESULT" in output:
+            # This is a successful Docker execution - check exit codes
+            exit_code_match = re.search(r'Exit Code:\s*(\d+)', output)
+            if exit_code_match:
+                exit_code = int(exit_code_match.group(1))
+                success = (exit_code == 0)
+        elif "❌ DOCKER EXECUTION ERROR" in output:
+            # This is a failed Docker execution
+            success = False
+            # Extract the specific error message
+            error_match = re.search(r'Error:\s*(.+?)(?:\n|$)', output)
+            if error_match:
+                feedback_lines.append(error_match.group(1))
+        else:
+            # Fallback to general pattern matching
+            # Check for explicit failure markers first
+            explicit_failures = ["❌", "validation failed", "tests failed", "execution failed"]
+            explicit_successes = ["✅", "validation passed", "all tests passed", "successfully validated"]
+            
+            output_lower = output.lower()
+            
+            # Check explicit markers
+            has_explicit_failure = any(marker in output_lower for marker in explicit_failures)
+            has_explicit_success = any(marker in output_lower for marker in explicit_successes)
+            
+            if has_explicit_failure:
+                success = False
+            elif has_explicit_success:
                 success = True
+            else:
+                # No explicit markers - look for other indicators
+                # Only treat as error if it's clearly an execution error
+                if "traceback" in output_lower or "syntaxerror" in output_lower:
+                    success = False
+                elif "error" in output_lower:
+                    # Check if error is in an actual error context
+                    error_lines = [line for line in output.split('\n') 
+                                 if 'error' in line.lower() and 
+                                 any(ctx in line.lower() for ctx in ['failed', 'exception', 'traceback'])]
+                    if error_lines:
+                        success = False
+                        feedback_lines.extend(error_lines[:3])
+                else:
+                    # Default to success if no clear failure indicators
+                    success = True
         
         # Extract test results if present
         test_match = re.search(r'(\d+)\s+passed.*?(\d+)\s+failed', output, re.IGNORECASE)
         if test_match:
             test_results["passed"] = int(test_match.group(1))
             test_results["failed"] = int(test_match.group(2))
+            # Test results override other success indicators
             success = test_results["failed"] == 0
         
-        # Extract specific feedback
-        if "error" in output_lower:
-            # Find error details
-            error_lines = [line for line in output.split('\n') if 'error' in line.lower()]
-            feedback_lines.extend(error_lines[:3])  # First 3 error lines
+        # Extract specific error details for feedback
+        if not success and not feedback_lines:
+            # Look for specific error patterns
+            if "docker" in output.lower() and "timeout" in output.lower():
+                feedback_lines.append("Docker connection timeout")
+            elif "import" in output.lower() and "error" in output.lower():
+                import_error = re.search(r'(ImportError|ModuleNotFoundError):\s*(.+)', output)
+                if import_error:
+                    feedback_lines.append(f"Import error: {import_error.group(2)}")
+            elif "syntax" in output.lower() and "error" in output.lower():
+                syntax_error = re.search(r'SyntaxError:\s*(.+)', output)
+                if syntax_error:
+                    feedback_lines.append(f"Syntax error: {syntax_error.group(1)}")
         
-        # Build feedback
+        # Build feedback message
         if success:
             feedback = f"✅ {feature.title} validated successfully"
             if test_results["passed"] > 0:
                 feedback += f" ({test_results['passed']} tests passed)"
+            if exit_code is not None:
+                feedback += f" [Exit code: {exit_code}]"
         else:
             feedback = f"❌ {feature.title} validation failed"
             if feedback_lines:
                 feedback += ": " + "; ".join(feedback_lines)
             elif test_results["failed"] > 0:
                 feedback += f" ({test_results['failed']} tests failed)"
+            if exit_code is not None and exit_code != 0:
+                feedback += f" [Exit code: {exit_code}]"
+        
+        # Log parsing decision
+        parsing_details = {
+            "success_determined_by": "docker_marker" if "DOCKER EXECUTION" in output else "pattern_matching",
+            "exit_code": exit_code,
+            "test_results": test_results,
+            "explicit_markers_found": {
+                "success": "✅" in output,
+                "failure": "❌" in output,
+                "docker_success": "✅ DOCKER EXECUTION RESULT" in output,
+                "docker_error": "❌ DOCKER EXECUTION ERROR" in output
+            },
+            "final_decision": success,
+            "feedback_lines": feedback_lines
+        }
+        
+        # Log to validation debugger
+        if hasattr(self, 'validation_debugger'):
+            self.validation_debugger.log_parsing_decision(feature.id, parsing_details)
+        
+        # Add debug logging to tracer
+        if hasattr(self, 'tracer') and self.tracer:
+            self.tracer.add_metadata(f"validation_parse_{feature.id}", parsing_details)
         
         return ValidationResult(
             success=success,
@@ -232,7 +324,8 @@ class IncrementalExecutor:
                 "feature_id": feature.id,
                 "files_created": list(new_files.keys()),
                 "validation_criteria": feature.validation_criteria,
-                "output_preview": output[:500]
+                "output_preview": output[:500],
+                "exit_code": exit_code
             },
             files_validated=list(new_files.keys()),
             tests_passed=test_results["passed"] if test_results["passed"] > 0 else None,
@@ -270,11 +363,17 @@ class IncrementalExecutor:
     
     def get_progress_summary(self) -> Dict[str, Any]:
         """Get current progress summary"""
+        # Save validation debug log
+        if hasattr(self, 'validation_debugger'):
+            self.validation_debugger.save_debug_log()
+            self.validation_debugger.print_summary()
+        
         return {
             "validated_features": len(self.validated_features),
             "total_files": len(self.codebase_state),
             "feature_ids": self.validated_features,
-            "session_id": self.session_id
+            "session_id": self.session_id,
+            "validation_debug_report": self.validation_debugger.get_validation_report() if hasattr(self, 'validation_debugger') else None
         }
 
 
